@@ -10,16 +10,21 @@
 #include "caf/opencl/actor_facade.hpp"
 #include "caf/opencl/manager.hpp"
 
-using namespace caf;
+//using namespace caf;
 
 //runs a test to ensure the actor facade can spawn in
 //correctly 
-void actor_facade_spawn_test() {
 
-	actor_system_config cfg;
+void actor_facade_spawn_test(caf::actor_system& sys) {
 
-	actor_system sys{cfg};
+// Call this once before creating actor_system
+   // caf::init_global_meta_objects<>();
 
+	//caf::actor_system_config cfg;
+
+	//caf::actor_system sys{cfg};
+
+	//caf::opencl::actor_facade facade{cfg};
 	caf::opencl::manager mgr{sys};
 
 	int x = 1;
@@ -37,8 +42,13 @@ void actor_facade_spawn_test() {
 
 
 
-int main(void) {
+void caf_main(caf::actor_system& sys) {
 
-	return 0;
+	actor_facade_spawn_test(sys);
 
-}	
+//	return 0;
+}
+
+
+CAF_MAIN()
+
