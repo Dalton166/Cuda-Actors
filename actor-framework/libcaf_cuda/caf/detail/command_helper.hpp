@@ -23,7 +23,7 @@
 
 #include "caf/detail/type_list.hpp"
 #include "caf/message.hpp"
-#include "caf/opencl/command.hpp"
+#include "caf/cuda/command.hpp"
 
 namespace caf {
 namespace detail {

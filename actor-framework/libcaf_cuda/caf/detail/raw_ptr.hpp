@@ -22,7 +22,7 @@
 #include <type_traits>
 
 #include "caf/intrusive_ptr.hpp"
-#include "caf/opencl/global.hpp"
+#include "caf/cuda/global.hpp"
 
 #define CAF_OPENCL_PTR_ALIAS(aliasname, cltype, claddref, clrelease)           \
   inline void intrusive_ptr_add_ref(cltype ptr) { claddref(ptr); }             \

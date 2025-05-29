@@ -24,9 +24,9 @@
 #include "caf/actor_cast.hpp"
 #include "caf/actor_system.hpp"
 #include "caf/actor_system_config.hpp"
-#include "caf/opencl/actor_facade.hpp"
-#include "caf/opencl/program.hpp"
-#include "caf/opencl/nd_range.hpp"
+#include "caf/cuda/actor_facade.hpp"
+#include "caf/cuda/program.hpp"
+#include "caf/cuda/nd_range.hpp"
 
 
 namespace caf {
