@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 3.16.3)
-project(CUDA_ACTORS)
 
 # 1) Enforce C++17 (needs modern C++ features)
 set(CMAKE_CXX_STANDARD        17)
@@ -10,7 +9,14 @@ set(CMAKE_CXX_EXTENSIONS      OFF)
 set(CAF_SRC "/student/nqr159/cuda-actors/actor-framework")
 set(CAF_BUILD "${CAF_SRC}/build")
 
-# 3) Include directories (CAF + ViennaCL)
+
+#required since cmake cant seem to find the compiler 
+set(CMAKE_CXX_COMPILER "/usr/bin/g++")
+set(CMAKE_C_COMPILER "/usr/bin/gcc")
+
+project(CUDA_ACTORS)
+
+
 include_directories(
   "${CAF_SRC}/include"
   "${CAF_SRC}/libcaf_io"
@@ -24,7 +30,6 @@ include_directories(
 # 5) Declare your executable
 add_executable(test main.test.cpp)
 
-# 6) Link against CAF shared libraries and OpenCL
 target_link_libraries(test
   PRIVATE
     "${CAF_BUILD}/libcaf_core/libcaf_core.so"
