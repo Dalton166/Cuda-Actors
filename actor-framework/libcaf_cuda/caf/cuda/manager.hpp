@@ -11,14 +11,13 @@
 
 #include "caf/detail/spawn_helper.hpp"
 
+#include "caf/cuda/device.hpp"
+#include "caf/cuda/program.hpp"
+#include "caf/cuda/actor_facade.hpp"
+#include "caf/cuda/opencl_err.hpp"
+#include "caf/cuda/global.hpp"
 
-#include "caf/opencl/device.hpp"
-#include "caf/opencl/program.hpp"
-#include "caf/opencl/actor_facade.hpp"
-#include "caf/opencl/opencl_err.hpp"
-#include "caf/opencl/global.hpp"
-
-namespace caf::opencl {
+namespace caf::cuda {
 
 class device;
 using device_ptr = caf::intrusive_ptr<device>;
@@ -29,7 +28,7 @@ using program_ptr = caf::intrusive_ptr<program>;
 template <bool PassConfig, class... Ts>
 class actor_facade;
 
-class CAF_OPENCL_EXPORT manager {
+class CAF_CUDA_EXPORT manager {
 public:
   explicit manager(caf::actor_system& sys);
 
@@ -39,7 +38,7 @@ public:
 
   template <class Predicate>
   device_ptr find_device_if(Predicate&&) const {
-    throw std::runtime_error("OpenCL support disabled: manager::find_device_if");
+    throw std::runtime_error("CUDA support disabled: manager::find_device_if");
   }
 
   program_ptr create_program(const std::string& source,
@@ -54,21 +53,18 @@ public:
   caf::actor spawn(const char*,
                    program_ptr,
                    Ts&&...) {
-    throw std::runtime_error("OpenCL support disabled: manager::spawn");
+    throw std::runtime_error("CUDA support disabled: manager::spawn");
   }
-
 
   template<class T,class ... Ts>
   caf::actor spawn(T &&x, Ts&& ... xs) {
-
-	  caf::detail::cuda_spawn_helper<false,T> f;  
-	  caf::actor_config cfg;
-	  return f(
-    		   system_,
-	           std::move(cfg),
-		   std::forward<T>(x),
-		    std::forward<T>(xs)...);
-  
+          caf::detail::cuda_spawn_helper<false,T> f;  
+          caf::actor_config cfg;
+          return f(
+                   system_,
+                   std::move(cfg),
+                   std::forward<T>(x),
+                    std::forward<T>(xs)...);
   }
 
   caf::actor_system& system();
@@ -77,5 +73,4 @@ private:
   caf::actor_system& system_;
 };
 
-} // namespace caf::opencl
-
+} // namespace caf::cuda

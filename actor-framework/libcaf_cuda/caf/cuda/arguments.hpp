@@ -6,7 +6,7 @@
 
 #include <caf/message.hpp>
 
-namespace caf::opencl {
+namespace caf::cuda {
 
 // Tags
 struct val {};
@@ -58,4 +58,4 @@ struct priv {
   priv(Arg, F) {}
 };
 
-} // namespace caf::opencl
+} // namespace caf::cuda

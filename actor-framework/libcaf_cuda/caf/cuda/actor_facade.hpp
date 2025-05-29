@@ -10,16 +10,16 @@
 #include <caf/response_promise.hpp>
 #include <caf/logger.hpp>
 #include <caf/raise_error.hpp>
-#include "caf/opencl/nd_range.hpp"
-#include "caf/opencl/global.hpp"
+#include "caf/cuda/nd_range.hpp"
+#include "caf/cuda/global.hpp"
 
-namespace caf::opencl {
+namespace caf::cuda {
 
 template <bool PassConfig, class... Ts>
 class actor_facade : public caf::local_actor {
 public:
   static caf::actor create(...) {
-    throw std::runtime_error("OpenCL support disabled: actor_facade::create()");
+    throw std::runtime_error("CUDA support disabled: actor_facade::create()");
   }
 
   static caf::actor create(
@@ -37,9 +37,9 @@ public:
   }
 
   actor_facade(caf::actor_config& cfg) : caf::local_actor(cfg) {
-    throw std::runtime_error("OpenCL support disabled: actor_facade ctor");
+    throw std::runtime_error("CUDA support disabled: actor_facade ctor");
   }
- actor_facade(caf::actor_config&& cfg, Ts&&... xs)
+  actor_facade(caf::actor_config&& cfg, Ts&&... xs)
     : local_actor(config_)           // pass member variable by lvalue ref
     , config_(std::move(cfg))        // move from rvalue into member variable
     //, other_members_(std::forward<Ts>(xs))...
@@ -64,8 +64,8 @@ public:
   }
 
   void force_close_mailbox() override {
-  throw std::runtime_error("force_close_mailbox() not implemented yet");
-}
+    throw std::runtime_error("force_close_mailbox() not implemented yet");
+  }
 
 private:
   
@@ -86,6 +86,4 @@ protected:
   actor_facade() = default; // Protected default constructor for inheritance
 };
 
-
-} // namespace caf::opencl
-
+} // namespace caf::cuda

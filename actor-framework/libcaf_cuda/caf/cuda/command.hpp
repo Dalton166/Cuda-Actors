@@ -8,7 +8,7 @@
  * Copyright (C) 2011 - 2016                                                  *
  *                                                                            *
  * Distributed under the terms and conditions of the BSD 3-Clause License or  *
- * (at your option) under the terms and conditions of the Boost Software      *
+ * (at yourਸ  your option) under the terms and conditions of the Boost Software      *
  * License 1.0. See accompanying files LICENSE and LICENSE_ALTERNATIVE.       *
  *                                                                            *
  * If you did not receive a copy of the license files, see                    *
@@ -29,12 +29,12 @@
 #include <caf/response_promise.hpp>
 #include <caf/detail/type_list.hpp>
 
-#include "caf/opencl/global.hpp"
-#include "caf/opencl/nd_range.hpp"
-#include "caf/opencl/arguments.hpp"
-#include "caf/opencl/opencl_err.hpp"
+#include "caf/cuda/global.hpp"
+#include "caf/cuda/nd_range.hpp"
+#include "caf/cuda/arguments.hpp"
+#include "caf/cuda/opencl_err.hpp"
 
-namespace caf::opencl {
+namespace caf::cuda {
 
 template <class Actor, class... Ts>
 class command : public ref_counted {
@@ -50,14 +50,14 @@ public:
           caf::message,
           std::tuple<Ts...>,
           nd_range) {
-    throw std::runtime_error("OpenCL support disabled: command ctor");
+    throw std::runtime_error("CUDA support disabled: command ctor");
   }
 
   void enqueue() {
-    throw std::runtime_error("OpenCL support disabled: command::enqueue()");
+    throw std::runtime_error("CUDA support disabled: command::enqueue()");
   }
 
   ~command() override = default;
 };
 
-} // namespace caf::opencl
+} // namespace caf::cuda

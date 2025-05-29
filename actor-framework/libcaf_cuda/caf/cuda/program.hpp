@@ -1,3 +1,4 @@
+```cpp
 #pragma once
 
 #include <stdexcept>
@@ -10,9 +11,9 @@
 #include <caf/actor_control_block.hpp>
 #include <caf/message.hpp>
 
-#include "caf/opencl/nd_range.hpp"
+#include "caf/cuda/nd_range.hpp"
 
-namespace caf::opencl {
+namespace caf::cuda {
 
 template <class... Ts>
 class command : public caf::ref_counted {
@@ -27,18 +28,18 @@ public:
           caf::message,
           std::tuple<Ts...>,
           nd_range) {
-    throw std::runtime_error("OpenCL support disabled: command ctor");
+    throw std::runtime_error("CUDA support disabled: command ctor");
   }
 
   void enqueue() {
-    throw std::runtime_error("OpenCL support disabled: command::enqueue()");
+    throw std::runtime_error("CUDA support disabled: command::enqueue()");
   }
 };
 
 class program : public caf::ref_counted {
 public:
   program(void*, void*, void*, std::map<std::string, void*>) {
-    throw std::runtime_error("OpenCL support disabled: program ctor");
+    throw std::runtime_error("CUDA support disabled: program ctor");
   }
 
   ~program() override = default;
@@ -46,4 +47,4 @@ public:
 
 using program_ptr = caf::intrusive_ptr<program>;
 
-} // namespace caf::opencl
+} // namespace caf::cuda

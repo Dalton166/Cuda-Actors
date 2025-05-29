@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-namespace caf::opencl {
+namespace caf::cuda {
 
 template <class T>
 class mem_ref {
@@ -12,7 +12,7 @@ public:
   mem_ref() = default;
 
   mem_ref(void*, void*, size_t) {
-    throw std::runtime_error("OpenCL support disabled: mem_ref ctor");
+    throw std::runtime_error("CUDA support disabled: mem_ref ctor");
   }
 
   ~mem_ref() = default;
@@ -24,5 +24,4 @@ public:
   size_t size() const { return 0; }
 };
 
-} // namespace caf::opencl
-#endif
+} // namespace caf::cuda

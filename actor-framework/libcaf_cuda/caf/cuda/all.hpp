@@ -1,3 +1,4 @@
+```cpp
 /******************************************************************************
  *                       ____    _    _____                                   *
  *                      / ___|  / \  |  ___|    C++                           *
@@ -19,7 +20,5 @@
 
 #pragma once
 
-// OpenCL manager include commented out for CUDA
- //#include "caf/opencl/manager.hpp"
-// TODO: Include CUDA manager header instead
-
+// CUDA manager include
+#include "caf/cuda/manager.hpp"

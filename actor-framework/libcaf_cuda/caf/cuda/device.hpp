@@ -7,7 +7,7 @@
 #include <caf/intrusive_ptr.hpp>
 #include <caf/ref_counted.hpp>
 
-namespace caf::opencl {
+namespace caf::cuda {
 
 template <class T>
 class mem_ref; // Forward-declared; full definition in mem_ref.hpp
@@ -18,7 +18,7 @@ using device_ptr = caf::intrusive_ptr<device>;
 class device : public caf::ref_counted {
 public:
   device([[maybe_unused]] void* device, [[maybe_unused]] void* context, [[maybe_unused]] void* queue) {
-    throw std::runtime_error("OpenCL support disabled: device ctor");
+    throw std::runtime_error("CUDA support disabled: device ctor");
   }
 
   ~device() override;
@@ -31,7 +31,7 @@ public:
 
   template <class T>
   mem_ref<T> make_arg(T*, std::size_t, void* = nullptr) {
-    throw std::runtime_error("OpenCL support disabled: device::make_arg()");
+    throw std::runtime_error("CUDA support disabled: device::make_arg()");
   }
 
 private:
@@ -44,4 +44,4 @@ private:
   std::size_t max_work_group_size_;
 };
 
-} // namespace caf::opencl
+} // namespace caf::cuda

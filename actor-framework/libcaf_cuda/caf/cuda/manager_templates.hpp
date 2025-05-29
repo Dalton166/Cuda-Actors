@@ -1,22 +1,22 @@
 #pragma once
 
 #include <stdexcept>
-#include <caf/opencl/opencl_err.hpp>
-#include <caf/opencl/actor_facade.hpp>
+#include <caf/cuda/opencl_err.hpp>
+#include <caf/cuda/actor_facade.hpp>
 #include <caf/actor.hpp>
 
-namespace caf::opencl {
+namespace caf::cuda {
 
 template <class Predicate>
 device_ptr manager::find_device_if(Predicate&&) const {
-  throw std::runtime_error("OpenCL support disabled: manager::find_device_if");
+  throw std::runtime_error("CUDA support disabled: manager::find_device_if");
 }
 
 template <bool PassConfig, class Result, class... Ts>
 caf::actor manager::spawn(const char*,
                           program_ptr,
                           Ts&&...) {
-  throw std::runtime_error("OpenCL support disabled: manager::spawn");
+  throw std::runtime_error("CUDA support disabled: manager::spawn");
 }
 
-} // namespace caf::opencl
+} // namespace caf::cuda
