@@ -34,7 +34,7 @@ namespace detail {
 
 template <bool PassConfig, class... Ts>
 struct cuda_spawn_helper {
-  using impl = opencl::actor_facade<PassConfig, Ts...>;
+  using impl = cuda::actor_facade<PassConfig, Ts...>;
  
   
  /*as for right now, input and output mapping is disabled
