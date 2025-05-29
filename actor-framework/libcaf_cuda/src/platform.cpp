@@ -16,12 +16,12 @@
  * http://www.boost.org/LICENSE_1_0.txt.                                      *
  ******************************************************************************/
 
-#include "caf/opencl/platform.hpp"
+#include "caf/cuda/platform.hpp"
 
 #include <iostream>
 /*
 namespace caf {
-namespace opencl {
+namespace cuda {
 
 platform::platform(cl_platform_id id, unsigned& current_device_id)
     : id_(id) {

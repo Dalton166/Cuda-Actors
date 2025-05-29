@@ -19,7 +19,7 @@
 #include <string>
 #include <sstream>
 
-#include "caf/opencl/global.hpp"
+#include "caf/cuda/global.hpp"
 /*
 cl_int clReleaseDeviceDummy(cl_device_id) {
   std::fprintf(stderr,
@@ -34,7 +34,7 @@ cl_int clRetainDeviceDummy(cl_device_id) {
 }
 
 namespace caf {
-namespace opencl {
+namespace cuda {
 
 std::ostream& operator<<(std::ostream& os, device_type dev) {
   switch(dev) {

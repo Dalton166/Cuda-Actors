@@ -1,9 +1,9 @@
-#include "caf/opencl/device.hpp"
+#include "caf/cuda/device.hpp"
 #include <stdexcept>
 
 /*
 namespace caf {
-namespace opencl {
+namespace cuda {
 
 device::device(cl_device_id, cl_context, cl_command_queue) {
   // Constructor stub: no OpenCL initialization

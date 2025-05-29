@@ -1,7 +1,7 @@
-#include "caf/opencl/manager.hpp"
+#include "caf/cuda/manager.hpp"
 #include <stdexcept>
 
-namespace caf::opencl {
+namespace caf::cuda {
 
 manager::manager(caf::actor_system& sys) : system_(sys) {
   // no-op
@@ -31,4 +31,4 @@ caf::actor_system& manager::system() {
   return system_;
 }
 
-} // namespace caf::opencl
+} // namespace caf::cuda

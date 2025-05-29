@@ -16,12 +16,12 @@
  * http://www.boost.org/LICENSE_1_0.txt.                                      *
  ******************************************************************************/
 
-#include "caf/opencl/opencl_err.hpp"
+#include "caf/cuda/opencl_err.hpp"
 
 #include "caf/logger.hpp"
 /*
 namespace caf {
-namespace opencl {
+namespace cuda {
 
 void throwcl(const char*, cl_int err) {
   std::fprintf(stderr,
@@ -51,6 +51,6 @@ void CL_CALLBACK pfn_notify(const char* errinfo, const void*, size_t, void*) {
   
 }
 
-} // namespace opencl
+} // namespace cuda
 } // namespace caf
 */

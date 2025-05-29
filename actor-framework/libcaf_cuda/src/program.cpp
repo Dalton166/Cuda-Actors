@@ -18,15 +18,15 @@
 #include <cstring>
 #include <iostream>
 
-#include "caf/opencl/manager.hpp"
-#include "caf/opencl/program.hpp"
-#include "caf/opencl/opencl_err.hpp"
+#include "caf/cuda/manager.hpp"
+#include "caf/cuda/program.hpp"
+#include "caf/cuda/opencl_err.hpp"
 
 
 /*
 using namespace std;
 
-namespace caf::opencl {
+namespace caf::cuda {
 
 program::program(detail::raw_context_ptr context,
                  detail::raw_command_queue_ptr queue,
