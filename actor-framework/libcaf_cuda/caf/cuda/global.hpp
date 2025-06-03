@@ -5,7 +5,7 @@
 #include <stdexcept>
 
 #include <caf/logger.hpp>
-
+#include <cuda.h>
 #include "caf/cuda/cuda-actors.hpp"
 
 //a strange fix required in order to get the .so files to become viewable for binaries
