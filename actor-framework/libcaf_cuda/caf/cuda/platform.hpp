@@ -27,6 +27,15 @@
 #include "caf/cuda/global.hpp"
 #include "caf/cuda/device.hpp"
 
+
+/*
+ * This class may be slightly irrevelant since 
+ * opencl has to deal with multiple gpu platforms 
+ * but cuda only works on nvida gpus so basically it becomes a 
+ * find a device and grab it for me sort of deal 
+ */
+
+
 namespace caf {
 namespace cuda {
 
@@ -39,18 +48,46 @@ public:
   template <class T, class... Ts>
   friend intrusive_ptr<T> caf::make_counted(Ts&&...);
 
-  inline const std::vector<device_ptr>& devices() const;
+
   inline const std::string& name() const;
   inline const std::string& vendor() const;
   inline const std::string& version() const;
-  static platform_ptr create(cl_platform_id platform_id, unsigned start_id);
+  static platform_ptr create();
 
 private:
-  platform(cl_platform_id platform_id, detail::raw_context_ptr context,
-           std::string name, std::string vendor, std::string version,
-           std::vector<device_ptr> devices);
 
-  ~platform();
+  int device_count = 0;
+  check(cuDeviceGetCount(&device_count), "cuDeviceGetCount");
+  std::vector<CUdevice> devices(device_count);
+  std::vector<CUcontext> contexts(device_count); 
+  
+  platform() {
+	  //setup all possible gpus for that we can find 
+    for (int i = 0; i < device_count; ++i) {
+        check(cuDeviceGet(&devices[i], i), "cuDeviceGet");
+        char name[256];
+        cuDeviceGetName(name, 256, devices[i]);
+        std::cout << "Device #" << i << ": " << name << "\n";
+
+        // Create a context *without* setting it as current
+        check(cuCtxCreate(&contexts[i], CU_CTX_SCHED_AUTO | CU_CTX_MAP_HOST, devices[i]), "cuCtxCreate");
+    }
+
+    // Choose one to be "active" for a particular operation
+    int target_device = 1; // example
+    check(cuCtxSetCurrent(contexts[target_device]), "cuCtxSetCurrent")
+
+
+
+  }
+
+  ~platform() {
+  
+	  for (auto ctx : contexts) {
+        cuCtxDestroy(ctx);
+    }
+  
+  }
 
   static std::string platform_info(cl_platform_id platform_id,
                                    unsigned info_flag);
