@@ -17,6 +17,22 @@
   #define CAF_CUDA_EXPORT __attribute__((visibility("default")))
 #endif
 
+
+
+//helper function to check errors
+void check(CUresult result, const char* msg) {
+    if (result != CUDA_SUCCESS) {
+        const char* err_str;
+        cuGetErrorString(result, &err_str);
+        std::cerr << "CUDA Driver API Error (" << msg << "): " << err_str << "\n";
+        exit(1);
+    }
+}
+
+
+
+
+
 namespace caf::cuda {
 
 inline std::string opencl_error(int /*err*/) {
