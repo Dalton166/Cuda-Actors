@@ -22,10 +22,9 @@
  * http://www.boost.org/LICENSE_1_0.txt.                                      *
  ******************************************************************************/
 
-#pragma once
 
 #include "caf/ref_counted.hpp"
-
+#include "caf/cuda/global.hpp"
 #include "caf/cuda/device.hpp"
 
 namespace caf {
