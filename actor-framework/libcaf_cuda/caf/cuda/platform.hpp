@@ -4,41 +4,85 @@
 
 #include <caf/intrusive_ptr.hpp>
 #include <caf/actor_system.hpp>
+/******************************************************************************
+ *                       ____    _    _____                                   *
+ *                      / ___|  / \  |  ___|    C++                           *
+ *                     | |     / _ \ | |_       Actor                         *
+ *                     | |___ / ___ \|  _|      Framework                     *
+ *                      \____/_/   \_|_|                                      *
+ *                                                                            *
+ * Copyright (C) 2011 - 2016                                                  *
+ *                                                                            *
+ * Distributed under the terms and conditions of the BSD 3-Clause License or  *
+ * (at your option) under the terms and conditions of the Boost Software      *
+ * License 1.0. See accompanying files LICENSE and LICENSE_ALTERNATIVE.       *
+ *                                                                            *
+ * If you did not receive a copy of the license files, see                    *
+ * http://opensource.org/licenses/BSD-3-Clause and                            *
+ * http://www.boost.org/LICENSE_1_0.txt.                                      *
+ ******************************************************************************/
 
-namespace caf::opencl {
+#pragma once
 
-class device;
-using device_ptr = caf::intrusive_ptr<device>;
+#include "caf/ref_counted.hpp"
 
-class program;
-using program_ptr = caf::intrusive_ptr<program>;
+#include "caf/cuda/device.hpp"
 
-class manager {
+namespace caf {
+namespace cuda {
+
+class platform;
+using platform_ptr = intrusive_ptr<platform>;
+
+class platform : public ref_counted {
 public:
-  explicit manager(caf::actor_system&) {
-    throw std::runtime_error("OpenCL support disabled: manager ctor");
-  }
+  friend class program;
+  template <class T, class... Ts>
+  friend intrusive_ptr<T> caf::make_counted(Ts&&...);
 
-  device_ptr find_device(size_t) const {
-    throw std::runtime_error("OpenCL support disabled: manager::find_device()");
-  }
+  inline const std::vector<device_ptr>& devices() const;
+  inline const std::string& name() const;
+  inline const std::string& vendor() const;
+  inline const std::string& version() const;
+  static platform_ptr create(cl_platform_id platform_id, unsigned start_id);
 
-  template <class Predicate>
-  device_ptr find_device_if(Predicate&&) const {
-    throw std::runtime_error("OpenCL support disabled: manager::find_device_if()");
-  }
+private:
+  platform(cl_platform_id platform_id, detail::raw_context_ptr context,
+           std::string name, std::string vendor, std::string version,
+           std::vector<device_ptr> devices);
 
-  program_ptr create_program(const std::string&, const char*, device_ptr) {
-    throw std::runtime_error("OpenCL support disabled: manager::create_program()");
-  }
+  ~platform();
 
-  program_ptr create_program_from_file(const std::string&, const char*, device_ptr) {
-    throw std::runtime_error("OpenCL support disabled: manager::create_program_from_file()");
-  }
-
-  caf::actor_system& system() {
-    throw std::runtime_error("OpenCL support disabled: manager::system()");
-  }
+  static std::string platform_info(cl_platform_id platform_id,
+                                   unsigned info_flag);
+  cl_platform_id platform_id_;
+  detail::raw_context_ptr context_;
+  std::string name_;
+  std::string vendor_;
+  std::string version_;
+  std::vector<device_ptr> devices_;
 };
 
-} // namespace caf::opencl
+/******************************************************************************\
+ *                 implementation of inline member functions                  *
+\******************************************************************************/
+
+inline const std::vector<device_ptr>& platform::devices() const {
+  return devices_;
+}
+
+inline const std::string& platform::name() const {
+  return name_;
+}
+
+inline const std::string& platform::vendor() const {
+  return vendor_;
+}
+
+inline const std::string& platform::version() const {
+  return version_;
+}
+
+
+} // namespace cuda
+} // namespace caf
