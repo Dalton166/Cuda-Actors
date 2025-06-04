@@ -44,6 +44,7 @@ void actor_facade_spawn_test(caf::actor_system& sys) {
 
 void caf_main(caf::actor_system& sys) {
 
+	cuInit(0);
 	actor_facade_spawn_test(sys);
 
 //	return 0;
