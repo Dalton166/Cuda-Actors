@@ -7,8 +7,8 @@
 
 #include <caf/all.hpp>  // Includes most CAF essentials
 
-#include "caf/opencl/actor_facade.hpp"
-#include "caf/opencl/manager.hpp"
+#include "caf/cuda/actor_facade.hpp"
+#include "caf/cuda/manager.hpp"
 
 //using namespace caf;
 
