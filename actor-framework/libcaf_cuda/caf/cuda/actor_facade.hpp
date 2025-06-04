@@ -4,19 +4,21 @@
 #include <functional>
 #include <tuple>
 #include <iostream>
-
+#include <queue>
 #include <caf/local_actor.hpp>
 #include <caf/actor.hpp>
 #include <caf/response_promise.hpp>
 #include <caf/logger.hpp>
 #include <caf/raise_error.hpp>
+#include <caf/scheduler.hpp>
+#include <caf/resumable.hpp>
 #include "caf/cuda/nd_range.hpp"
 #include "caf/cuda/global.hpp"
 
 namespace caf::cuda {
 
 template <bool PassConfig, class... Ts>
-class actor_facade : public caf::local_actor {
+class actor_facade : public caf::local_actor, public caf::resumable {
 public:
   static caf::actor create(...) {
     throw std::runtime_error("CUDA support disabled: actor_facade::create()");
@@ -27,7 +29,7 @@ public:
     caf::actor_config&& actor_conf,
     Ts&&... xs
   ) {
-    std::cout << "If you are seeing this that means that an actor has successfully spawned and was created\n";
+    std::cout << "Actor has successfully spawned and was created\n";
     return make_actor<actor_facade, actor>(
       sys.next_actor_id(),
       sys.node(),
@@ -36,40 +38,65 @@ public:
       std::forward<Ts>(xs)...);
   }
 
-  actor_facade(caf::actor_config& cfg) : caf::local_actor(cfg) {
+  actor_facade(caf::actor_config& cfg) : caf::local_actor(cfg), caf::resumable() {
     throw std::runtime_error("CUDA support disabled: actor_facade ctor");
   }
+
   actor_facade(caf::actor_config&& cfg, Ts&&... xs)
-    : local_actor(config_)           // pass member variable by lvalue ref
-    , config_(std::move(cfg))        // move from rvalue into member variable
-    //, other_members_(std::forward<Ts>(xs))...
-  {
-    // constructor body
-    std::cout << "If you are seeing this that means that an actor has successfully spawned and was created\n";
+    : local_actor(cfg),
+      resumable(),
+      config_(std::move(cfg)) {
+    std::cout << "Actor has successfully spawned and was created\n";
     print_args(std::forward<Ts>(xs)...);
   }
 
-  // === Required pure virtual function implementations ===
-
-  bool enqueue(mailbox_element_ptr, scheduler*) override {
-    throw std::runtime_error("enqueue() not implemented yet");
+  // Implement caf::resumable interface
+  subtype_t subtype() const noexcept override {
+    return subtype_t(0); // Placeholder: minimal type identifier
   }
 
-  void launch(scheduler*, bool, bool) override {
-    throw std::runtime_error("launch() not implemented yet");
+  resumable::resume_result resume(scheduler*, size_t) override {
+    return resumable::done; // Minimal: actor terminates immediately
   }
 
-  void do_unstash(mailbox_element_ptr) override {
-    throw std::runtime_error("do_unstash() not implemented yet");
+  void ref_resumable() const noexcept override {
+    // Minimal: do nothing or call ref_counted::ref()
+  }
+
+  void deref_resumable() const noexcept override {
+    // Minimal: do nothing or call ref_counted::deref()
+  }
+
+  // Implement caf::local_actor virtual methods
+  bool enqueue(mailbox_element_ptr what, scheduler*) override {
+    if (what) {
+      mailbox_.push(std::move(what));
+      return true; // Message enqueued
+    }
+    return false;
+  }
+
+  void launch(scheduler* where, bool lazy, bool interruptible) override {
+    if (!lazy && where) {
+      where->schedule(this); // Schedule the actor (works since we inherit from resumable)
+    }
+  }
+
+  void do_unstash(mailbox_element_ptr what) override {
+    if (what) {
+      enqueue(std::move(what), nullptr); // Re-enqueue stashed message
+    }
   }
 
   void force_close_mailbox() override {
-    throw std::runtime_error("force_close_mailbox() not implemented yet");
+    while (!mailbox_.empty()) {
+      mailbox_.pop(); // Clear mailbox
+    }
   }
 
 private:
-  
-   caf::actor_config config_;
+  caf::actor_config config_;
+  std::queue<mailbox_element_ptr> mailbox_; // Mailbox for messages
 
   void print_args() {
     std::cout << "(no args)\n";
@@ -80,10 +107,6 @@ private:
     std::cout << first << "\n";
     print_args(std::forward<Rest>(rest)...);
   }
-  
-
-protected:
-  actor_facade() = default; // Protected default constructor for inheritance
 };
 
 } // namespace caf::cuda
