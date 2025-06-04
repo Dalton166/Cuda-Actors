@@ -5,6 +5,7 @@ namespace caf::cuda {
 
 manager::manager(caf::actor_system& sys) : system_(sys) {
   // no-op
+  //check(cuInit(0),"cuInit");
 }
 
 manager::~manager() {
