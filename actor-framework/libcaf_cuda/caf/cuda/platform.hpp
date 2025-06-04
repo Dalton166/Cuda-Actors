@@ -27,6 +27,7 @@ public:
   inline const std::string& name() const;
   inline const std::string& vendor() const;
   inline const std::string& version() const;
+  inline const std::vector<device_ptr>& devices() const;
   static platform_ptr create();
 
 private:
@@ -36,23 +37,17 @@ private:
     devices_.resize(device_count);
     contexts_.resize(device_count);
     for (int i = 0; i < device_count; ++i) {
-      CUdevice device;
-      check(cuDeviceGet(&device, i), "cuDeviceGet");
+      CUdevice cuda_device;
+      check(cuDeviceGet(&cuda_device, i), "cuDeviceGet");
       char name[256];
-      cuDeviceGetName(name, 256, device);
+      cuDeviceGetName(name, 256, cuda_device);
       std::cout << "Device #" << i << ": " << name << "\n";
-      check(cuCtxCreate(&contexts_[i], CU_CTX_SCHED_AUTO | CU_CTX_MAP_HOST, device), "cuCtxCreate");
-    
-      devices_[i] = device(device,contexts[i],name,i); 
+      check(cuCtxCreate(&contexts_[i], CU_CTX_SCHED_AUTO | CU_CTX_MAP_HOST, cuda_device), "cuCtxCreate");
+      devices_[i] = make_counted<device>(cuda_device, contexts_[i], name, i);
     }
-    int target_device = 0; // Default to first device, ensure valid index
+    int target_device = 0;
     if (device_count > 0) {
       check(cuCtxSetCurrent(contexts_[target_device]), "cuCtxSetCurrent");
-    }
-    else {
-    
-	    std::cout << "No valid device found\n";
-	    exit(-1);
     }
   }
 
@@ -62,14 +57,10 @@ private:
     }
   }
 
-  inline const std::vector<device>& devices() const {
-    return devices_;
-  }
-
   std::string name_;
   std::string vendor_;
   std::string version_;
-  std::vector<device> devices_;
+  std::vector<device_ptr> devices_;
   std::vector<CUcontext> contexts_;
   int target_device = 0;
 };
