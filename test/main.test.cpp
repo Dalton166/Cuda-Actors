@@ -25,7 +25,7 @@ void actor_facade_spawn_test(caf::actor_system& sys) {
 	//caf::actor_system sys{cfg};
 
 	//caf::opencl::actor_facade facade{cfg};
-	caf::opencl::manager mgr{sys};
+	caf::cuda::manager mgr{sys};
 
 	int x = 1;
 	auto gpuActor = mgr.spawn(x);
