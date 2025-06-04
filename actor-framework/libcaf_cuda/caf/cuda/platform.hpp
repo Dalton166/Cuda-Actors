@@ -28,7 +28,16 @@ public:
   inline const std::string& vendor() const;
   inline const std::string& version() const;
   inline const std::vector<device_ptr>& devices() const;
-  static platform_ptr create();
+
+  static platform_ptr create() {
+  static platform_ptr instance;
+  if (!instance) {
+    instance = make_counted<platform>();
+  }
+  return instance;
+}
+
+
 
 private:
   platform() {
