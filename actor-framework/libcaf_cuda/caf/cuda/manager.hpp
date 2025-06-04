@@ -26,7 +26,7 @@ class program;
 using program_ptr = caf::intrusive_ptr<program>;
 
 class platform;
-using platform_ptr = caf::instrusive_ptr<platform>
+using platform_ptr = caf::intrusive_ptr<platform>;
 
 template <bool PassConfig, class... Ts>
 class actor_facade;
@@ -74,7 +74,7 @@ public:
 
 private:
   caf::actor_system& system_;
-  platform_ptr platform_ = platform::create();;
+  platform_ptr platform_ = platform::create();
 };
 
 } // namespace caf::cuda
