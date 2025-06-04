@@ -32,7 +32,9 @@ public:
   }
 
 
-  ~device() override;
+  //~device() override;
+
+  //device
 
   std::string vendor() const;
   int type() const;
