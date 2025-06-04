@@ -6,6 +6,8 @@
 
 #include <caf/intrusive_ptr.hpp>
 #include <caf/ref_counted.hpp>
+#include "caf/cuda/global.hpp"
+
 
 namespace caf::cuda {
 
@@ -21,6 +23,15 @@ public:
     throw std::runtime_error("CUDA support disabled: device ctor");
   }
 
+  device(CUdevice device,CUcontext context,char * name, int number,) {
+
+	  device_ = device;
+	  context_ = &context;
+	  name_ = name;
+	  id_ = number;
+  }
+
+
   ~device() override;
 
   std::string vendor() const;
@@ -35,13 +46,15 @@ public:
   }
 
 private:
-  void* id_;
-  void* context_;
+  //void* id_;
+  int id_;
+  CUcontext* context_;
   void* queue_;
   int type_;
   std::size_t global_mem_size_;
   std::size_t max_mem_alloc_size_;
   std::size_t max_work_group_size_;
+  CUdevice device_;
 };
 
 } // namespace caf::cuda
