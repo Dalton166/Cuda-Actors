@@ -1,40 +1,16 @@
 #pragma once
 
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 #include <caf/intrusive_ptr.hpp>
 #include <caf/actor_system.hpp>
-/******************************************************************************
- *                       ____    _    _____                                   *
- *                      / ___|  / \  |  ___|    C++                           *
- *                     | |     / _ \ | |_       Actor                         *
- *                     | |___ / ___ \|  _|      Framework                     *
- *                      \____/_/   \_|_|                                      *
- *                                                                            *
- * Copyright (C) 2011 - 2016                                                  *
- *                                                                            *
- * Distributed under the terms and conditions of the BSD 3-Clause License or  *
- * (at your option) under the terms and conditions of the Boost Software      *
- * License 1.0. See accompanying files LICENSE and LICENSE_ALTERNATIVE.       *
- *                                                                            *
- * If you did not receive a copy of the license files, see                    *
- * http://opensource.org/licenses/BSD-3-Clause and                            *
- * http://www.boost.org/LICENSE_1_0.txt.                                      *
- ******************************************************************************/
-
+#include <cuda.h>
 
 #include "caf/ref_counted.hpp"
 #include "caf/cuda/global.hpp"
 #include "caf/cuda/device.hpp"
-
-
-/*
- * This class may be slightly irrevelant since 
- * opencl has to deal with multiple gpu platforms 
- * but cuda only works on nvida gpus so basically it becomes a 
- * find a device and grab it for me sort of deal 
- */
-
 
 namespace caf {
 namespace cuda {
@@ -48,60 +24,55 @@ public:
   template <class T, class... Ts>
   friend intrusive_ptr<T> caf::make_counted(Ts&&...);
 
-
   inline const std::string& name() const;
   inline const std::string& vendor() const;
   inline const std::string& version() const;
   static platform_ptr create();
 
 private:
-
-  int device_count = 0;
-  check(cuDeviceGetCount(&device_count), "cuDeviceGetCount");
-  std::vector<CUdevice> devices(device_count);
-  std::vector<CUcontext> contexts(device_count); 
-  
   platform() {
-	  //setup all possible gpus for that we can find 
+    int device_count = 0;
+    check(cuDeviceGetCount(&device_count), "cuDeviceGetCount");
+    devices_.resize(device_count);
+    contexts_.resize(device_count);
     for (int i = 0; i < device_count; ++i) {
-        check(cuDeviceGet(&devices[i], i), "cuDeviceGet");
-        char name[256];
-        cuDeviceGetName(name, 256, devices[i]);
-        std::cout << "Device #" << i << ": " << name << "\n";
-
-        // Create a context *without* setting it as current
-        check(cuCtxCreate(&contexts[i], CU_CTX_SCHED_AUTO | CU_CTX_MAP_HOST, devices[i]), "cuCtxCreate");
+      CUdevice device;
+      check(cuDeviceGet(&device, i), "cuDeviceGet");
+      char name[256];
+      cuDeviceGetName(name, 256, device);
+      std::cout << "Device #" << i << ": " << name << "\n";
+      check(cuCtxCreate(&contexts_[i], CU_CTX_SCHED_AUTO | CU_CTX_MAP_HOST, device), "cuCtxCreate");
+    
+      devices_[i] = device(device,contexts[i],name,i); 
     }
-
-    // Choose one to be "active" for a particular operation
-    int target_device = 1; // example
-    check(cuCtxSetCurrent(contexts[target_device]), "cuCtxSetCurrent")
-
-
-
+    int target_device = 0; // Default to first device, ensure valid index
+    if (device_count > 0) {
+      check(cuCtxSetCurrent(contexts_[target_device]), "cuCtxSetCurrent");
+    }
+    else {
+    
+	    std::cout << "No valid device found\n";
+	    exit(-1);
+    }
   }
 
-  ~platform() {
-  
-	  for (auto ctx : contexts) {
-        cuCtxDestroy(ctx);
+  ~platform() override {
+    for (auto ctx : contexts_) {
+      check(cuCtxDestroy(ctx), "cuCtxDestroy");
     }
-  
   }
 
-  static std::string platform_info(cl_platform_id platform_id,
-                                   unsigned info_flag);
-  cl_platform_id platform_id_;
-  detail::raw_context_ptr context_;
+  inline const std::vector<device>& devices() const {
+    return devices_;
+  }
+
   std::string name_;
   std::string vendor_;
   std::string version_;
-  std::vector<device_ptr> devices_;
+  std::vector<device> devices_;
+  std::vector<CUcontext> contexts_;
+  int target_device = 0;
 };
-
-/******************************************************************************\
- *                 implementation of inline member functions                  *
-\******************************************************************************/
 
 inline const std::vector<device_ptr>& platform::devices() const {
   return devices_;
@@ -118,7 +89,6 @@ inline const std::string& platform::vendor() const {
 inline const std::string& platform::version() const {
   return version_;
 }
-
 
 } // namespace cuda
 } // namespace caf
