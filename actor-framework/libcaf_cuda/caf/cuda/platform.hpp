@@ -90,5 +90,15 @@ inline const std::string& platform::version() const {
   return version_;
 }
 
+inline void intrusive_ptr_add_ref(platform* p) {
+  p->ref(); // increases the reference count
+}
+
+inline void intrusive_ptr_release(platform* p) {
+  p->deref(); // decreases the reference count and deletes if 0
+}
+
+
+
 } // namespace cuda
 } // namespace caf
