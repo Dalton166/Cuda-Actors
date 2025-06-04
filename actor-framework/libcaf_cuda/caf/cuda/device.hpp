@@ -23,10 +23,10 @@ public:
     throw std::runtime_error("CUDA support disabled: device ctor");
   }
 
-  device(CUdevice device,CUcontext context,char * name, int number,) {
+  device(CUdevice device,CUcontext context,char * name, int number) {
 
 	  device_ = device;
-	  context_ = &context;
+	  context_ = context;
 	  name_ = name;
 	  id_ = number;
   }
@@ -48,9 +48,10 @@ public:
 private:
   //void* id_;
   int id_;
-  CUcontext* context_;
+  CUcontext context_;
   void* queue_;
   int type_;
+  char * name_;
   std::size_t global_mem_size_;
   std::size_t max_mem_alloc_size_;
   std::size_t max_work_group_size_;
