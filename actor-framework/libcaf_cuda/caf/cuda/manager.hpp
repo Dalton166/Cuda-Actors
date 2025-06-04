@@ -16,6 +16,7 @@
 #include "caf/cuda/actor_facade.hpp"
 #include "caf/cuda/opencl_err.hpp"
 #include "caf/cuda/global.hpp"
+#include "caf/cuda/platform.hpp"
 
 namespace caf::cuda {
 
