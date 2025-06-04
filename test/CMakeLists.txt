@@ -16,6 +16,8 @@ set(CMAKE_C_COMPILER "/usr/bin/gcc")
 
 project(CUDA_ACTORS)
 
+find_package(CUDA REQUIRED)
+find_package(CUDAToolkit REQUIRED)
 
 include_directories(
   "${CAF_SRC}/include"
@@ -35,6 +37,7 @@ target_link_libraries(test
     "${CAF_BUILD}/libcaf_core/libcaf_core.so"
     "${CAF_BUILD}/libcaf_io/libcaf_io.so"
     "${CAF_BUILD}/libcaf_cuda/libcaf_cuda.so"
+    CUDA::nvrtc
 )
 
 # — Optional: extra include dirs (e.g., ViennaCL) —
