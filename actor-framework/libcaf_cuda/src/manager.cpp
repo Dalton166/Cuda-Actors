@@ -16,10 +16,25 @@ device_ptr manager::find_device(std::size_t) const {
   throw std::runtime_error("OpenCL support disabled: manager::find_device");
 }
 
-program_ptr manager::create_program(const std::string&,
-                                    const char*,
+device_ptr manager::find_device(int id) {
+
+	return platform_.getDevice(id);
+
+}
+
+program_ptr manager::create_program(const std::string& kernel,
+                                    const std::string& name,
                                     device_ptr) {
-  throw std::runtime_error("OpenCL support disabled: manager::create_program");
+  
+
+	CUdevice current_device = device_ptr -> getDevice();;
+
+	//the compiled program can be accessed via ptx.data() afterwards
+	std::vector<char> ptx;
+	compile_nvrtc_program(kernel,current_device,ptx);
+
+
+
 }
 
 program_ptr manager::create_program_from_file(const std::string&,
