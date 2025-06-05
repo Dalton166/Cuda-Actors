@@ -47,6 +47,10 @@ public:
     throw std::runtime_error("CUDA support disabled: device::make_arg()");
   }
 
+
+  CUdevice getDevice() { return device_;}
+
+
 private:
   //void* id_;
   int id_;
