@@ -79,6 +79,7 @@ private:
   bool compile_nvrtc_program(const char * source, CUdevice device, std::vector<char>&ptx_out);
   std::string get_computer_architecture_string(CUdevice device);
 
+  device_ptr find_device(int id);
 };
 
 } // namespace caf::cuda
