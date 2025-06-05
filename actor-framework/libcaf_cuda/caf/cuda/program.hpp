@@ -42,6 +42,18 @@ public:
   }
 
   ~program() override = default;
+
+  program(std::string name, std::vector<char> ptx) {
+  
+
+  
+  }
+
+
+private:
+ std::vector<char> ptx_; //this stores the compiled program, accessed with ptx.data()
+ std::string name_;
+
 };
 
 using program_ptr = caf::intrusive_ptr<program>;
