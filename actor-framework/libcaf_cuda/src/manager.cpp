@@ -32,4 +32,78 @@ caf::actor_system& manager::system() {
   return system_;
 }
 
+
+// Helper: Get compute architecture string for nvrtc (e.g. "--gpu-architecture=compute_75")
+std::string  manager::get_compute_architecture_string(CUdevice device) {
+    int major = 0, minor = 0;
+    CUresult res = cuDeviceComputeCapability(&major, &minor, device);
+    if (res != CUDA_SUCCESS) {
+        std::cerr << "Failed to get compute capability for device\n";
+        return "";
+    }
+    return "--gpu-architecture=compute_" + std::to_string(major) + std::to_string(minor);
+}
+
+// Helper: Compile CUDA source to PTX for a specific device
+// Returns true on success; on failure prints log and returns false
+bool manager::compile_nvrtc_program(const char* source, CUdevice device, std::vector<char>& ptx_out) {
+    // 1. Create NVRTC program
+    nvrtcProgram prog;
+    nvrtcResult res = nvrtcCreateProgram(&prog, source, "kernel.cu", 0, nullptr, nullptr);
+    if (res != NVRTC_SUCCESS) {
+        std::cerr << "nvrtcCreateProgram failed: " << nvrtcGetErrorString(res) << "\n";
+        return false;
+    }
+
+    // 2. Get architecture string for device
+    std::string arch = get_compute_architecture_string(device);
+    if (arch.empty()) {
+        nvrtcDestroyProgram(&prog);
+        return false;
+    }
+    const char* options[] = { arch.c_str() };
+
+    // 3. Compile program
+    res = nvrtcCompileProgram(prog, 1, options);
+
+    // 4. Print compile log regardless of success/failure
+    size_t logSize;
+    nvrtcGetProgramLogSize(prog, &logSize);
+    if (logSize > 1) {
+        std::vector<char> log(logSize);
+        nvrtcGetProgramLog(prog, log.data());
+        std::cout << "NVRTC Compile Log:\n" << log.data() << "\n";
+    }
+
+    if (res != NVRTC_SUCCESS) {
+        std::cerr << "nvrtcCompileProgram failed: " << nvrtcGetErrorString(res) << "\n";
+        nvrtcDestroyProgram(&prog);
+        return false;
+    }
+
+    // 5. Get PTX size
+    size_t ptxSize;
+    res = nvrtcGetPTXSize(prog, &ptxSize);
+    if (res != NVRTC_SUCCESS) {
+        std::cerr << "nvrtcGetPTXSize failed: " << nvrtcGetErrorString(res) << "\n";
+        nvrtcDestroyProgram(&prog);
+        return false;
+    }
+
+    // 6. Extract PTX
+    ptx_out.resize(ptxSize);
+    res = nvrtcGetPTX(prog, ptx_out.data());
+    if (res != NVRTC_SUCCESS) {
+        std::cerr << "nvrtcGetPTX failed: " << nvrtcGetErrorString(res) << "\n";
+        nvrtcDestroyProgram(&prog);
+        return false;
+    }
+
+    // 7. Clean up
+    nvrtcDestroyProgram(&prog);
+    return true;
+}
+
+
+
 } // namespace caf::cuda
