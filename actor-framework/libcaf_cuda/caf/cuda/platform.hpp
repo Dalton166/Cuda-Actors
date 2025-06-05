@@ -37,6 +37,9 @@ public:
   return instance;
 }
 
+device_ptr getDevice(int id) {
+	return devices_[id];
+}
 
 
 private:
