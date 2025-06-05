@@ -76,6 +76,9 @@ public:
 private:
   caf::actor_system& system_;
   platform_ptr platform_ = platform::create();
+  bool compile_nvrtc_program(const char * source, CUdevice device, std::vector<char>&ptx_out);
+  std::string get_computer_architecture_string(CUdevice device);
+
 };
 
 } // namespace caf::cuda
