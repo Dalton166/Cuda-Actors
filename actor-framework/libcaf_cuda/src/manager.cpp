@@ -18,21 +18,21 @@ device_ptr manager::find_device(std::size_t) const {
 
 device_ptr manager::find_device(int id) {
 
-	return platform_.getDevice(id);
+	return platform_ -> getDevice(id);
 
 }
 
-program_ptr manager::create_program(const std::string& kernel,
+program_ptr manager::create_program(const char * kernel,
                                     const std::string& name,
-                                    device_ptr) {
+                                    device_ptr device) {
   
 
-	CUdevice current_device = device_ptr -> getDevice();;
+	CUdevice current_device = device -> getDevice();;
 
 	//the compiled program can be accessed via ptx.data() afterwards
 	std::vector<char> ptx;
 	compile_nvrtc_program(kernel,current_device,ptx);
-	program_ptr * prog = new program(name,current_device,ptx);
+	program_ptr prog = make_counted<program>(name, current_device, ptx);
 	return prog;
 }
 
@@ -48,13 +48,17 @@ caf::actor_system& manager::system() {
 
 
 // Helper: Get compute architecture string for nvrtc (e.g. "--gpu-architecture=compute_75")
-std::string  manager::get_compute_architecture_string(CUdevice device) {
+std::string manager::get_computer_architecture_string(CUdevice device) {
     int major = 0, minor = 0;
-    CUresult res = cuDeviceComputeCapability(&major, &minor, device);
-    if (res != CUDA_SUCCESS) {
+
+    CUresult res1 = cuDeviceGetAttribute(&major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, device);
+    CUresult res2 = cuDeviceGetAttribute(&minor, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, device);
+
+    if (res1 != CUDA_SUCCESS || res2 != CUDA_SUCCESS) {
         std::cerr << "Failed to get compute capability for device\n";
         return "";
     }
+
     return "--gpu-architecture=compute_" + std::to_string(major) + std::to_string(minor);
 }
 
@@ -70,7 +74,7 @@ bool manager::compile_nvrtc_program(const char* source, CUdevice device, std::ve
     }
 
     // 2. Get architecture string for device
-    std::string arch = get_compute_architecture_string(device);
+    std::string arch = get_computer_architecture_string(device);
     if (arch.empty()) {
         nvrtcDestroyProgram(&prog);
         return false;
