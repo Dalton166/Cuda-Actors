@@ -49,6 +49,11 @@ public:
                              const char* options,
                              device_ptr dev);
 
+  program_ptr create_program(const char * kernel,
+                             const std::string& name,
+                             device_ptr);
+
+
   program_ptr create_program_from_file(const std::string& filename,
                                        const char* options,
                                        device_ptr dev);

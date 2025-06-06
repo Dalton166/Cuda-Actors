@@ -37,7 +37,7 @@ public:
 	   * is outside the scope of what we are doing for now
 	   */
 	  CHECK_CUDA(cuCtxSetCurrent(context));
-	  CHECK_CUDA(cuStreamCreate(&stream_));
+	  CHECK_CUDA(cuStreamCreate(&stream_,0));
 	  
   }
 
