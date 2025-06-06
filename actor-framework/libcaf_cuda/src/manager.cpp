@@ -32,7 +32,7 @@ program_ptr manager::create_program(const std::string& kernel,
 	//the compiled program can be accessed via ptx.data() afterwards
 	std::vector<char> ptx;
 	compile_nvrtc_program(kernel,current_device,ptx);
-
+	program_ptr * prog = new program(name,ptx);
 
 
 }
