@@ -43,16 +43,23 @@ public:
 
   ~program() override = default;
 
-  program(std::string name, std::vector<char> ptx) {
-  
+  program(std::string name,CUdevice device, std::vector<char> ptx) {
 
+	  name_ = name;
+  	CUmodule module;
+    CHECK_CUDA(cuModuleLoadData(&module, ptx.data()));
+
+    // Get kernel function handle
+    CUfunction kernel;
+    CHECK_CUDA(cuModuleGetFunction(&kernel, module, "add_kernel"));
   
+    kernel_ = kernel;
   }
 
 
 private:
- std::vector<char> ptx_; //this stores the compiled program, accessed with ptx.data()
  std::string name_;
+ CUfunction kernel_; //the compiled and loaded program on a specific device
 
 };
 
