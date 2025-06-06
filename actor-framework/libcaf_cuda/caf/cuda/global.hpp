@@ -31,6 +31,18 @@ void inline check(CUresult result, const char* msg) {
 
 
 
+// Check CUDA errors macro
+#define CHECK_CUDA(call) \
+    do { CUresult err = call; if (err != CUDA_SUCCESS) { \
+        const char* errStr; cuGetErrorString(err, &errStr); \
+        std::cerr << "CUDA Error: " << errStr << std::endl; exit(1); }} while(0)
+
+// Check NVRTC errors macro
+#define CHECK_NVRTC(call) \
+    do { nvrtcResult res = call; if (res != NVRTC_SUCCESS) { \
+        std::cerr << "NVRTC Error: " << nvrtcGetErrorString(res) << std::endl; exit(1); }} while(0)
+
+
 
 
 namespace caf::cuda {
