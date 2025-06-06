@@ -29,6 +29,16 @@ public:
 	  context_ = context;
 	  name_ = name;
 	  id_ = number;
+
+	  /*
+	   * This is definitly a bad solution as in the future we want to use more than 1 device 
+	   * this will just flat out cause undefined behavior since everything using cuda driver api is bound to the current context, including launching streams 
+	   * but for now this will work since supporting multiple devices at the same time
+	   * is outside the scope of what we are doing for now
+	   */
+	  CHECK_CUDA(cuCtxSetCurrent(context));
+	  CHECK_CUDA(cuStreamCreate(&stream_));
+	  
   }
 
 
@@ -62,6 +72,7 @@ private:
   std::size_t max_mem_alloc_size_;
   std::size_t max_work_group_size_;
   CUdevice device_;
+  CUstream stream_;
 };
 
 } // namespace caf::cuda
