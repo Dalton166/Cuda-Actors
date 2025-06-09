@@ -32,14 +32,7 @@ public:
 	  streamId_ = 0;
 	  contextId_ = 0;
 
-	  /*
-	   * This is definitly a bad solution as in the future we want to use more than 1 device 
-	   * this will just flat out cause undefined behavior since everything using cuda driver api is bound to the current context, including launching streams 
-	   * but for now this will work since supporting multiple devices at the same time
-	   * is outside the scope of what we are doing for now
-	   */
-	  CHECK_CUDA(cuCtxSetCurrent(context));
-	  CHECK_CUDA(cuStreamCreate(&stream_,0));
+	 CHECK_CUDA(cuStreamCreate(&stream_,0));
 	  
   }
 
