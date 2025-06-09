@@ -15,16 +15,38 @@
 //runs a test to ensure the actor facade can spawn in
 //correctly 
 
+const char* kernel_code = R"(
+extern "C" __global__
+void compare_strings(const char* a, const char* b, int* result, int length) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < length) {
+        result[idx] = (a[idx] == b[idx]) ? 1 : 0;
+    }
+}
+)";
+
+
+void actor_facade_launch_kernel_test(caf::actor_system& sys) {
+
+
+
+
+	caf::cuda::manager mgr{sys};
+	int length = 10;
+	const char str1[length];
+	const char str2[length];
+	int result[10];
+
+	auto gpuActor = mgr.spawn(kernel_code,"myKernel",str1,str2,length,result);
+
+
+
+
+}
+
+
 void actor_facade_spawn_test(caf::actor_system& sys) {
 
-// Call this once before creating actor_system
-   // caf::init_global_meta_objects<>();
-
-	//caf::actor_system_config cfg;
-
-	//caf::actor_system sys{cfg};
-
-	//caf::opencl::actor_facade facade{cfg};
 	caf::cuda::manager mgr{sys};
 
 	int x = 1;
