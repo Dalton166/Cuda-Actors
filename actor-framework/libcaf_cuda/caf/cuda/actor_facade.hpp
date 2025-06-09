@@ -14,6 +14,7 @@
 #include <caf/resumable.hpp>
 #include "caf/cuda/nd_range.hpp"
 #include "caf/cuda/global.hpp"
+#include "caf/cuda/program.hpp"
 
 namespace caf::cuda {
 
@@ -24,6 +25,7 @@ public:
     throw std::runtime_error("CUDA support disabled: actor_facade::create()");
   }
 
+  /*
   static caf::actor create(
     caf::actor_system& sys,
     caf::actor_config&& actor_conf,
@@ -38,10 +40,11 @@ public:
       std::forward<Ts>(xs)...);
   }
 
+  */
   static caf::actor create(
     caf::actor_system& sys,
     caf::actor_config&& actor_conf,
-    progam_ptr program,
+    program_ptr program,
     Ts&&... xs
   ) {
     std::cout << "Actor has successfully spawned and was created\n";
@@ -54,6 +57,23 @@ public:
       std::forward<Ts>(xs)...);
   }
 
+  static caf::actor create(
+    caf::actor_system * sys,
+    caf::actor_config&& actor_conf,
+    program_ptr program,
+    Ts&&... xs
+  ) {
+    std::cout << "Actor has successfully spawned and was created\n";
+    return make_actor<actor_facade, actor>(
+      sys ->next_actor_id(),
+      sys ->node(),
+      sys,
+      std::move(actor_conf),
+      std::move(program),
+      std::forward<Ts>(xs)...);
+  }
+
+
 
 
 
@@ -62,6 +82,8 @@ public:
     throw std::runtime_error("CUDA support disabled: actor_facade ctor");
   }
 
+
+  /*
   actor_facade(caf::actor_config&& cfg, Ts&&... xs)
     : local_actor(cfg),
       resumable(),
@@ -70,8 +92,9 @@ public:
     print_args(std::forward<Ts>(xs)...);
   }
 
+  */
 
-  actor_facade(caf::actor_config&& cfg,program_ptr prog Ts&&... xs)
+  actor_facade(caf::actor_config&& cfg,program_ptr prog,Ts&&... xs)
     : local_actor(cfg),
       resumable(),
       config_(std::move(cfg)) {
@@ -79,6 +102,7 @@ public:
     std::cout << "Actor has successfully spawned and was created\n";
     print_args(std::forward<Ts>(xs)...);
   }
+
 
 
 

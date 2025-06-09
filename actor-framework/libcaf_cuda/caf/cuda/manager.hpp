@@ -65,6 +65,10 @@ public:
     throw std::runtime_error("CUDA support disabled: manager::spawn");
   }
 
+
+  /*
+   * turn this on if you want to test the spawn method,
+   * removed to reduce ambigutiy
   template<class T,class ... Ts>
   caf::actor spawn(T &&x, Ts&& ... xs) {
           caf::detail::cuda_spawn_helper<false,T> f;  
@@ -76,6 +80,7 @@ public:
                     std::forward<T>(xs)...);
   }
 
+  */
 
 
 
@@ -92,7 +97,7 @@ public:
 
 	  program_ptr prog = create_program(kernel,name,device);
           return f(
-                   system_,
+                   &system_,
                    std::move(cfg),
 		   std::move(prog),
                     std::forward<Ts>(xs)...);

@@ -98,7 +98,7 @@ struct cuda_spawn_helper {
 
   //this operator should spawn in a facade with a program
   actor operator()(
-		  actor_system &sys,
+		  actor_system * sys,
 		  actor_config&& cfg,
 		   caf::cuda::program_ptr prog,
                    Ts&&... xs) const {

@@ -33,10 +33,9 @@ void actor_facade_launch_kernel_test(caf::actor_system& sys) {
 
 	caf::cuda::manager mgr{sys};
 	int length = 10;
-	const char str1[length];
-	const char str2[length];
-	int result[10];
-
+	std::vector<char> str1(length);
+std::vector<char> str2(length);
+std::vector<int> result(length);
 	auto gpuActor = mgr.spawn(kernel_code,"myKernel",str1,str2,length,result);
 
 
@@ -44,7 +43,7 @@ void actor_facade_launch_kernel_test(caf::actor_system& sys) {
 
 }
 
-
+/*
 void actor_facade_spawn_test(caf::actor_system& sys) {
 
 	caf::cuda::manager mgr{sys};
@@ -61,14 +60,16 @@ void actor_facade_spawn_test(caf::actor_system& sys) {
 
 }
 
-
+*/
 
 
 void caf_main(caf::actor_system& sys) {
 
 	cuInit(0);
-	actor_facade_spawn_test(sys);
+//	actor_facade_spawn_test(sys);
 
+      actor_facade_launch_kernel_test(sys);
+	
 //	return 0;
 }
 
