@@ -28,7 +28,6 @@
 #include "caf/cuda/program.hpp"
 #include "caf/cuda/nd_range.hpp"
 
-
 namespace caf {
 namespace detail {
 
@@ -93,6 +92,21 @@ struct cuda_spawn_helper {
 			    std::move(cfg),              
 			    std::forward<Ts>(xs)...));
   }
+
+
+  //this operator should spawn in a facade with a program
+  actor operator()(
+		  actor_system &sys,
+		  actor_config&& cfg,
+		   program_ptr prog,
+                   Ts&&... xs) const {
+    return actor_cast<actor>(impl::create(
+			    sys,
+			    prog,
+			    std::move(cfg),              
+			    std::forward<Ts>(xs)...));
+  }
+
 
 
 
