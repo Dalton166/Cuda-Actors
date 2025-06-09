@@ -29,6 +29,8 @@ public:
 	  context_ = context;
 	  name_ = name;
 	  id_ = number;
+	  streamId_ = 0;
+	  contextId_ = 0;
 
 	  /*
 	   * This is definitly a bad solution as in the future we want to use more than 1 device 
@@ -58,12 +60,17 @@ public:
   }
 
 
+  //Some simple getter methods 
   CUdevice getDevice() { return device_;}
-
+  int getId() { return id_;}
+  int getStreamId() { return streamId_;}
+  int getContextId() { return contextId_;}  
 
 private:
   //void* id_;
   int id_;
+  int streamId_;
+  int contextId_;
   CUcontext context_;
   void* queue_;
   int type_;
