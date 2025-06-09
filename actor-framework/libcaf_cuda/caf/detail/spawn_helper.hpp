@@ -27,13 +27,14 @@
 #include "caf/cuda/actor_facade.hpp"
 #include "caf/cuda/program.hpp"
 #include "caf/cuda/nd_range.hpp"
+#include <type_traits>
 
 namespace caf {
 namespace detail {
 
 template <bool PassConfig, class... Ts>
 struct cuda_spawn_helper {
-  using impl = cuda::actor_facade<PassConfig, Ts...>;
+  using impl = cuda::actor_facade<PassConfig, std::decay_t<Ts>...>;
  
   
  /*as for right now, input and output mapping is disabled
@@ -82,7 +83,7 @@ struct cuda_spawn_helper {
    * Note that you can only move the cfg file
    * so if we need to reuse the config 
    * we must spawn in another using actor_config cfg{} later on if needed
-   */
+   *
   actor operator()(
 		  actor_system &sys,
 		  actor_config&& cfg,
@@ -93,17 +94,18 @@ struct cuda_spawn_helper {
 			    std::forward<Ts>(xs)...));
   }
 
+  */
 
   //this operator should spawn in a facade with a program
   actor operator()(
 		  actor_system &sys,
 		  actor_config&& cfg,
-		   program_ptr prog,
+		   caf::cuda::program_ptr prog,
                    Ts&&... xs) const {
     return actor_cast<actor>(impl::create(
 			    sys,
-			    prog,
 			    std::move(cfg),              
+			    prog,
 			    std::forward<Ts>(xs)...));
   }
 
