@@ -38,6 +38,26 @@ public:
       std::forward<Ts>(xs)...);
   }
 
+  static caf::actor create(
+    caf::actor_system& sys,
+    caf::actor_config&& actor_conf,
+    progam_ptr program,
+    Ts&&... xs
+  ) {
+    std::cout << "Actor has successfully spawned and was created\n";
+    return make_actor<actor_facade, actor>(
+      sys.next_actor_id(),
+      sys.node(),
+      &sys,
+      std::move(actor_conf),
+      std::move(program),
+      std::forward<Ts>(xs)...);
+  }
+
+
+
+
+
   actor_facade(caf::actor_config& cfg) : caf::local_actor(cfg), caf::resumable() {
     throw std::runtime_error("CUDA support disabled: actor_facade ctor");
   }
@@ -49,6 +69,19 @@ public:
     std::cout << "Actor has successfully spawned and was created\n";
     print_args(std::forward<Ts>(xs)...);
   }
+
+
+  actor_facade(caf::actor_config&& cfg,program_ptr prog Ts&&... xs)
+    : local_actor(cfg),
+      resumable(),
+      config_(std::move(cfg)) {
+    program_ = prog;
+    std::cout << "Actor has successfully spawned and was created\n";
+    print_args(std::forward<Ts>(xs)...);
+  }
+
+
+
 
   // Implement caf::resumable interface
   subtype_t subtype() const noexcept override {
@@ -97,6 +130,7 @@ public:
 private:
   caf::actor_config config_;
   std::queue<mailbox_element_ptr> mailbox_; // Mailbox for messages
+  program_ptr program_;
 
   void print_args() {
     std::cout << "(no args)\n";
