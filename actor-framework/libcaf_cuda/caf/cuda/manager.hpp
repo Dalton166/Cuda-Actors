@@ -80,11 +80,11 @@ public:
 
 
   //this constructor should spawn in a actor facade and compile a kernel 
-  template<class T,class ... Ts>
+  template<class ... Ts>
   caf::actor spawn(const char * kernel,
 		  const std::string& name,
 		  Ts&& ... xs) {
-          caf::detail::cuda_spawn_helper<false,T> f;  
+          caf::detail::cuda_spawn_helper<false,Ts ...> f;  
           caf::actor_config cfg;
 
 	  //0 is the id for the first device
@@ -95,7 +95,7 @@ public:
                    system_,
                    std::move(cfg),
 		   std::move(prog),
-                    std::forward<T>(xs)...);
+                    std::forward<Ts>(xs)...);
   }
 
 
