@@ -76,6 +76,31 @@ public:
                     std::forward<T>(xs)...);
   }
 
+
+
+
+  //this constructor should spawn in a actor facade and compile a kernel 
+  template<class T,class ... Ts>
+  caf::actor spawn(const char * kernel,
+		  const std::string& name,
+		  Ts&& ... xs) {
+          caf::detail::cuda_spawn_helper<false,T> f;  
+          caf::actor_config cfg;
+
+	  //0 is the id for the first device
+	  device_ptr device = find_device(0);
+
+	  program_ptr prog = create_program(kernel,name,device);
+          return f(
+                   system_,
+                   std::move(cfg),
+		   std::move(prog),
+                    std::forward<T>(xs)...);
+  }
+
+
+
+
   caf::actor_system& system();
 
 private:
