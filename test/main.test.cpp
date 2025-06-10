@@ -25,22 +25,21 @@ void compare_strings(const char* a, const char* b, int* result, int length) {
 }
 )";
 
-
 void actor_facade_launch_kernel_test(caf::actor_system& sys) {
+    caf::cuda::manager mgr{sys};
+    int length = 10;
+    std::vector<char> str1(length);
+    std::vector<char> str2(length);
+    std::vector<int> result(length);
 
-
-
-
-	caf::cuda::manager mgr{sys};
-	int length = 10;
-	std::vector<char> str1(length);
-std::vector<char> str2(length);
-std::vector<int> result(length);
-	auto gpuActor = mgr.spawn(kernel_code,"myKernel",str1,str2,length,result);
-
-
-
-
+    // Pass std::move for vectors you want to forward as rvalues
+    auto gpuActor = mgr.spawn(
+        kernel_code,
+        "compare_strings",
+        std::move(str1),
+        std::move(str2),
+        std::move(length),
+        std::move(result));
 }
 
 /*
