@@ -100,7 +100,7 @@ public:
       config_(std::move(cfg)) {
     program_ = prog;
     std::cout << "Actor has successfully spawned and was created\n";
-    print_args(std::forward<Ts>(xs)...);
+    //print_args(std::forward<Ts>(xs)...);
   }
 
 
