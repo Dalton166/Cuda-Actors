@@ -51,7 +51,7 @@ public:
 
     // Get kernel function handle
     CUfunction kernel;
-    CHECK_CUDA(cuModuleGetFunction(&kernel, module, "add_kernel"));
+    CHECK_CUDA(cuModuleGetFunction(&kernel, module, name.c_str()));
   
     kernel_ = kernel;
     this -> device_id = device_id;
