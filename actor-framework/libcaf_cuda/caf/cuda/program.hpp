@@ -43,7 +43,7 @@ public:
 
   ~program() override = default;
 
-  program(std::string name,CUdevice device, std::vector<char> ptx) {
+  program(std::string name,int device_id,int context_id,int stream_id, std::vector<char> ptx) {
 
 	  name_ = name;
   	CUmodule module;
@@ -54,13 +54,20 @@ public:
     CHECK_CUDA(cuModuleGetFunction(&kernel, module, "add_kernel"));
   
     kernel_ = kernel;
+    this -> device_id = device_id;
+    this -> context_id = context_id;
+    this -> stream_id = stream_id;
   }
 
 
 private:
  std::string name_;
  CUfunction kernel_; //the compiled and loaded program on a specific device
-
+ 
+ //id's required for identifying where it's supposed to execute
+ int device_id;
+ int context_id;
+ int stream_id;
 };
 
 using program_ptr = caf::intrusive_ptr<program>;

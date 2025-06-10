@@ -29,10 +29,15 @@ program_ptr manager::create_program(const char * kernel,
 
 	CUdevice current_device = device -> getDevice();;
 
+	int d_id = device -> getId();
+	int c_id = device -> getContextId();
+	int s_id = device -> getStreamId();
+
+
 	//the compiled program can be accessed via ptx.data() afterwards
 	std::vector<char> ptx;
 	compile_nvrtc_program(kernel,current_device,ptx);
-	program_ptr prog = make_counted<program>(name, current_device, ptx);
+	program_ptr prog = make_counted<program>(name,d_id,c_id,s_id, ptx);
 	return prog;
 }
 
@@ -54,6 +59,7 @@ std::string manager::get_computer_architecture_string(CUdevice device) {
     CUresult res1 = cuDeviceGetAttribute(&major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, device);
     CUresult res2 = cuDeviceGetAttribute(&minor, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, device);
 
+//std::cout << nvrtcVersion(&major,&minor) << "\n";
     if (res1 != CUDA_SUCCESS || res2 != CUDA_SUCCESS) {
         std::cerr << "Failed to get compute capability for device\n";
         return "";
@@ -79,7 +85,14 @@ bool manager::compile_nvrtc_program(const char* source, CUdevice device, std::ve
         nvrtcDestroyProgram(&prog);
         return false;
     }
-    const char* options[] = { arch.c_str() };
+
+    const char* options[] = {
+    arch.c_str(),           // e.g., "--gpu-architecture=compute_70"
+    "--std=c++11",          // Avoids too-modern C++ features
+    "--fmad=false",         // Optional: disables fused multiply-add
+    "--device-as-default-execution-space" // Optional compatibility
+};
+    
 
     // 3. Compile program
     res = nvrtcCompileProgram(prog, 1, options);
