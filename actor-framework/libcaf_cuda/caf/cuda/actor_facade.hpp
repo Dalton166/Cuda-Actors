@@ -21,9 +21,9 @@ namespace caf::cuda {
 template <bool PassConfig, class... Ts>
 class actor_facade : public caf::local_actor, public caf::resumable {
 public:
-  static caf::actor create(...) {
-    throw std::runtime_error("CUDA support disabled: actor_facade::create()");
-  }
+  //static caf::actor create(...) {
+    //throw std::runtime_error("CUDA support disabled: actor_facade::create()");
+  //}
 
   /*
   static caf::actor create(
