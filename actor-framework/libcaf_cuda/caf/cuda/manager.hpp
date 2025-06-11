@@ -3,6 +3,7 @@
 #include <string>
 #include <cstddef>
 #include <stdexcept>
+#include <mutex>
 
 #include <caf/actor_system.hpp>
 #include <caf/actor.hpp>
@@ -34,9 +35,35 @@ class actor_facade;
 
 class CAF_CUDA_EXPORT manager {
 public:
-  explicit manager(caf::actor_system& sys);
+  /// Initializes the singleton. Must be called exactly once before get().
+  static void init(caf::actor_system& sys) {
+    std::lock_guard<std::mutex> guard(mutex_);
+    if (instance_) {
+      throw std::runtime_error("CUDA manager already initialized");
+    }
+    CHECK_CUDA(cuInit(0));
+    instance_ = new manager(sys);
+  }
 
-  ~manager();
+  /// Returns the singleton instance. Crashes if not yet initialized.
+  static manager& get() {
+    std::lock_guard<std::mutex> guard(mutex_);
+    if (!instance_) {
+      throw std::runtime_error("CUDA manager used before initialization");
+    }
+    return *instance_;
+  }
+
+  /// Deletes the singleton if needed (optional).
+  static void shutdown() {
+    std::lock_guard<std::mutex> guard(mutex_);
+    delete instance_;
+    instance_ = nullptr;
+  }
+
+  // Prevent copy/assignment
+  manager(const manager&) = delete;
+  manager& operator=(const manager&) = delete;
 
   device_ptr find_device(std::size_t id) const;
 
@@ -49,10 +76,9 @@ public:
                              const char* options,
                              device_ptr dev);
 
-  program_ptr create_program(const char * kernel,
+  program_ptr create_program(const char* kernel,
                              const std::string& name,
-                             device_ptr);
-
+                             device_ptr dev);
 
   program_ptr create_program_from_file(const std::string& filename,
                                        const char* options,
@@ -65,106 +91,38 @@ public:
     throw std::runtime_error("CUDA support disabled: manager::spawn");
   }
 
+  template <class... Ts>
+  caf::actor spawn(const char* kernel,
+                   const std::string& name,
+                   Ts&&... xs) {
+    caf::detail::cuda_spawn_helper<false, Ts...> f;
+    caf::actor_config cfg;
 
-  /*
-   * turn this on if you want to test the spawn method,
-   * removed to reduce ambigutiy
-  template<class T,class ... Ts>
-  caf::actor spawn(T &&x, Ts&& ... xs) {
-          caf::detail::cuda_spawn_helper<false,T> f;  
-          caf::actor_config cfg;
-          return f(
-                   system_,
-                   std::move(cfg),
-                   std::forward<T>(x),
-                    std::forward<T>(xs)...);
+    device_ptr device = find_device(0);
+    program_ptr prog = create_program(kernel, name, device);
+
+    return f(&system_, std::move(cfg), std::move(prog), std::forward<Ts>(xs)...);
   }
 
-  */
-
-
-
-  //this constructor should spawn in a actor facade and compile a kernel 
-  template<class ... Ts>
-  caf::actor spawn(const char * kernel,
-		  const std::string& name,
-		  Ts&& ... xs) {
-          caf::detail::cuda_spawn_helper<false,Ts ...> f;  
-          caf::actor_config cfg;
-
-	  //0 is the id for the first device
-	  device_ptr device = find_device(0);
-
-	  program_ptr prog = create_program(kernel,name,device);
-          return f(
-                   &system_,
-                   std::move(cfg),
-		   std::move(prog),
-                    std::forward<Ts>(xs)...);
-  }
-
-
-
-
-  caf::actor_system& system();
+  caf::actor_system& system() { return system_; }
 
 private:
+  explicit manager(caf::actor_system& sys)
+    : system_(sys), platform_(platform::create()) {
+    // cuInit is done in init()
+  }
+
   caf::actor_system& system_;
-  platform_ptr platform_ = platform::create();
-  bool compile_nvrtc_program(const char * source, CUdevice device, std::vector<char>&ptx_out);
+  platform_ptr platform_;
+
+  bool compile_nvrtc_program(const char* source, CUdevice device, std::vector<char>& ptx_out);
   std::string get_computer_architecture_string(CUdevice device);
 
   device_ptr find_device(int id);
+
+  static manager* instance_;
+  static std::mutex mutex_;
 };
 
 } // namespace caf::cuda
-  //
- 
-
-/* 
- * #pragma once
-
-#include <stdexcept>
-
-#include <caf/intrusive_ptr.hpp>
-#include <caf/actor_system.hpp>
-
-namespace caf::cuda {
-
-class device;
-using device_ptr = caf::intrusive_ptr<device>;
-
-class program;
-using program_ptr = caf::intrusive_ptr<program>;
-
-class manager {
-public:
-  explicit manager(caf::actor_system&) {
-    throw std::runtime_error("OpenCL support disabled: manager ctor");
-  }
-
-  device_ptr find_device(size_t) const {
-    throw std::runtime_error("OpenCL support disabled: manager::find_device()");
-  }
-
-  template <class Predicate>
-  device_ptr find_device_if(Predicate&&) const {
-    throw std::runtime_error("OpenCL support disabled: manager::find_device_if()");
-  }
-
-  program_ptr create_program(const std::string&, const char*, device_ptr) {
-    throw std::runtime_error("OpenCL support disabled: manager::create_program()");
-  }
-
-  program_ptr create_program_from_file(const std::string&, const char*, device_ptr) {
-    throw std::runtime_error("OpenCL support disabled: manager::create_program_from_file()");
-  }
-
-  caf::actor_system& system() {
-    throw std::runtime_error("OpenCL support disabled: manager::system()");
-  }
-};
-
-} // namespace caf::opencl
- */
 
