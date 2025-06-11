@@ -45,6 +45,26 @@ public:
     access_ = -1;
   }
 
+
+  /*
+  std::vector<T> copy_to_host() const {
+  if (access_ != OUT && access_ != IN_OUT) {
+    throw std::runtime_error("Attempt to read from a non-output memory region.");
+  }
+
+  std::vector<T> host_data(num_elements_);
+  size_t bytes = num_elements_ * sizeof(T);
+
+  CHECK_CUDA(cuCtxPushCurrent(context_)); // context_ must be available or passed somehow
+  CHECK_CUDA(cuMemcpyDtoH(host_data.data(), memory_, bytes));
+  CHECK_CUDA(cuCtxPopCurrent(nullptr));
+
+  return host_data;
+}
+*/
+
+
+
 private:
   size_t num_elements_ = 0;
   CUdeviceptr memory_ = 0;
