@@ -25,26 +25,27 @@
 #define IN 0 
 #define IN_OUT 1
 #define OUT 2
-#define NOT_IN_USE 3
+#define NOT_IN_USE -1
 
 //struct wrappers to hold store buffers to declare them as in or out 
 
-
-template <T>
+template <typename T>
 struct in {
-	std::vector<T> buffer;
-}
-template <T>
-struct in_out {
-	std::vector<T> buffer;
-}
+    using value_type = T;
+    std::vector<T> buffer;
+};
 
-template <T>
+template <typename T>
 struct out {
-	std::vector<T> buffer;
-}
+    using value_type = T;
+    std::vector<T> buffer;
+};
 
-
+template <typename T>
+struct in_out {
+    using value_type = T;
+    std::vector<T> buffer;
+};
 
 
 //helper function to check errors
