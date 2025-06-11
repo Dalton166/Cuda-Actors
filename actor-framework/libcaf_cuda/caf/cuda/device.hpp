@@ -19,11 +19,9 @@ using device_ptr = caf::intrusive_ptr<device>;
 
 class device : public caf::ref_counted {
 public:
-  device([[maybe_unused]] void* device, [[maybe_unused]] void* context, [[maybe_unused]] void* queue) {
-    throw std::runtime_error("CUDA support disabled: device ctor");
-  }
-
-  device(CUdevice device,CUcontext context,char * name, int number) {
+   
+	
+   device(CUdevice device,CUcontext context,char * name, int number) {
 
 	  device_ = device;
 	  context_ = context;
@@ -37,9 +35,8 @@ public:
   }
 
 
-  //~device() override;
 
-  //device
+
 
   std::string vendor() const;
   int type() const;
@@ -52,6 +49,10 @@ public:
     throw std::runtime_error("CUDA support disabled: device::make_arg()");
   }
 
+  template <typename T>
+  mem_ref<T> make_arg(in<T> arg) {
+  
+  }
 
   //Some simple getter methods 
   CUdevice getDevice() { return device_;}
@@ -73,6 +74,53 @@ private:
   std::size_t max_work_group_size_;
   CUdevice device_;
   CUstream stream_;
+
+  
+ template< typename T>
+mem_ref<T> global_argument(in<T> arg) {
+  int size = static_cast<int>(arg.buffer.size());
+  int access = IN;
+  CUdeviceptr device_buffer;
+  int bytes = size * sizeof(T);
+
+  CHECK_CUDA(cuCtxPushCurrent(context_));
+  CHECK_CUDA(cuMemAlloc(&device_buffer, bytes));
+  CHECK_CUDA(cuMemcpyHtoD(device_buffer, arg.buffer.data(), bytes));
+  CHECK_CUDA(cuCtxPopCurrent(nullptr));
+
+  return mem_ref{size, device_buffer, access};
+}
+
+template< typename T>
+mem_ref<T> global_argument(in_out<T> arg) {
+  int size = static_cast<int>(arg.buffer.size());
+  int access = IN_OUT;
+  CUdeviceptr device_buffer;
+  int bytes = size * sizeof(T);
+
+  CHECK_CUDA(cuCtxPushCurrent(context_));
+  CHECK_CUDA(cuMemAlloc(&device_buffer, bytes));
+  CHECK_CUDA(cuMemcpyHtoD(device_buffer, arg.buffer.data(), bytes));
+  CHECK_CUDA(cuCtxPopCurrent(nullptr));
+
+  return mem_ref{size, device_buffer, access};
+}
+
+template< typename T>
+mem_ref<T> scratch_argument(in_out<T> arg) {
+  int size = static_cast<int>(arg.buffer.size());
+  int access = OUT;
+  CUdeviceptr device_buffer;
+  int bytes = size * sizeof(T);
+
+  CHECK_CUDA(cuCtxPushCurrent(context_));
+  CHECK_CUDA(cuMemAlloc(&device_buffer, bytes));
+  CHECK_CUDA(cuCtxPopCurrent(nullptr));
+
+  return mem_ref{size, device_buffer, access};
+}
+
+
 };
 
 } // namespace caf::cuda
