@@ -25,6 +25,7 @@
 #define IN 0 
 #define IN_OUT 1
 #define OUT 2
+#define NOT_IN_USE 3
 
 //struct wrappers to hold store buffers to declare them as in or out 
 
