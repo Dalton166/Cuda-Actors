@@ -20,6 +20,32 @@
 
 
 
+//memory access flags, required for identifying which
+//gpu buffers are input and output buffers
+#define IN 0 
+#define IN_OUT 1
+#define OUT 2
+
+//struct wrappers to hold store buffers to declare them as in or out 
+
+
+template <T>
+struct in {
+	std::vector<T> buffer;
+}
+template <T>
+struct in_out {
+	std::vector<T> buffer;
+}
+
+template <T>
+struct out {
+	std::vector<T> buffer;
+}
+
+
+
+
 //helper function to check errors
 void inline check(CUresult result, const char* msg) {
     if (result != CUDA_SUCCESS) {
@@ -29,6 +55,10 @@ void inline check(CUresult result, const char* msg) {
         exit(1);
     }
 }
+
+
+
+
 
 
 
