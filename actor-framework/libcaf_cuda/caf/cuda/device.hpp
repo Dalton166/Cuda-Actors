@@ -100,12 +100,12 @@ public:
   }
 
 private:
+  CUdevice device_;
+  CUcontext context_;
   int id_;
   int streamId_;
   int contextId_;
-  CUcontext context_;
   const char* name_;
-  CUdevice device_;
   CUstream stream_;
 };
 
