@@ -77,6 +77,16 @@ std::tuple<mem_ptr...> convert_data_to_args(Args&&... args) {
 }
 
 
+void create_command(program_ptr program,Ts&& xs) {
+
+	auto mem_refs = convert_data_to_args(Ts&&... args);
+	caf::response_promise rp = make_response_promise();
+
+	command{};
+}
+
+
+
 private:
   caf::actor_config config_;
   std::queue<mailbox_element_ptr> mailbox_; // Mailbox for messages
