@@ -26,7 +26,7 @@ void compare_strings(const char* a, const char* b, int* result, int length) {
 )";
 
 void actor_facade_launch_kernel_test(caf::actor_system& sys) {
-    caf::cuda::manager mgr{sys};
+    caf::cuda::manager& mgr = caf::cuda::manager::get();
     int length = 10;
     std::vector<char> str1(length);
     std::vector<char> str2(length);
@@ -64,7 +64,7 @@ void actor_facade_spawn_test(caf::actor_system& sys) {
 
 void caf_main(caf::actor_system& sys) {
 
-	cuInit(0);
+	caf::cuda::manager::init(sys);
 //	actor_facade_spawn_test(sys);
 
       actor_facade_launch_kernel_test(sys);
