@@ -40,7 +40,7 @@ inline mem_ptr makeArg(int device_id,int context_id,in_out<T> arg) {
 }	
 
 
-template< typename T>
+template <typename T>
 inline mem_ptr makeArg(int device_id,int context_id,out<T> arg) {
 
 	auto& mgr = manager::get();
@@ -49,6 +49,29 @@ inline mem_ptr makeArg(int device_id,int context_id,out<T> arg) {
 	return dev -> make_arg(arg);
 }	
 
+template <typename T>
+inline in<T> create_in_arg(std::vector<T> buffer) {
+
+	in<T> arg;
+	arg.buffer = buffer
+	return arg;
+}
+
+template <typename T>
+inline in_out<T> create_in_out_arg(std::vector<T> buffer) {
+
+	in_out<T> arg;
+	arg.buffer = buffer
+	return arg;
+}
+
+template <typename T>
+inline out<T> create_out_arg(std::vector<T> buffer) {
+
+	out<T> arg;
+	arg.buffer = buffer
+	return arg;
+}
 
 
 
