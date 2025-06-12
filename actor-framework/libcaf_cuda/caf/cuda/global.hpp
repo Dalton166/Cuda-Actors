@@ -28,8 +28,14 @@
 #define OUT 2
 #define NOT_IN_USE -1
 
-//struct wrappers to hold store buffers to declare them as in or out 
 
+//argument tags
+struct input_tag{};
+struct output_tag{};
+struct input_output_tag();
+
+
+//struct wrappers to hold store buffers to declare them as in or out 
 template <typename T>
 struct in {
     using value_type = T;
