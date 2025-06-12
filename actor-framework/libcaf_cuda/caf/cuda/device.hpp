@@ -52,21 +52,20 @@ public:
   CUstream getStream() const { return stream_; }
 
 
-   template <typename T>
-  mem_ptr<T> make_arg(in<T> arg) {
-    return caf::make_counted<mem_ref<T>>(global_argument(std::move(arg)));
-  }
+template <typename T>
+mem_ptr<T> make_arg(in<T> arg) {
+  return caf::intrusive_ptr<mem_ref<T>>{new mem_ref<T>(global_argument(std::move(arg)))};
+}
 
-  template <typename T>
-  mem_ptr<T> make_arg(in_out<T> arg) {
-    return caf::make_counted<mem_ref<T>>(global_argument(std::move(arg)));
-  }
+template <typename T>
+mem_ptr<T> make_arg(in_out<T> arg) {
+  return caf::intrusive_ptr<mem_ref<T>>{new mem_ref<T>(global_argument(std::move(arg)))};
+}
 
-  template <typename T>
-  mem_ptr<T> make_arg(out<T> arg) {
-    return caf::make_counted<mem_ref<T>>(scratch_argument(std::move(arg)));
-  }
-
+template <typename T>
+mem_ptr<T> make_arg(out<T> arg) {
+  return caf::intrusive_ptr<mem_ref<T>>{new mem_ref<T>(scratch_argument(std::move(arg)))};
+}
 
 
 private:
