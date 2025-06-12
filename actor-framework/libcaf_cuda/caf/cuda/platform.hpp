@@ -12,6 +12,16 @@
 #include "caf/cuda/global.hpp"
 #include "caf/cuda/device.hpp"
 
+
+
+// Forward declaration
+namespace caf::cuda {
+class device;
+using device_ptr = intrusive_ptr<device>;
+} // namespace caf::cuda
+
+
+
 namespace caf {
 namespace cuda {
 
