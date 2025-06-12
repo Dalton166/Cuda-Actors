@@ -51,6 +51,34 @@ public:
   int getContextId() const { return contextId_; }
   CUstream getStream() const { return stream_; }
 
+
+   template <typename T>
+  mem_ptr<T> make_arg(in<T> arg) {
+    return caf::make_counted<mem_ref<T>>(global_argument(std::move(arg)));
+  }
+
+  template <typename T>
+  mem_ptr<T> make_arg(in_out<T> arg) {
+    return caf::make_counted<mem_ref<T>>(global_argument(std::move(arg)));
+  }
+
+  template <typename T>
+  mem_ptr<T> make_arg(out<T> arg) {
+    return caf::make_counted<mem_ref<T>>(scratch_argument(std::move(arg)));
+  }
+
+
+
+private:
+  CUdevice device_;
+  CUcontext context_;
+  int id_;
+  int streamId_;
+  int contextId_;
+  const char* name_;
+  CUstream stream_;
+
+
   // Example method to create a mem_ref for an input buffer
   template <typename T>
   mem_ref<T> global_argument(in<T> arg) {
@@ -99,15 +127,12 @@ public:
     return mem_ref<T>{size, device_buffer, access, id_, contextId_};
   }
 
-private:
-  CUdevice device_;
-  CUcontext context_;
-  int id_;
-  int streamId_;
-  int contextId_;
-  const char* name_;
-  CUstream stream_;
+
+
+
+
 };
+
 
 } // namespace caf::cuda
 
