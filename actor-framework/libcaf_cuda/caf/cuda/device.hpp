@@ -10,7 +10,7 @@
 #include <cuda.h>
 
 #include "caf/cuda/global.hpp"
-#include "caf/cuda/mem_ref.hpp"
+//#include "caf/cuda/mem_ref.hpp" introduces a circular dependency
 
 namespace caf::cuda {
 

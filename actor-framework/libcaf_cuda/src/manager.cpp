@@ -3,15 +3,6 @@
 
 namespace caf::cuda {
 
-manager::manager(caf::actor_system& sys) : system_(sys) {
-  // no-op
-  //check(cuInit(0),"cuInit");
-}
-
-manager::~manager() {
-  // no-op
-}
-
 device_ptr manager::find_device(std::size_t) const {
   throw std::runtime_error("OpenCL support disabled: manager::find_device");
 }
@@ -47,9 +38,6 @@ program_ptr manager::create_program_from_file(const std::string&,
   throw std::runtime_error("OpenCL support disabled: manager::create_program_from_file");
 }
 
-caf::actor_system& manager::system() {
-  return system_;
-}
 
 
 // Helper: Get compute architecture string for nvrtc (e.g. "--gpu-architecture=compute_75")
@@ -133,6 +121,15 @@ bool manager::compile_nvrtc_program(const char* source, CUdevice device, std::ve
     // 7. Clean up
     nvrtcDestroyProgram(&prog);
     return true;
+}
+
+
+ CUcontext manager::get_context_by_id(int device_id, int context_id) {
+  device_ptr dev = find_device(device_id);
+  if (!dev) {
+    throw std::runtime_error("No CUDA device found with id: " + std::to_string(device_id));
+  }
+  return dev->getContext();
 }
 
 

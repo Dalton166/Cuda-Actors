@@ -6,8 +6,10 @@
 #include <vector>
 #include <stdexcept>
 #include "caf/cuda/global.hpp"
+#include "caf/cuda/types.hpp"
 #include "caf/cuda/manager.hpp"  // for manager::get()
 #include "caf/cuda/utility.hpp"  // for get_context_by_id()
+
 
 namespace caf::cuda {
 
@@ -61,7 +63,7 @@ public:
 
     // Use manager singleton and helper function to get context
     auto& mgr = manager::get(); // Throws if not initialized
-    CUcontext ctx = get_context_by_id(device_id, context_id);
+    CUcontext ctx = getContextById(device_id, context_id);
 
     CHECK_CUDA(cuCtxPushCurrent(ctx));
     CHECK_CUDA(cuMemcpyDtoH(host_data.data(), memory_, bytes));

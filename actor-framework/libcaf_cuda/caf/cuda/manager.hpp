@@ -106,15 +106,7 @@ public:
 
   caf::actor_system& system() { return system_; }
 
-  inline CUcontext get_context_by_id(std::size_t device_id, std::size_t context_id) {
-  auto& mgr = manager::get(); // Throws if not initialized
-  auto dev = mgr.find_device(device_id);
-  if (!dev) {
-    throw std::runtime_error("No CUDA device found with id: " + std::to_string(device_id));
-  }
-  return dev->get_context(context_id);
-}
-
+  CUcontext get_context_by_id(int device_id, int context_id);
 
 private:
   explicit manager(caf::actor_system& sys)
