@@ -50,6 +50,8 @@ public:
     CHECK_CUDA(cuModuleLoadData(&module, ptx.data()));
 
     // Get kernel function handle
+    //Note this will work on single device systems but for multi gpu computes
+    //this is not thread safe, will have to come back and fix this 
     CUfunction kernel;
     CHECK_CUDA(cuModuleGetFunction(&kernel, module, name.c_str()));
   
@@ -59,6 +61,11 @@ public:
     this -> stream_id = stream_id;
   }
 
+
+//some getter methods
+int get_device_id() const { return device_id; }
+int get_context_id() const { return context_id; }
+int get_stream_id() const { return stream_id;}
 
 private:
  std::string name_;
