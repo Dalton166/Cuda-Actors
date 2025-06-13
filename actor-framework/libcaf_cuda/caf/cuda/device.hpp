@@ -11,6 +11,8 @@
 
 #include "caf/cuda/global.hpp"
 //#include "caf/cuda/mem_ref.hpp" introduces a circular dependency
+#include <mutex> //TODO delete this later 
+
 
 namespace caf::cuda {
 
@@ -50,6 +52,20 @@ public:
   int getStreamId() const { return streamId_; }
   int getContextId() const { return contextId_; }
   CUstream getStream() const { return stream_; }
+  CUStream getStream(int id) { 
+	  
+	  //for right now this does the same as getStream
+	  //however it is likely that this project will expand into
+	  //using multiple streams so use the id variant for now 
+	  return stream_; 
+  }
+
+  CUStream getContext(int id) { 
+	  
+	  //for right now this does the same as getContext
+	  //however I can't tell if this project will end up using multiple contexts per device so use this for now  
+	  return context_; 
+  }
 
 
 template <typename T>
@@ -68,13 +84,39 @@ mem_ptr<T> make_arg(out<T> arg) {
 }
 
 template <typename T>
-void launch_kernel(CUfunction kernel,int gridDim, int blockDim, std::tuple<mem_ptr<T> args) {
+void launch_kernel(CUfunction kernel,
+                   int gridDim,
+                   int blockDim,
+                   std::tuple<mem_ptr<T>> args,
+                   int stream_id,
+                   int context_id) {
+    std::lock_guard<std::mutex> lock(stream_mutex); // Automatically released at end of scope
 
+    CUstream stream = getStream(stream_id);
+    CUcontext ctx = getContext(context_id);
 
-	auto kernel_args = extract_kernel_args(args);
+    // Push context to this thread
+    CHECK_CUDA(cuCtxPushCurrent(ctx));
 
+    // Extract kernel arguments (assumed to return void** suitable for cuLaunchKernel)
+    void** kernel_args = extract_kernel_args(args);
 
+    // Launch the kernel
+    CHECK_CUDA(cuLaunchKernel(
+        kernel,
+        gridDim, 1, 1,         // Grid dimensions
+        blockDim, 1, 1,        // Block dimensions
+        0,                     // Shared memory size
+        stream,                // CUDA stream
+        kernel_args,           // Kernel arguments
+        nullptr                // Extra options (usually null)
+    ));
 
+    // Optionally synchronize stream (if you want synchronous behavior here)
+    // CHECK_CUDA(cuStreamSynchronize(stream));
+
+    // Pop context
+    CHECK_CUDA(cuCtxPopCurrent(nullptr));
 }
 
 
@@ -89,7 +131,7 @@ private:
   int contextId_;
   const char* name_;
   CUstream stream_;
-
+  std::mutex stream_mutex;
 
   // Example method to create a mem_ref for an input buffer
   template <typename T>
