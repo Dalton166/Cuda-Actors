@@ -67,6 +67,19 @@ mem_ptr<T> make_arg(out<T> arg) {
   return caf::intrusive_ptr<mem_ref<T>>{new mem_ref<T>(scratch_argument(std::move(arg)))};
 }
 
+template <typename T>
+void launch_kernel(CUfunction kernel,int gridDim, int blockDim, std::tuple<mem_ptr<T> args) {
+
+
+	auto kernel_args = extract_kernel_args(args);
+
+
+
+}
+
+
+
+
 
 private:
   CUdevice device_;
@@ -111,7 +124,8 @@ private:
     return mem_ref<T>{size, device_buffer, access, id_, contextId_};
   }
 
-  // For scratch (output) buffers with no initial copy
+  
+   // For scratch (output) buffers with no initial copy
   template <typename T>
   mem_ref<T> scratch_argument(in_out<T> arg) {
     size_t size = arg.buffer.size();
@@ -126,8 +140,24 @@ private:
     return mem_ref<T>{size, device_buffer, access, id_, contextId_};
   }
 
+    template <typename Tuple, std::size_t... Is>
+std::vector<void*> extract_kernel_args_impl(const Tuple& t, std::index_sequence<Is...>) {
+  // Store CUdeviceptrs in a temporary array so we can take their addresses
+  static_assert(sizeof...(Is) > 0, "At least one kernel argument is required.");
+  CUdeviceptr device_ptrs[] = { std::get<Is>(t)->mem()... };
 
+  std::vector<void*> args(sizeof...(Is));
+  for (size_t i = 0; i < sizeof...(Is); ++i)
+    args[i] = &device_ptrs[i];
 
+  return args;
+}
+
+// Public interface
+template <typename... Ts>
+std::vector<void*> extract_kernel_args(const std::tuple<mem_ptr<Ts>...>& args_tuple) {
+  return extract_kernel_args_impl(args_tuple, std::index_sequence_for<Ts...>{});
+}
 
 
 };
