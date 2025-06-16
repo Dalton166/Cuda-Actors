@@ -13,6 +13,7 @@
 #include "caf/cuda/all.hpp"
 #include "caf/cuda/utility.hpp"
 
+
 //using namespace caf;
 
 //runs a test to ensure the actor facade can spawn in
@@ -34,6 +35,40 @@ void actor_facade_launch_kernel_test(caf::actor_system& sys) {
     std::vector<char> str1(length);
     std::vector<char> str2(length);
     std::vector<int> result(length);
+    std::vector<int> len(1);
+    len[0] = length;
+
+    // 1 dimension for blocks and grids
+    caf::cuda::nd_range dim(1,1,1,1,1,1);
+
+    // Spawn the CUDA actor
+    auto gpuActor = mgr.spawn(kernel_code, "compare_strings", dim);
+
+    // Create the necessary input/output args
+    auto arg1 = caf::cuda::create_in_arg(str1);
+    auto arg2 = caf::cuda::create_in_arg(str2);
+    auto arg3 = caf::cuda::create_out_arg(result);
+    auto arg4 = caf::cuda::create_in_arg(len);
+
+    // Send a message with the args to the actor
+    // The actor_facade is expected to handle this message and call run_kernel internally
+    anon_mail(gpuActor, arg1, arg2, arg3, arg4);
+
+    // Optionally, you can wait for a response or schedule followup steps
+}
+
+
+
+/*
+void actor_facade_spawn_test(caf::actor_system& sys) {
+
+ caf::cuda::manager& mgr = caf::cuda::manager::get();
+    int length = 10;
+    std::vector<char> str1(length);
+    std::vector<char> str2(length);
+    std::vector<int> result(length);
+    std::vector<int> len;
+    len[0] = length;
 
     //1 dimension for blocks and grids
     caf::cuda::nd_range dim(1,1,1,1,1,1);
@@ -42,27 +77,8 @@ void actor_facade_launch_kernel_test(caf::actor_system& sys) {
     auto gpuActor = mgr.spawn(
         kernel_code,
         "compare_strings",
-	dim,
-        std::move(str1),
-        std::move(str2),
-        int{length},
-	std::move(result));
-}
-
-/*
-void actor_facade_spawn_test(caf::actor_system& sys) {
-
-	caf::cuda::manager mgr{sys};
-
-	int x = 1;
-	auto gpuActor = mgr.spawn(x);
-
-
- // actor_system_config cfg;
-  //actor_system system{cfg};
-
-  // Spawn actor_facade<int, std::string> passing 42 and "hello"
-  //auto my_actor = system.spawn<caf::opencl::actor_facade<false,int, std::string>>(42, "hello");
+	dim
+        );
 
 }
 
