@@ -45,8 +45,8 @@ void actor_facade_launch_kernel_test(caf::actor_system& sys) {
 	dim,
         std::move(str1),
         std::move(str2),
-        std::move(length),
-        std::move(result));
+        int{length},
+	std::move(result));
 }
 
 /*

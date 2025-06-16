@@ -102,7 +102,7 @@ public:
     device_ptr device = find_device(0);
     program_ptr prog = create_program(kernel, name, device);
 
-    return f(&system_, std::move(cfg), std::move(prog), std::forward<Ts>(xs)...);
+    return f(&system_, std::move(cfg), std::move(prog),dims,std::forward<Ts>(xs)...);
   }
 
   caf::actor_system& system() { return system_; }
