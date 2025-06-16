@@ -19,6 +19,25 @@ inline CUcontext getContextById(int device_id, int context_id) {
 }
 
 
+
+//helper function to launch a kernel for the command class 
+inline void launch_kernel(program_ptr program,
+                   const caf::cuda::nd_range& range,
+                   std::tuple<mem_ptr<T>> args,
+		   int stream_id) {
+
+	
+	int device_id = program -> get_device_id();
+	int context_id = program -> get_context_id();
+	CUfunction kernel = program -> get_kernel();
+	auto& mgr = manager::get();
+	device_ptr dev =  mgr.find_device(device_id);
+	dev -> launch_kernel(kernel,range,args,stream_id,context_id);
+
+}
+
+
+
 template< typename T>
 inline mem_ptr makeArg(int device_id,int context_id,in<T> arg) {
 
@@ -72,7 +91,6 @@ inline out<T> create_out_arg(std::vector<T> buffer) {
 	arg.buffer = buffer
 	return arg;
 }
-
 
 
 
