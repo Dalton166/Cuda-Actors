@@ -41,6 +41,18 @@ class command : public ref_counted {
 public:
   using result_types = caf::detail::type_list<Ts...>;
 
+
+ command(caf::response_promise promise,
+          program_ptr program,
+          Ts&&... xs)
+    : rp(std::move(promise)),
+      program_(std::move(program)),
+      mem_refs(convert_data_to_args(std::forward<Ts>(xs)...)) {
+  }
+
+
+
+
   command(caf::response_promise,
           caf::strong_actor_ptr,
           std::vector<void*>,
@@ -59,12 +71,20 @@ public:
 
   ~command() override = default;
 
- template <typename... Args>
-std::tuple<mem_ptr...> convert_data_to_args(Args&&... args) {
-  int dev_id = program_->get_device_id();
-  int ctx_id = program_->get_context_id();
-  return std::make_tuple(makeArg(dev_id, ctx_id, std::forward<Args>(args))...);
-}
+
+private:
+  template <typename... Args>
+  std::tuple<mem_ptr<std::decay_t<Args>>...>
+  convert_data_to_args(Args&&... args) {
+    int dev_id = program_->get_device_id();
+    int ctx_id = program_->get_context_id();
+    return std::make_tuple(makeArg(dev_id, ctx_id, std::forward<Args>(args))...);
+  }
+
+  program_ptr program_;
+  caf::response_promise rp;
+  int flags = 0;
+  std::tuple<mem_ptr<std::decay_t<Ts>>...> mem_refs;
 
 };
 
