@@ -58,6 +58,14 @@ public:
   }
 
   ~command() override = default;
+
+ template <typename... Args>
+std::tuple<mem_ptr...> convert_data_to_args(Args&&... args) {
+  int dev_id = program_->get_device_id();
+  int ctx_id = program_->get_context_id();
+  return std::make_tuple(makeArg(dev_id, ctx_id, std::forward<Args>(args))...);
+}
+
 };
 
 } // namespace caf::cuda

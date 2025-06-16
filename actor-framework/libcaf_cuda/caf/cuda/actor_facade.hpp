@@ -69,17 +69,12 @@ public:
   }
 
 
- template <typename... Args>
-std::tuple<mem_ptr...> convert_data_to_args(Args&&... args) {
-  int dev_id = program_->get_device_id();
-  int ctx_id = program_->get_context_id();
-  return std::make_tuple(makeArg(dev_id, ctx_id, std::forward<Args>(args))...);
-}
+
 
 
 void create_command(program_ptr program,Ts&& xs) {
 
-	auto mem_refs = convert_data_to_args(Ts&&... args);
+	//auto mem_refs = convert_data_to_args(Ts&&... args);
 	caf::response_promise rp = make_response_promise();
 
 	command{};
