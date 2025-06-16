@@ -61,22 +61,20 @@ public:
   }
 
 
+  /*
   actor_facade(caf::actor_config& cfg) : caf::local_actor(cfg), caf::resumable() {
     throw std::runtime_error("CUDA support disabled: actor_facade ctor");
   }
-
-
-  actor_facade(caf::actor_config&& cfg,program_ptr prog,nd_range dims,Ts&&... xs)
-    : local_actor(cfg),
-      resumable(),
-      config_(std::move(cfg)) {
-    program_ = prog;
-    dims_ = dims;
+	*/
+actor_facade(caf::actor_config&& cfg, program_ptr prog, nd_range nd, Ts&&... xs)
+  : 
+    local_actor(cfg),
+    config_(std::move(cfg))
+  , program_(std::move(prog))
+  , dims_(std::move(nd)) // <-- initialize your nd_range member here
+{
     std::cout << "Actor has successfully spawned and was created\n";
-    //print_args(std::forward<Ts>(xs)...);
-  }
-
-
+}
 
 
 //template <class... Ts>
