@@ -14,6 +14,7 @@
 
 namespace caf::cuda {
 
+/*
 template <class... Ts>
 class command : public caf::ref_counted {
 public:
@@ -35,6 +36,7 @@ public:
   }
 };
 
+*/
 class program : public caf::ref_counted {
 public:
   program(void*, void*, void*, std::map<std::string, void*>) {
