@@ -83,10 +83,10 @@ mem_ptr<T> make_arg(out<T> arg) {
   return caf::intrusive_ptr<mem_ref<T>>{new mem_ref<T>(scratch_argument(std::move(arg)))};
 }
 
+
 template <typename T>
 void launch_kernel(CUfunction kernel,
-                   int gridDim,
-                   int blockDim,
+                   const caf::cuda::nd_range& range,
                    std::tuple<mem_ptr<T>> args,
                    int stream_id,
                    int context_id) {
@@ -101,24 +101,23 @@ void launch_kernel(CUfunction kernel,
     // Extract kernel arguments (assumed to return void** suitable for cuLaunchKernel)
     void** kernel_args = extract_kernel_args(args);
 
-    // Launch the kernel
+    // Launch the kernel using nd_range for dimensions
     CHECK_CUDA(cuLaunchKernel(
         kernel,
-        gridDim, 1, 1,         // Grid dimensions
-        blockDim, 1, 1,        // Block dimensions
-        0,                     // Shared memory size
-        stream,                // CUDA stream
-        kernel_args,           // Kernel arguments
-        nullptr                // Extra options (usually null)
+        range.getGridDimX(), range.getGridDimY(), range.getGridDimZ(),   // Grid dimensions
+        range.getBlockDimX(), range.getBlockDimY(), range.getBlockDimZ(),// Block dimensions
+        0,                                                               // Shared memory size
+        stream,                                                          // CUDA stream
+        kernel_args,                                                     // Kernel arguments
+        nullptr                                                          // Extra options (usually null)
     ));
 
-    // Optionally synchronize stream (if you want synchronous behavior here)
+    // Optionally synchronize stream
     // CHECK_CUDA(cuStreamSynchronize(stream));
 
     // Pop context
     CHECK_CUDA(cuCtxPopCurrent(nullptr));
 }
-
 
 
 
