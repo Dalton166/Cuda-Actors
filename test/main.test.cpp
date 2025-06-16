@@ -9,6 +9,9 @@
 
 #include "caf/cuda/actor_facade.hpp"
 #include "caf/cuda/manager.hpp"
+#include "caf/cuda/nd_range.hpp"
+#include "caf/cuda/all.hpp"
+#include "caf/cuda/utility.hpp"
 
 //using namespace caf;
 
@@ -32,10 +35,14 @@ void actor_facade_launch_kernel_test(caf::actor_system& sys) {
     std::vector<char> str2(length);
     std::vector<int> result(length);
 
+    //1 dimension for blocks and grids
+    caf::cuda::nd_range dim(1,1,1,1,1,1);
+
     // Pass std::move for vectors you want to forward as rvalues
     auto gpuActor = mgr.spawn(
         kernel_code,
         "compare_strings",
+	dim,
         std::move(str1),
         std::move(str2),
         std::move(length),
