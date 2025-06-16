@@ -41,6 +41,7 @@ public:
     caf::actor_system * sys,
     caf::actor_config&& actor_conf,
     program_ptr program,
+    nd_range dims;
     Ts&&... xs
   ) {
     std::cout << "Actor has successfully spawned and was created\n";
@@ -50,6 +51,7 @@ public:
       sys,
       std::move(actor_conf),
       std::move(program),
+      std::move(dims),
       std::forward<Ts>(xs)...);
   }
 
@@ -59,11 +61,12 @@ public:
   }
 
 
-  actor_facade(caf::actor_config&& cfg,program_ptr prog,Ts&&... xs)
+  actor_facade(caf::actor_config&& cfg,program_ptr prog,nd_range dims,Ts&&... xs)
     : local_actor(cfg),
       resumable(),
       config_(std::move(cfg)) {
     program_ = prog;
+    dims_ = dims;
     std::cout << "Actor has successfully spawned and was created\n";
     //print_args(std::forward<Ts>(xs)...);
   }
@@ -77,6 +80,7 @@ void create_command(program_ptr program, Ts&&... xs) {
 
     using command_t = command<caf::actor, std::decay_t<Ts>...>;
     auto cmd = make_counted<command_t>(rp, program, std::forward<Ts>(xs)...);
+    cmd -> enqueue(); //launches the kernel
 }
 
 
@@ -85,6 +89,7 @@ private:
   caf::actor_config config_;
   std::queue<mailbox_element_ptr> mailbox_; // Mailbox for messages
   program_ptr program_;
+  nd_range dims_;
 
   void print_args() {
     std::cout << "(no args)\n";

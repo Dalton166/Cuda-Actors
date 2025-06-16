@@ -112,8 +112,8 @@ void launch_kernel(CUfunction kernel,
         nullptr                                                          // Extra options (usually null)
     ));
 
-    // Optionally synchronize stream
-    // CHECK_CUDA(cuStreamSynchronize(stream));
+    //synchronize stream TODO use caf promises as a way to remove this, or in general find a way to get ride of this 
+    CHECK_CUDA(cuStreamSynchronize(stream));
 
     // Pop context
     CHECK_CUDA(cuCtxPopCurrent(nullptr));

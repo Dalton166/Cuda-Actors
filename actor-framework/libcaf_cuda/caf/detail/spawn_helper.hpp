@@ -101,11 +101,13 @@ struct cuda_spawn_helper {
 		  actor_system * sys,
 		  actor_config&& cfg,
 		   caf::cuda::program_ptr prog,
+		   caf::cuda::nd_range dims,
                    Ts&&... xs) const {
     return actor_cast<actor>(impl::create(
 			    sys,
 			    std::move(cfg),              
 			    prog,
+			    dims,
 			    std::forward<Ts>(xs)...));
   }
 

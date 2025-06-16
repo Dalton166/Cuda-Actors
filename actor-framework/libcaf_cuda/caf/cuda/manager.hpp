@@ -94,6 +94,7 @@ public:
   template <class... Ts>
   caf::actor spawn(const char* kernel,
                    const std::string& name,
+		   nd_range dims,
                    Ts&&... xs) {
     caf::detail::cuda_spawn_helper<false, Ts...> f;
     caf::actor_config cfg;
