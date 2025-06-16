@@ -41,7 +41,7 @@ public:
     caf::actor_system * sys,
     caf::actor_config&& actor_conf,
     program_ptr program,
-    nd_range dims;
+    nd_range dims,
     Ts&&... xs
   ) {
     std::cout << "Actor has successfully spawned and was created\n";
@@ -74,7 +74,7 @@ public:
 
 
 
-template <class... Ts>
+//template <class... Ts>
 void create_command(program_ptr program, Ts&&... xs) {
     caf::response_promise rp = make_response_promise();
 
@@ -85,7 +85,7 @@ void create_command(program_ptr program, Ts&&... xs) {
 
 
 //temperary workaround for the fact that actor_facade cannot communicate with other actors so far be sure to use in, in_out or out types otherwise this will crash 
-template <class... Ts>
+//template <class... Ts>
 void run_kernel(Ts&&... xs) {
     create_command(program_, std::forward<Ts>(xs)...);
 }

@@ -60,7 +60,7 @@ public:
 	  return stream_; 
   }
 
-  CUStream getContext(int id) { 
+  CUcontext getContext(int id) { 
 	  
 	  //for right now this does the same as getContext
 	  //however I can't tell if this project will end up using multiple contexts per device so use this for now  
