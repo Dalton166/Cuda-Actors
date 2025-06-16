@@ -43,10 +43,11 @@ public:
    CAF_INTRUSIVE_PTR_FRIEND();
 
  command(caf::response_promise promise,
-          program_ptr program,
+          program_ptr program, nd_range dims,
           Ts&&... xs)
     : rp(std::move(promise)),
-      program_(std::move(program)),
+      program_(program),
+      dims_(dims),
       mem_refs(convert_data_to_args(std::forward<Ts>(xs)...)) {
   }
 
@@ -88,6 +89,7 @@ private:
   caf::response_promise rp;
   int flags = 0;
   std::tuple<mem_ptr<std::decay_t<Ts>>...> mem_refs;
+  nd_range dims_;
 
 };
 
