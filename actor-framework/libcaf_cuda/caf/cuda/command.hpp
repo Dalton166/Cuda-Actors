@@ -70,9 +70,15 @@ public:
 
 
   void enqueue() {
-    throw std::runtime_error("CUDA support disabled: command::enqueue()");
+  
+	  launch_kernel(program_,dims_,mem_refs,program_ -> get_stream_id());
+
+	  //at this point for now the kernel should be done running and we should have our data in mem_ref ready to be transfer back to the device as well as cleanup 
+	 print_and_cleanup_outputs(mem_refs);
+  
   }
 
+  //TODO if command is ever deconstructed they should free all the mem_refs they have on them 
   ~command() override = default;
 
 
@@ -84,6 +90,37 @@ private:
     int ctx_id = program_->get_context_id();
     return std::make_tuple(makeArg(dev_id, ctx_id, std::forward<Args>(args))...);
   }
+
+  template <typename Tuple, typename Func, size_t... Is>
+void for_each_tuple_impl(Tuple& t, Func&& f, std::index_sequence<Is...>) {
+  (f(std::get<Is>(t)), ...);
+}
+
+template <typename... Ts, typename Func>
+void for_each_tuple(std::tuple<Ts...>& t, Func&& f) {
+  for_each_tuple_impl(t, std::forward<Func>(f), std::index_sequence_for<Ts...>{});
+}
+
+// Iterate, print host data if access is OUT or IN_OUT, and cleanup
+template <typename... Ts>
+void print_and_cleanup_outputs(std::tuple<mem_ptr<Ts>...>& mem_refs) {
+  for_each_tuple(mem_refs, [](auto& mem) {
+    if (!mem)
+      return;
+
+    const int access = mem->access();
+    if (access == OUT || access == IN_OUT) {
+      auto host_data = mem->copy_to_host();
+      std::cout << "Output buffer (" << host_data.size() << "): ";
+      for (const auto& val : host_data) {
+        std::cout << val << " ";
+      }
+      std::cout << '\n';
+    }
+
+    mem->reset(); // Always clean up
+  });
+}
 
   program_ptr program_;
   caf::response_promise rp;
