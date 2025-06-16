@@ -66,6 +66,8 @@ public:
 int get_device_id() const { return device_id; }
 int get_context_id() const { return context_id; }
 int get_stream_id() const { return stream_id;}
+CUfunction getKernel const { return kernel_;}
+
 
 private:
  std::string name_;
