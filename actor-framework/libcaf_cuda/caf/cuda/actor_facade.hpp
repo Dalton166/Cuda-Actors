@@ -15,6 +15,7 @@
 #include "caf/cuda/nd_range.hpp"
 #include "caf/cuda/global.hpp"
 #include "caf/cuda/program.hpp"
+#include "caf/cuda/command.hpp"
 
 namespace caf::cuda {
 
@@ -82,7 +83,7 @@ void create_command(program_ptr program, Ts&&... xs) {
     caf::response_promise rp = make_response_promise();
 
     using command_t = command<caf::actor, std::decay_t<Ts>...>;
-    auto cmd = make_counted<command_t>(rp, program, std::forward<Ts>(xs)...);
+    auto cmd = make_counted<command_t>(rp, program,dims_, std::forward<Ts>(xs)...);
     cmd -> enqueue(); //launches the kernel
 }
 
@@ -110,16 +111,31 @@ private:
   }
 
 //-------------------------Basic implementation, will need to implement fully later
-  // Implement caf::resumable interface
+void handle_message(const caf::message& msg) {
+  return msg.match_elements<Ts...>([this](Ts&... unpacked) {
+    run_kernel(std::move(unpacked)...);
+    return true;
+  })
+}
+
+
+
+// Implement caf::resumable interface
   subtype_t subtype() const noexcept override {
     return subtype_t(0); // Placeholder: minimal type identifier
   }
 
   resumable::resume_result resume(scheduler*, size_t) override {
-    return resumable::done; // Minimal: actor terminates immediately
+    while (!mailbox_.empty()) {
+      auto& msg = mailbox_.front();
+      if (msg && msg->content()) {
+        handle_message(msg->content());
+      }
+      mailbox_.pop();
+    }
+    return resumable::done;
   }
-
-  void ref_resumable() const noexcept override {
+void ref_resumable() const noexcept override {
     // Minimal: do nothing or call ref_counted::ref()
   }
 
