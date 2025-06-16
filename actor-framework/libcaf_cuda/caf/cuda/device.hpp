@@ -52,7 +52,7 @@ public:
   int getStreamId() const { return streamId_; }
   int getContextId() const { return contextId_; }
   CUstream getStream() const { return stream_; }
-  CUStream getStream(int id) { 
+  CUstream getStream(int id) { 
 	  
 	  //for right now this does the same as getStream
 	  //however it is likely that this project will expand into

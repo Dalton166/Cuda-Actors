@@ -31,9 +31,9 @@
 
 
 //argument tags
-struct input_tag{};
-struct output_tag{};
-struct input_output_tag();
+struct input_tag {};
+struct output_tag {};
+struct input_output_tag {};
 
 
 //struct wrappers to hold store buffers to declare them as in or out 
