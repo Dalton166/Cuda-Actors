@@ -7,6 +7,7 @@
 #include <caf/logger.hpp>
 #include <cuda.h>
 #include "caf/cuda/types.hpp"
+#include "caf/cuda/nd_range.hpp"
 #include "caf/cuda/cuda-actors.hpp"
 #include <nvrtc.h>
 
