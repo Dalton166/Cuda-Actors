@@ -108,6 +108,7 @@ public:
   caf::actor_system& system() { return system_; }
 
   CUcontext get_context_by_id(int device_id, int context_id);
+  device_ptr find_device(int id);
 
 private:
   explicit manager(caf::actor_system& sys)
@@ -121,7 +122,6 @@ private:
   bool compile_nvrtc_program(const char* source, CUdevice device, std::vector<char>& ptx_out);
   std::string get_computer_architecture_string(CUdevice device);
 
-  device_ptr find_device(int id);
 
   static manager* instance_;
   static std::mutex mutex_;

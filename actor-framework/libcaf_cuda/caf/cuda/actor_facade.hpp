@@ -21,10 +21,14 @@ namespace caf::cuda {
 template <bool PassConfig, class... Ts>
 class actor_facade : public caf::local_actor, public caf::resumable {
 public:
-  static caf::actor create(
+  
+	
+
+ static caf::actor create(
     caf::actor_system& sys,
     caf::actor_config&& actor_conf,
     program_ptr program,
+    nd_range dims,
     Ts&&... xs
   ) {
     std::cout << "Actor has successfully spawned and was created\n";
@@ -34,6 +38,7 @@ public:
       &sys,
       std::move(actor_conf),
       std::move(program),
+      std::move(dims),
       std::forward<Ts>(xs)...);
   }
 

@@ -517,4 +517,6 @@ CMakeFiles/test.dir/main.test.cpp.o: \
  /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/detail/spawn_helper.hpp \
  /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/device.hpp \
  /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/opencl_err.hpp \
- /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/platform.hpp
+ /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/platform.hpp \
+ /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/all.hpp \
+ /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/utility.hpp

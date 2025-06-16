@@ -72,7 +72,7 @@ template <typename T>
 inline in<T> create_in_arg(std::vector<T> buffer) {
 
 	in<T> arg;
-	arg.buffer = buffer
+	arg.buffer = buffer;
 	return arg;
 }
 
@@ -80,7 +80,7 @@ template <typename T>
 inline in_out<T> create_in_out_arg(std::vector<T> buffer) {
 
 	in_out<T> arg;
-	arg.buffer = buffer
+	arg.buffer = buffer;
 	return arg;
 }
 
@@ -88,7 +88,7 @@ template <typename T>
 inline out<T> create_out_arg(std::vector<T> buffer) {
 
 	out<T> arg;
-	arg.buffer = buffer
+	arg.buffer = buffer;
 	return arg;
 }
 
