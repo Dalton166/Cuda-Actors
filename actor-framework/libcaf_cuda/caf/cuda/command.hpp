@@ -40,7 +40,7 @@ template <class Actor, class... Ts>
 class command : public ref_counted {
 public:
   using result_types = caf::detail::type_list<Ts...>;
-
+   CAF_INTRUSIVE_PTR_FRIEND();
 
  command(caf::response_promise promise,
           program_ptr program,
@@ -53,6 +53,7 @@ public:
 
 
 
+ /*
   command(caf::response_promise,
           caf::strong_actor_ptr,
           std::vector<void*>,
@@ -64,6 +65,8 @@ public:
           nd_range) {
     throw std::runtime_error("CUDA support disabled: command ctor");
   }
+  */
+
 
   void enqueue() {
     throw std::runtime_error("CUDA support disabled: command::enqueue()");
