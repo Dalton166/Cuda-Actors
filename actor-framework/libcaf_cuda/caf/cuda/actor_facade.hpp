@@ -71,13 +71,12 @@ public:
 
 
 
+template <class... Ts>
+void create_command(program_ptr program, Ts&&... xs) {
+    caf::response_promise rp = make_response_promise();
 
-void create_command(program_ptr program,Ts&& xs) {
-
-	//auto mem_refs = convert_data_to_args(Ts&&... args);
-	caf::response_promise rp = make_response_promise();
-
-	command{};
+    using command_t = command<caf::actor, std::decay_t<Ts>...>;
+    auto cmd = make_counted<command_t>(rp, program, std::forward<Ts>(xs)...);
 }
 
 
