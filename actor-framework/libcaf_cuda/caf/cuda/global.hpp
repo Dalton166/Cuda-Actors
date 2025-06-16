@@ -6,7 +6,7 @@
 
 #include <caf/logger.hpp>
 #include <cuda.h>
-#include "caf/cuda/types.hpp"
+#include "caf/cuda/types.hpp" //be sure to include any caf-cuda headers after this one
 #include "caf/cuda/nd_range.hpp"
 #include "caf/cuda/cuda-actors.hpp"
 #include <nvrtc.h>
