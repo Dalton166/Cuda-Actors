@@ -56,6 +56,17 @@ struct in_out {
 };
 
 
+// Helper to get raw type inside wrapper
+template <typename T>
+struct raw_type {
+  using type = typename T::value_type;
+};
+
+template <typename T>
+using raw_t = typename raw_type<T>::type;
+
+
+
 //helper function to check errors
 void inline check(CUresult result, const char* msg) {
     if (result != CUDA_SUCCESS) {
