@@ -53,7 +53,7 @@ void actor_facade_launch_kernel_test(caf::actor_system& sys) {
     caf::cuda::nd_range dim(1,1,1,1,1,1);
 
     // Spawn the CUDA actor
-    auto gpuActor = mgr.spawn(kernel_code, "compare_strings", dim);
+    auto gpuActor = mgr.spawn(kernel_code, "compare_strings", dim,in<char>{},in<char>{},out<int>{},in<int>{});
 
     // Create the necessary input/output args
     auto arg1 = caf::cuda::create_in_arg(str1);
