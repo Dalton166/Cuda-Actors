@@ -9,6 +9,7 @@
 #include "caf/cuda/types.hpp" //be sure to include any caf-cuda headers after this one
 #include "caf/cuda/nd_range.hpp"
 #include "caf/cuda/cuda-actors.hpp"
+#include "caf/cuda/utility.hpp"
 #include <nvrtc.h>
 
 //a strange fix required in order to get the .so files to become viewable for binaries
