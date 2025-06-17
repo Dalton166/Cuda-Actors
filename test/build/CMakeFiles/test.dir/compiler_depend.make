@@ -576,10 +576,12 @@ CMakeFiles/test.dir/main.test.cpp.o: ../main.test.cpp \
   /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/cuda-actors.hpp \
   /usr/local/cuda/include/nvrtc.h \
   /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/program.hpp \
+  /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/command.hpp \
+  /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/arguments.hpp \
+  /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/opencl_err.hpp \
   /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/manager.hpp \
   /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/detail/spawn_helper.hpp \
   /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/device.hpp \
-  /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/opencl_err.hpp \
   /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/platform.hpp \
   /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/all.hpp \
   /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/utility.hpp
@@ -591,11 +593,13 @@ CMakeFiles/test.dir/main.test.cpp.o: ../main.test.cpp \
 
 /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/platform.hpp:
 
-/student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/opencl_err.hpp:
-
 /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/device.hpp:
 
 /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/detail/spawn_helper.hpp:
+
+/student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/opencl_err.hpp:
+
+/student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/arguments.hpp:
 
 /usr/local/cuda/include/nvrtc.h:
 
@@ -1582,6 +1586,8 @@ CMakeFiles/test.dir/main.test.cpp.o: ../main.test.cpp \
 /student/nqr159/cuda-actors/actor-framework/libcaf_core/caf/detail/arg_wrapper.hpp:
 
 /student/nqr159/cuda-actors/actor-framework/libcaf_core/caf/detail/scope_guard.hpp:
+
+/student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/command.hpp:
 
 /student/nqr159/cuda-actors/actor-framework/libcaf_core/caf/format_string_with_location.hpp:
 

@@ -6,6 +6,7 @@
 
 #include <caf/message.hpp>
 
+/*
 namespace caf::cuda {
 
 // Tags
@@ -59,3 +60,4 @@ struct priv {
 };
 
 } // namespace caf::cuda
+*/

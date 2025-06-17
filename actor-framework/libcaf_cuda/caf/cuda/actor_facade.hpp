@@ -115,7 +115,7 @@ void handle_message(const caf::message& msg) {
   return msg.match_elements<Ts...>([this](Ts&... unpacked) {
     run_kernel(std::move(unpacked)...);
     return true;
-  })
+  });
 }
 
 
