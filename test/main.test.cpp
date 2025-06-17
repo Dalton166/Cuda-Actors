@@ -12,7 +12,18 @@
 #include "caf/cuda/nd_range.hpp"
 #include "caf/cuda/all.hpp"
 #include "caf/cuda/utility.hpp"
+#include <caf/type_id.hpp>
 
+
+CAF_BEGIN_TYPE_ID_BLOCK(cuda_test, caf::first_custom_type_id)
+
+  CAF_ADD_TYPE_ID(cuda_test, (std::vector<char>))
+  CAF_ADD_TYPE_ID(cuda_test, (std::vector<int>))
+  CAF_ADD_TYPE_ID(cuda_test, (in<int>))
+  CAF_ADD_TYPE_ID(cuda_test, (in<char>))
+  CAF_ADD_TYPE_ID(cuda_test, (out<int>))
+
+CAF_END_TYPE_ID_BLOCK(cuda_test)
 
 //using namespace caf;
 
@@ -52,7 +63,10 @@ void actor_facade_launch_kernel_test(caf::actor_system& sys) {
 
     // Send a message with the args to the actor
     // The actor_facade is expected to handle this message and call run_kernel internally
-    anon_mail(gpuActor, arg1, arg2, arg3, arg4);
+     anon_mail(gpuActor, arg1, arg2, arg3, arg4);
+     //anon_mail(gpuActor, str1, str2, result, length);
+     //anon_mail(gpuActor, std::vector<char>{str1}, std::vector<char>{str2}, std::vector<int>{result}, length);
+
 
     // Optionally, you can wait for a response or schedule followup steps
 }
