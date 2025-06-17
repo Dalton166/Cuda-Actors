@@ -27,6 +27,7 @@
 #include <caf/logger.hpp>
 #include <caf/raise_error.hpp>
 #include <caf/response_promise.hpp>
+#include <caf/intrusive_ptr.hpp>
 #include <caf/detail/type_list.hpp>
 
 #include "caf/cuda/global.hpp"
@@ -39,8 +40,7 @@ namespace caf::cuda {
 template <class Actor, class... Ts>
 class command : public ref_counted {
 public:
-  using result_types = caf::detail::type_list<Ts...>;
-   CAF_INTRUSIVE_PTR_FRIEND();
+//  using result_types = caf::detail::type_list<Ts...>;
 
  command(caf::response_promise promise,
           program_ptr program, nd_range dims,
@@ -50,23 +50,6 @@ public:
       dims_(dims),
       mem_refs(convert_data_to_args(std::forward<Ts>(xs)...)) {
   }
-
-
-
-
- /*
-  command(caf::response_promise,
-          caf::strong_actor_ptr,
-          std::vector<void*>,
-          std::vector<void*>,
-          std::vector<void*>,
-          std::vector<size_t>,
-          caf::message,
-          std::tuple<Ts...>,
-          nd_range) {
-    throw std::runtime_error("CUDA support disabled: command ctor");
-  }
-  */
 
 
   void enqueue() {
@@ -80,6 +63,23 @@ public:
 
   //TODO if command is ever deconstructed they should free all the mem_refs they have on them 
   ~command() override = default;
+
+
+  // Implementation of intrusive_ptr_add_ref increments ref count
+void intrusive_ptr_add_ref(command* ptr) {
+  ++(ptr->ref_count);
+  std::cout << "intrusive_ptr_add_ref: ref_count=" << ptr->ref_count.load() << "\n";
+}
+
+// Implementation of intrusive_ptr_release decrements ref count and deletes if zero
+void intrusive_ptr_release(command* ptr) {
+  if (--(ptr->ref_count) == 0) {
+    std::cout << "intrusive_ptr_release: deleting command\n";
+    delete ptr;
+  } else {
+    std::cout << "intrusive_ptr_release: ref_count=" << ptr->ref_count.load() << "\n";
+  }
+}
 
 
 private:
@@ -96,13 +96,12 @@ void for_each_tuple_impl(Tuple& t, Func&& f, std::index_sequence<Is...>) {
   (f(std::get<Is>(t)), ...);
 }
 
-template <typename... Ts, typename Func>
-void for_each_tuple(std::tuple<Ts...>& t, Func&& f) {
-  for_each_tuple_impl(t, std::forward<Func>(f), std::index_sequence_for<Ts...>{});
+template <typename... Is, typename Func>
+void for_each_tuple(std::tuple<Is...>& t, Func&& f) {
+  for_each_tuple_impl(t, std::forward<Func>(f), std::index_sequence_for<Is...>{});
 }
 
 // Iterate, print host data if access is OUT or IN_OUT, and cleanup
-template <typename... Ts>
 void print_and_cleanup_outputs(std::tuple<mem_ptr<Ts>...>& mem_refs) {
   for_each_tuple(mem_refs, [](auto& mem) {
     if (!mem)
@@ -127,7 +126,7 @@ void print_and_cleanup_outputs(std::tuple<mem_ptr<Ts>...>& mem_refs) {
   int flags = 0;
   std::tuple<mem_ptr<std::decay_t<Ts>>...> mem_refs;
   nd_range dims_;
-
+ std::atomic<int> ref_count{0};
 };
 
 } // namespace caf::cuda
