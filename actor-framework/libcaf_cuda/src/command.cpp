@@ -1,4 +1,3 @@
-#include "command.hpp"
 
 #include <iostream>
 
@@ -6,6 +5,7 @@
 #include "caf/cuda/manager.hpp"
 #include "caf/cuda/program.hpp"
 #include "caf/cuda/device.hpp"
+#include "caf/cuda/command.hpp"
 
 namespace caf::cuda {
 
