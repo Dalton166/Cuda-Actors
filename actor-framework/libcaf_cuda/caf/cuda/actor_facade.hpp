@@ -33,7 +33,7 @@ public:
     Ts&&... xs
   ) {
     std::cout << "Actor has successfully spawned and was created\n";
-    return make_actor<actor_facade, actor>(
+      return caf::make_actor<actor_facade<PassConfig, std::decay_t<Ts>...>, caf::actor>(
       sys.next_actor_id(),
       sys.node(),
       &sys,
@@ -44,24 +44,23 @@ public:
   }
 
   static caf::actor create(
-    caf::actor_system * sys,
-    caf::actor_config&& actor_conf,
-    program_ptr program,
-    nd_range dims,
-    Ts&&... xs
-  ) {
-    std::cout << "Actor has successfully spawned and was created\n";
-    return make_actor<actor_facade, actor>(
-      sys ->next_actor_id(),
-      sys ->node(),
-      sys,
-      std::move(actor_conf),
-      std::move(program),
-      std::move(dims),
-      std::forward<Ts>(xs)...);
-  }
-
-
+  caf::actor_system* sys,
+  caf::actor_config&& actor_conf,
+  program_ptr program,
+  nd_range dims,
+  Ts&&... xs
+) {
+  std::cout << "Actor has successfully spawned and was created\n";
+  return caf::make_actor<actor_facade<PassConfig, std::decay_t<Ts>...>, caf::actor>(
+    sys->next_actor_id(),
+    sys->node(),
+    sys,
+    std::move(actor_conf),
+    std::move(program),
+    std::move(dims),
+    std::forward<Ts>(xs)...
+  );
+}
   /*
   actor_facade(caf::actor_config& cfg) : caf::local_actor(cfg), caf::resumable() {
     throw std::runtime_error("CUDA support disabled: actor_facade ctor");
