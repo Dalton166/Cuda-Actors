@@ -113,7 +113,7 @@ private:
 //-------------------------Basic implementation, will need to implement fully later
 void handle_message(const caf::message& msg) {
   return msg.match_elements<Ts...>([this](Ts&... unpacked) {
-    run_kernel(std::move(unpacked)...);
+    run_kernel(unpacked ...);
     return true;
   });
 }
