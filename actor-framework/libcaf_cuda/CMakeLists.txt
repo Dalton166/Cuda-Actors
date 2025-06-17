@@ -21,6 +21,7 @@ set(LIBCAF_CUDA_SRCS
   src/opencl_err.cpp
   src/platform.cpp
   src/program.cpp
+  src/command.cpp
 )
 
 # -- add targets ---------------------------------------------------------------
