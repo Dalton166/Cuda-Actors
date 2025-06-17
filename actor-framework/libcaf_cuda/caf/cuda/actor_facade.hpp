@@ -118,33 +118,24 @@ private:
     return unpack_and_run(msg, std::index_sequence_for<Ts...>{});
   }
 
-  // Unpack message args and wrap in order
-  template <std::size_t... Is>
-  bool unpack_and_run(const message& msg, std::index_sequence<Is...>) {
-    // Extract raw values
-    auto unpacked = std::make_tuple(msg.get_as<raw_t<Ts>>(Is)...);
+template <std::size_t... Is>
+bool unpack_and_run(const message& msg, std::index_sequence<Is...>) {
+  // Extract raw values (e.g., char, int)
+  auto unpacked = std::make_tuple(msg.get_as<raw_t<Ts>>(Is)...);
 
-    // Check all extraction succeeded
-    if (!((std::get<Is>(unpacked).has_value()) && ...)) {
-      std::cerr << "Failed to extract all message elements\n";
-      return false;
-    }
+  // Optional: no need to check has_value() if get_as returns raw values
+  // Assume msg.match_elements<raw_t<Ts>...>() already checked
 
-    // Wrap raw values into their wrappers in order
-    auto wrapped = std::make_tuple(
-      ([&]() {
-        Ts w;
-        w.buffer.push_back(std::get<Is>(unpacked).value());
-        return w;
-      })()...
-    );
+  // Wrap raw values into wrapper types
+  auto wrapped = std::make_tuple(
+    Ts(std::get<Is>(unpacked))...  // Requires constructor Ts(raw_t<Ts>)
+  );
 
-    // For demo, print contents:
-    print_wrapped(std::get<Is>(wrapped)...);
+  // For demo, print contents:
+  print_wrapped(std::get<Is>(wrapped)...);
 
-    return true;
-  }
-
+  return true;
+}
   void print_wrapped() {
     std::cout << "(no args)\n";
   }
