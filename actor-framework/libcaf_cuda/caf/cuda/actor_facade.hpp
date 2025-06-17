@@ -22,9 +22,6 @@ namespace caf::cuda {
 template <bool PassConfig, class... Ts>
 class actor_facade : public caf::local_actor, public caf::resumable {
 public:
-  
-	
-
  static caf::actor create(
     caf::actor_system& sys,
     caf::actor_config&& actor_conf,
@@ -89,7 +86,7 @@ void create_command(program_ptr program, Ts&&... xs) {
 
 //temperary workaround for the fact that actor_facade cannot communicate with other actors so far be sure to use in, in_out or out types otherwise this will crash 
 //template <class... Ts>
-void run_kernel(Ts&&... xs) {
+void run_kernel(Ts&... xs) {
     create_command(program_, std::forward<Ts>(xs)...);
 }
 
@@ -110,15 +107,56 @@ private:
   }
 
 //-------------------------Basic implementation, will need to implement fully later
-void handle_message(const caf::message& msg) {
-  return msg.match_elements<Ts...>([this](Ts&... unpacked) {
-    run_kernel(unpacked ...);
+  bool handle_message(const message& msg) {
+    if (!msg.match_elements<raw_t<Ts>...>()) {
+      std::cerr << "Message argument types do not match wrapper types!\n";
+      return false;
+    }
+
+    // Extract raw values from message
+    // Need index sequence
+    return unpack_and_run(msg, std::index_sequence_for<Ts...>{});
+  }
+
+  // Unpack message args and wrap in order
+  template <std::size_t... Is>
+  bool unpack_and_run(const message& msg, std::index_sequence<Is...>) {
+    // Extract raw values
+    auto unpacked = std::make_tuple(msg.get_as<raw_t<Ts>>(Is)...);
+
+    // Check all extraction succeeded
+    if (!((std::get<Is>(unpacked).has_value()) && ...)) {
+      std::cerr << "Failed to extract all message elements\n";
+      return false;
+    }
+
+    // Wrap raw values into their wrappers in order
+    auto wrapped = std::make_tuple(
+      ([&]() {
+        Ts w;
+        w.buffer.push_back(std::get<Is>(unpacked).value());
+        return w;
+      })()...
+    );
+
+    // For demo, print contents:
+    print_wrapped(std::get<Is>(wrapped)...);
+
     return true;
-  });
-}
+  }
 
+  void print_wrapped() {
+    std::cout << "(no args)\n";
+  }
 
-
+  template <typename T, typename... Rest>
+  void print_wrapped(T&& first, Rest&&... rest) {
+    std::cout << "Buffer contents: ";
+    for (auto& v : first.buffer)
+      std::cout << v << ' ';
+    std::cout << '\n';
+    print_wrapped(std::forward<Rest>(rest)...);
+  }
 // Implement caf::resumable interface
   subtype_t subtype() const noexcept override {
     return subtype_t(0); // Placeholder: minimal type identifier
