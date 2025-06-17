@@ -39,15 +39,28 @@ struct input_output_tag {};
 //struct wrappers to hold store buffers to declare them as in or out 
 template <typename T>
 struct in {
-    using value_type = T;
-    std::vector<T> buffer;
+  std::vector<T> buffer;
+
+  in() = default;
+
+  // Construct from a single raw value by pushing it into buffer
+  in(T val) {
+    buffer.push_back(val);
+  }
 };
 
 template <typename T>
 struct out {
-    using value_type = T;
-    std::vector<T> buffer;
+  std::vector<T> buffer;
+
+  out() = default;
+
+  out(T val) {
+    buffer.push_back(val);
+  }
 };
+
+
 
 template <typename T>
 struct in_out {
@@ -59,7 +72,23 @@ struct in_out {
 // Helper to get raw type inside wrapper
 template <typename T>
 struct raw_type {
-  using type = typename T::value_type;
+  using type = T;
+};
+
+// specialization for your wrapper types
+template <typename T>
+struct raw_type<in<T>> {
+  using type = T;
+};
+
+template <typename T>
+struct raw_type<out<T>> {
+  using type = T;
+};
+
+template <typename T>
+struct raw_type<in_out<T>> {
+  using type = T;
 };
 
 template <typename T>
