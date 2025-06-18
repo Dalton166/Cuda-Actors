@@ -92,6 +92,8 @@ void launch_kernel(CUfunction kernel,
                    int context_id) {
     std::lock_guard<std::mutex> lock(stream_mutex); // Automatically released at end of scope
 
+    std::cout << "Hello my name is carlos\n";
+
     CUstream stream = getStream(stream_id);
     CUcontext ctx = getContext(context_id);
 
