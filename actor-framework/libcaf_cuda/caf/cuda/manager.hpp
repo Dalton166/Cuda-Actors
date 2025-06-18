@@ -39,7 +39,8 @@ public:
   static void init(caf::actor_system& sys) {
     std::lock_guard<std::mutex> guard(mutex_);
     if (instance_) {
-      throw std::runtime_error("CUDA manager already initialized");
+      	return;
+      //throw std::runtime_error("CUDA manager already initialized");
     }
     CHECK_CUDA(cuInit(0));
     instance_ = new manager(sys);
