@@ -73,10 +73,11 @@ public:
     throw std::runtime_error("CUDA support disabled: manager::find_device_if");
   }
 
+  /*
   program_ptr create_program(const std::string& source,
                              const char* options,
                              device_ptr dev);
-
+*/
   program_ptr create_program(const char* kernel,
                              const std::string& name,
                              device_ptr dev);
