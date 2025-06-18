@@ -48,8 +48,22 @@ public:
 }
 
 device_ptr getDevice(int id) {
-	return devices_[id];
+  /*
+  std::cout << "Requested device ID: " << id << "\n";
+  std::cout << "Available devices: " << devices_.size() << "\n";
+
+  for (size_t i = 0; i < devices_.size(); ++i) {
+    std::cout << "  Device[" << i << "] = " << (devices_[i] ? "initialized" : "nullptr") << "\n";
+  }
+   */
+  if (id < 0 || static_cast<size_t>(id) >= devices_.size()) {
+    std::cerr << "getDevice: invalid device ID " << id << "\n";
+    throw std::out_of_range("Invalid device ID");
+  }
+
+  return devices_[id];
 }
+
 
 
 private:
