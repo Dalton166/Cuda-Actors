@@ -20,6 +20,7 @@ inline CUcontext getContextById(int device_id, int context_id) {
 
 
 
+/*
 //helper function to launch a kernel for the command class 
 template <typename ... Ts>
 inline void launch_kernel(program_ptr program,
@@ -36,7 +37,7 @@ inline void launch_kernel(program_ptr program,
 	dev -> launch_kernel(kernel,range,args,stream_id,context_id);
 
 }
-
+*/
 
 
 template< typename T>

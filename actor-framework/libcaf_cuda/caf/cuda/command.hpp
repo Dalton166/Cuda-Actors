@@ -34,6 +34,10 @@
 #include "caf/cuda/nd_range.hpp"
 #include "caf/cuda/arguments.hpp"
 #include "caf/cuda/opencl_err.hpp"
+#include "caf/cuda/manager.hpp"
+#include "caf/cuda/device.hpp"
+//#include "caf/cuda/utility.hpp"
+
 
 namespace caf::cuda {
 
@@ -119,6 +123,18 @@ void print_and_cleanup_outputs(std::tuple<mem_ptr<Ts>...>& mem_refs) {
 
     mem->reset(); // Always clean up
   });
+}
+void launch_kernel(program_ptr program,
+                   const caf::cuda::nd_range& range,
+                   std::tuple<mem_ptr<Ts> ...> args,
+		   int stream_id) {
+
+	int device_id = program -> get_device_id();
+	int context_id = program -> get_context_id();
+	CUfunction kernel = program -> get_kernel();
+	auto& mgr = manager::get();
+	device_ptr dev =  mgr.find_device(device_id);
+	dev -> launch_kernel(kernel,range,args,stream_id,context_id);
 }
 
   program_ptr program_;

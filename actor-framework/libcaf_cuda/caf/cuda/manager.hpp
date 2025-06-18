@@ -12,11 +12,11 @@
 
 #include "caf/detail/spawn_helper.hpp"
 
+#include "caf/cuda/global.hpp"
 #include "caf/cuda/device.hpp"
 #include "caf/cuda/program.hpp"
 #include "caf/cuda/actor_facade.hpp"
 #include "caf/cuda/opencl_err.hpp"
-#include "caf/cuda/global.hpp"
 #include "caf/cuda/platform.hpp"
 
 namespace caf::cuda {

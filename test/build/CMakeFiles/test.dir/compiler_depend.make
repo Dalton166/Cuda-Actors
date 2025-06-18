@@ -577,15 +577,18 @@ CMakeFiles/test.dir/main.test.cpp.o: ../main.test.cpp \
   /usr/local/cuda/include/nvrtc.h \
   /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/program.hpp \
   /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/command.hpp \
-  /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/arguments.hpp \
-  /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/opencl_err.hpp \
   /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/manager.hpp \
   /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/detail/spawn_helper.hpp \
   /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/device.hpp \
+  /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/opencl_err.hpp \
   /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/platform.hpp \
   /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/all.hpp \
-  /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/utility.hpp
+  /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/utility.hpp \
+  /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/detail/test.hpp \
+  /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/mem_ref.hpp
 
+
+/student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/mem_ref.hpp:
 
 /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/utility.hpp:
 
@@ -593,13 +596,11 @@ CMakeFiles/test.dir/main.test.cpp.o: ../main.test.cpp \
 
 /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/platform.hpp:
 
+/student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/opencl_err.hpp:
+
 /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/device.hpp:
 
 /student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/detail/spawn_helper.hpp:
-
-/student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/opencl_err.hpp:
-
-/student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/cuda/arguments.hpp:
 
 /usr/local/cuda/include/nvrtc.h:
 
@@ -638,6 +639,8 @@ CMakeFiles/test.dir/main.test.cpp.o: ../main.test.cpp \
 /student/nqr159/cuda-actors/actor-framework/libcaf_core/caf/init_global_meta_objects.hpp:
 
 /student/nqr159/cuda-actors/actor-framework/libcaf_core/caf/exec_main.hpp:
+
+/student/nqr159/cuda-actors/actor-framework/libcaf_cuda/caf/detail/test.hpp:
 
 /student/nqr159/cuda-actors/actor-framework/libcaf_core/caf/caf_main.hpp:
 

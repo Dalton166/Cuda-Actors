@@ -123,6 +123,7 @@ bool unpack_and_run(const message& msg, std::index_sequence<Is...>) {
   // Extract raw values (e.g., char, int)
   auto unpacked = std::make_tuple(msg.get_as<raw_t<Ts>>(Is)...);
 
+  std::cout << "Hi kids\n";
   // Optional: no need to check has_value() if get_as returns raw values
   // Assume msg.match_elements<raw_t<Ts>...>() already checked
 
@@ -161,6 +162,7 @@ bool unpack_and_run(const message& msg, std::index_sequence<Is...>) {
       }
       mailbox_.pop();
     }
+      std::cout << "Hello world\n";
     return resumable::done;
   }
 void ref_resumable() const noexcept override {
@@ -183,6 +185,7 @@ void ref_resumable() const noexcept override {
   void launch(scheduler* where, bool lazy, bool interruptible) override {
     if (!lazy && where) {
       where->schedule(this); // Schedule the actor (works since we inherit from resumable)
+    
     }
   }
 

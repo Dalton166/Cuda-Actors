@@ -8,6 +8,7 @@ namespace caf::cuda {
 
 
 
+
 device_ptr manager::find_device(std::size_t) const {
   throw std::runtime_error("OpenCL support disabled: manager::find_device");
 }

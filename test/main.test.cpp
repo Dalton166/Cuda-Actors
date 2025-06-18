@@ -13,7 +13,7 @@
 #include "caf/cuda/all.hpp"
 #include "caf/cuda/utility.hpp"
 #include <caf/type_id.hpp>
-
+#include "caf/detail/test.hpp"
 
 CAF_BEGIN_TYPE_ID_BLOCK(cuda_test, caf::first_custom_type_id)
 
@@ -63,8 +63,8 @@ void actor_facade_launch_kernel_test(caf::actor_system& sys) {
 
     // Send a message with the args to the actor
     // The actor_facade is expected to handle this message and call run_kernel internally
-     anon_mail(gpuActor, arg1, arg2, arg3, arg4);
-     //anon_mail(gpuActor, str1, str2, result, length);
+     //anon_mail(gpuActor, arg1, arg2, arg3, arg4);
+     anon_mail(gpuActor, str1, str2, result, length);
      //anon_mail(gpuActor, std::vector<char>{str1}, std::vector<char>{str2}, std::vector<int>{result}, length);
 
 
@@ -99,16 +99,25 @@ void actor_facade_spawn_test(caf::actor_system& sys) {
 */
 
 
+
+
+
+
 void caf_main(caf::actor_system& sys) {
 
 	caf::cuda::manager::init(sys);
 //	actor_facade_spawn_test(sys);
 
-      actor_facade_launch_kernel_test(sys);
+      //actor_facade_launch_kernel_test(sys);
+       test_main(sys);
 	
 //	return 0;
 }
 
 
-CAF_MAIN()
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in<char>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in<int>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(out<int>)
+
+CAF_MAIN(caf::id_block::cuda_test)
 
