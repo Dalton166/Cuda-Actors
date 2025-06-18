@@ -34,7 +34,7 @@
 #include "caf/cuda/nd_range.hpp"
 #include "caf/cuda/arguments.hpp"
 #include "caf/cuda/opencl_err.hpp"
-#include "caf/cuda/manager.hpp"
+//#include "caf/cuda/manager.hpp"
 #include "caf/cuda/device.hpp"
 //#include "caf/cuda/utility.hpp"
 
@@ -132,8 +132,8 @@ void launch_kernel(program_ptr program,
 	int device_id = program -> get_device_id();
 	int context_id = program -> get_context_id();
 	CUfunction kernel = program -> get_kernel();
-	auto& mgr = manager::get();
-	device_ptr dev =  mgr.find_device(device_id);
+	//auto& mgr = manager::get();
+	device_ptr dev =  program -> get_device();
 	dev -> launch_kernel(kernel,range,args,stream_id,context_id);
 }
 

@@ -11,33 +11,9 @@
 #include <caf/message.hpp>
 
 #include "caf/cuda/nd_range.hpp"
+#include "caf/cuda/device.hpp"
 
 namespace caf::cuda {
-
-/*
-template <class... Ts>
-class command : public caf::ref_counted {
-public:
-  command(caf::response_promise,
-          caf::strong_actor_ptr,
-          std::vector<void*>,
-          std::vector<void*>,
-          std::vector<void*>,
-          std::vector<void*>,
-          std::vector<size_t>,
-          caf::message,
-          std::tuple<Ts...>,
-          nd_range) {
-    throw std::runtime_error("CUDA support disabled: command ctor");
-  }
-
-  void enqueue() {
-    throw std::runtime_error("CUDA support disabled: command::enqueue()");
-  }
-};
-
-*/
-
 class program : public caf::ref_counted {
 public:
   program(void*, void*, void*, std::map<std::string, void*>) {
@@ -46,7 +22,7 @@ public:
 
   ~program() override = default;
 
-  program(std::string name,int device_id,int context_id,int stream_id, std::vector<char> ptx) {
+  program(std::string name,device_ptr device,int device_id,int context_id,int stream_id, std::vector<char> ptx) {
 
 	  name_ = name;
   	CUmodule module;
@@ -59,6 +35,7 @@ public:
     CHECK_CUDA(cuModuleGetFunction(&kernel, module, name.c_str()));
   
     kernel_ = kernel;
+    device_ = device;
     this -> device_id = device_id;
     this -> context_id = context_id;
     this -> stream_id = stream_id;
@@ -70,7 +47,7 @@ int get_device_id() const { return device_id; }
 int get_context_id() const { return context_id; }
 int get_stream_id() const { return stream_id;}
 CUfunction get_kernel() const { return kernel_;}
-
+device_ptr get_device() const {return device_;}
 
 private:
  std::string name_;
@@ -80,6 +57,7 @@ private:
  int device_id;
  int context_id;
  int stream_id;
+ device_ptr device_; //the device it was compiled on, this is not ideal but it is neccesary to break a circular dependency
 };
 
 using program_ptr = caf::intrusive_ptr<program>;
