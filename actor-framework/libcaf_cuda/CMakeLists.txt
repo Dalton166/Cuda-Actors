@@ -22,6 +22,7 @@ set(LIBCAF_CUDA_SRCS
   src/platform.cpp
   src/program.cpp
   src/command.cpp
+  src/test.cpp
 )
 
 # -- add targets ---------------------------------------------------------------
