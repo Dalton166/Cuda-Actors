@@ -168,7 +168,7 @@ private:
   
    // For scratch (output) buffers with no initial copy
   template <typename T>
-  mem_ref<T> scratch_argument(in_out<T> arg) {
+  mem_ref<T> scratch_argument(out<T> arg) {
     size_t size = arg.buffer.size();
     int access = OUT;
     CUdeviceptr device_buffer = 0;
