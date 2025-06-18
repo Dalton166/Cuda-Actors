@@ -99,7 +99,8 @@ void launch_kernel(CUfunction kernel,
     CHECK_CUDA(cuCtxPushCurrent(ctx));
 
     // Extract kernel arguments (assumed to return void** suitable for cuLaunchKernel)
-    void** kernel_args = extract_kernel_args(args);
+    auto kernel_arg_vec = extract_kernel_args(args);
+    void** kernel_args = kernel_arg_vec.data();
 
     // Launch the kernel using nd_range for dimensions
     CHECK_CUDA(cuLaunchKernel(
