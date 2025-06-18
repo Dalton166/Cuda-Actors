@@ -18,4 +18,4 @@ void test_program(caf::actor_system& sys);
 void test_mem_ref(caf::actor_system& sys);
 void test_command(caf::actor_system& sys);
 void test_actor_facade(caf::actor_system& sys);
-void test_main(caf::actor_system& sys);
+void CAF_CUDA_EXPORT(test_main(caf::actor_system& sys));
