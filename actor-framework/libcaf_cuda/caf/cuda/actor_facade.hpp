@@ -78,7 +78,7 @@ actor_facade(caf::actor_config&& cfg, program_ptr prog, nd_range nd, Ts&&... xs)
 void create_command(program_ptr program, Ts&&... xs) {
     caf::response_promise rp = make_response_promise();
 
-    using command_t = command<caf::actor, std::decay_t<Ts>...>;
+    using command_t = command<caf::actor, raw_t<Ts>...>;
     auto cmd = make_counted<command_t>(rp, program,dims_, std::forward<Ts>(xs)...);
     cmd -> enqueue(); //launches the kernel
 }

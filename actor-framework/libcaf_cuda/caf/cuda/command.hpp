@@ -126,7 +126,7 @@ void print_and_cleanup_outputs(std::tuple<mem_ptr<Ts>...>& mem_refs) {
 }
 void launch_kernel(program_ptr program,
                    const caf::cuda::nd_range& range,
-                   std::tuple<mem_ptr<Ts> ...> args,
+                   std::tuple<mem_ptr<raw_t<Ts>> ...> args,
 		   int stream_id) {
 
 	int device_id = program -> get_device_id();
