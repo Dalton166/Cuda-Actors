@@ -66,25 +66,44 @@ device_ptr getDevice(int id) {
 
 
 
-private:platform() {
-    int device_count = 0;
-    check(cuDeviceGetCount(&device_count), "cuDeviceGetCount");
-    devices_.resize(device_count);
-    contexts_.resize(device_count);
-    for (int i = 0; i < device_count; ++i) {
-      CUdevice cuda_device;
-      check(cuDeviceGet(&cuda_device, i), "cuDeviceGet");
-      char name[256];
-      cuDeviceGetName(name, 256, cuda_device);
-      std::cout << "Device #" << i << ": " << name << "\n";
-      check(cuCtxCreate(&contexts_[i], CU_CTX_SCHED_AUTO | CU_CTX_MAP_HOST, cuda_device), "cuCtxCreate");
-      devices_[i] = make_counted<device>(cuda_device, contexts_[i], name, i);
-    }
-    int target_device = 0;
-    if (device_count > 0) {
-      check(cuCtxSetCurrent(contexts_[target_device]), "cuCtxSetCurrent");
-    }
+private:
+platform() {
+  int device_count = 0;
+  check(cuDeviceGetCount(&device_count), "cuDeviceGetCount");
+  devices_.resize(device_count);
+  contexts_.resize(device_count);
+
+  // --- Check for silent context creation before starting ---
+  CUcontext active_ctx = nullptr;
+  CUresult ctx_status = cuCtxGetCurrent(&active_ctx);
+  if (ctx_status == CUDA_SUCCESS && active_ctx != nullptr) {
+    std::cerr << "[Warning] Unexpected active CUDA context detected before platform initialization.\n";
+    std::cerr << "  -> This may indicate the CUDA Runtime API was used elsewhere (e.g., cudaMalloc).\n";
+    std::cerr << "  -> Existing context address: " << active_ctx << "\n";
+    // Optionally:
+    // throw std::runtime_error("Unexpected CUDA context already active");
   }
+
+  for (int i = 0; i < device_count; ++i) {
+    CUdevice cuda_device;
+    check(cuDeviceGet(&cuda_device, i), "cuDeviceGet");
+
+    char name[256];
+    cuDeviceGetName(name, 256, cuda_device);
+    std::cout << "Device #" << i << ": " << name << "\n";
+
+    // --- Explicit context creation (Driver API only) ---
+    check(cuCtxCreate(&contexts_[i], CU_CTX_SCHED_AUTO | CU_CTX_MAP_HOST, cuda_device), "cuCtxCreate");
+
+    devices_[i] = make_counted<device>(cuda_device, contexts_[i], name, i);
+  }
+
+  int target_device = 0;
+  if (device_count > 0) {
+    check(cuCtxSetCurrent(contexts_[target_device]), "cuCtxSetCurrent");
+  }
+}
+
 
 
   ~platform() override {
