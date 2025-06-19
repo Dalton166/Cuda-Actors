@@ -80,12 +80,11 @@ void test_device(actor_system&) {
     std::cout << "---- Device tests passed ----\n";
 }
 
-void test_manager(actor_system& sys) {
+void test_manager([[maybe_unused]] actor_system& sys) {
     std::cout << "\n=== Test Manager ===\n";
     
     // Test 1: Manager initialization
     std::cout << "Test 1: Initializing manager...\n";
-    manager::init(sys);
     manager& mgr = manager::get();
     assert(&mgr == &manager::get() && "Manager singleton mismatch");
     std::cout << "  -> Manager initialized successfully.\n";
@@ -118,15 +117,13 @@ void test_manager(actor_system& sys) {
         std::cout << "  -> Caught expected exception: " << e.what() << "\n";
     }
     std::cout << "---- Manager tests passed ----\n";
-    manager::shutdown();
 }
 
-void test_program(actor_system& sys) {
+void test_program([[maybe_unused]] actor_system& sys) {
     std::cout << "\n=== Test Program ===\n";
     
     // Test 1: Program properties
     std::cout << "Test 1: Checking program properties...\n";
-    manager::init(sys);
     manager& mgr = manager::get();
     device_ptr dev = mgr.find_device(0);
     const char* kernel = R"(
@@ -140,13 +137,11 @@ void test_program(actor_system& sys) {
     assert(prog->get_stream_id() == 0 && "Program stream ID mismatch: expected 0");
     std::cout << "  -> Program properties valid (device_id=0, context_id=0, stream_id=0).\n";
     std::cout << "---- Program tests passed ----\n";
-    manager::shutdown();
 }
 
-void test_mem_ref(actor_system& sys) {
+void test_mem_ref([[maybe_unused]] actor_system& sys) {
     std::cout << "\n=== Test Mem Ref ===\n";
     
-    manager::init(sys);
     manager& mgr = manager::get();
     device_ptr dev = mgr.find_device(0);
 
@@ -174,8 +169,12 @@ void test_mem_ref(actor_system& sys) {
     mem_ptr<int> inout_mem = dev->make_arg(inout);
     assert(inout_mem->access() == IN_OUT && "In-out memory access type incorrect: expected IN_OUT");
     std::vector<int> copied = inout_mem->copy_to_host();
-    assert(copied.size() == 5 && "In-out memory copy size mismatch: expected 5");
-    assert(copied[0] == 10 && "In-out memory data corruption: expected 10");
+    for (size_t i = 0; i < 5; ++i) {
+        assert(copied[i] == 10 && "In-out memory data corruption");
+        if (copied[i] != 10) {
+            std::cout << "  -> Failed: copied[" << i << "] = " << copied[i] << ", expected 10\n";
+        }
+    }
     std::cout << "  -> In-out memory data copied correctly.\n";
 
     // Test 4: Invalid copy
@@ -194,7 +193,6 @@ void test_mem_ref(actor_system& sys) {
     assert(mem->mem() == 0 && "Memory reset failed: pointer not null");
     std::cout << "  -> Memory reset successfully.\n";
     std::cout << "---- Mem Ref tests passed ----\n";
-    manager::shutdown();
 }
 
 void test_command(actor_system&) {
@@ -203,12 +201,11 @@ void test_command(actor_system&) {
     std::cout << "---- Command tests passed (skipped) ----\n";
 }
 
-void test_actor_facade(actor_system& sys) {
+void test_actor_facade([[maybe_unused]] actor_system& sys) {
     std::cout << "\n=== Test Actor Facade ===\n";
     
     // Test 1: Kernel execution via actor facade
     std::cout << "Test 1: Testing actor facade kernel execution...\n";
-    manager::init(sys);
     manager& mgr = manager::get();
     device_ptr dev = mgr.find_device(0);
 
@@ -218,9 +215,11 @@ void test_actor_facade(actor_system& sys) {
             if (idx < 5) data[idx] = idx + 1;
         })";
     program_ptr prog = mgr.create_program(kernel, "test_kernel", dev);
-    nd_range dims{5, 1, 1, 1, 1, 1}; // 1 block with 5 threads
+    nd_range dims{1, 1, 1, 5, 1, 1}; // 1 block with 5 threads
     std::vector<int> host_data(5, 0);
     out<int> output = create_out_arg(host_data);
+    mem_ptr<int> out_mem = dev->make_arg(output);
+    assert(out_mem->mem() != 0 && "Output memory not allocated");
     actor_config actor_cfg;
     actor_facade<false, out<int>> facade{std::move(actor_cfg), prog, dims, std::move(output)};
     facade.run_kernel(output);
@@ -233,13 +232,11 @@ void test_actor_facade(actor_system& sys) {
     }
     std::cout << "  -> Actor facade kernel executed successfully.\n";
     std::cout << "---- Actor Facade tests passed ----\n";
-    manager::shutdown();
 }
 
-void test_mem_ref_extended(actor_system& sys) {
+void test_mem_ref_extended([[maybe_unused]] actor_system& sys) {
     std::cout << "\n=== Test Mem Ref Extended ===\n";
     
-    manager::init(sys);
     manager& mgr = manager::get();
     device_ptr dev = mgr.find_device(0);
 
@@ -287,13 +284,11 @@ void test_mem_ref_extended(actor_system& sys) {
     assert(small_mem->size() == 2 && "Small buffer size mismatch: expected 2");
     std::cout << "  -> Small buffer allocated successfully.\n";
     std::cout << "---- Mem Ref Extended tests passed ----\n";
-    manager::shutdown();
 }
 
-void test_argument_translation(actor_system& sys) {
+void test_argument_translation([[maybe_unused]] actor_system& sys) {
     std::cout << "\n=== Test Argument Translation ===\n";
     
-    manager::init(sys);
     manager& mgr = manager::get();
     device_ptr dev = mgr.find_device(0);
 
@@ -327,13 +322,11 @@ void test_argument_translation(actor_system& sys) {
     assert(in_mem2->size() == 5 && out_mem2->size() == 5 && "Multiple argument size mismatch: expected 5");
     std::cout << "  -> Multiple arguments created successfully.\n";
     std::cout << "---- Argument Translation tests passed ----\n";
-    manager::shutdown();
 }
 
-void test_kernel_launch(actor_system& sys) {
+void test_kernel_launch([[maybe_unused]] actor_system& sys) {
     std::cout << "\n=== Test Kernel Launch ===\n";
     
-    manager::init(sys);
     manager& mgr = manager::get();
     device_ptr dev = mgr.find_device(0);
 
@@ -348,6 +341,7 @@ void test_kernel_launch(actor_system& sys) {
     std::vector<int> host_data(5, 0);
     out<int> output = create_out_arg(host_data);
     mem_ptr<int> out_mem = dev->make_arg(output);
+    assert(out_mem->mem() != 0 && "Output memory not allocated");
     nd_range dims{1, 1, 1, 5, 1, 1}; // 1 block, 5 threads
     dev->launch_kernel(prog->get_kernel(), dims, std::make_tuple(out_mem), 0, 0);
     std::vector<int> result = out_mem->copy_to_host();
@@ -364,6 +358,7 @@ void test_kernel_launch(actor_system& sys) {
     std::vector<int> small_host(2, 0);
     out<int> small_output = create_out_arg(small_host);
     mem_ptr<int> small_mem = dev->make_arg(small_output);
+    assert(small_mem->mem() != 0 && "Small output memory not allocated");
     try {
         dev->launch_kernel(prog->get_kernel(), dims, std::make_tuple(small_mem), 0, 0);
         std::vector<int> small_result = small_mem->copy_to_host();
@@ -388,13 +383,13 @@ void test_kernel_launch(actor_system& sys) {
         })";
     program_ptr input_prog = mgr.create_program(input_kernel, "input_kernel", dev);
     program_ptr output_prog = mgr.create_program(output_kernel, "output_kernel", dev);
-    in_out<int> input = create_in_out_arg(in_data);
+    out<int> input = create_out_arg(in_data);
     out<int> output2 = create_out_arg(out_data);
     mem_ptr<int> in_mem = dev->make_arg(input);
     mem_ptr<int> out_mem2 = dev->make_arg(output2);
-    // Launch input kernel
+    assert(in_mem->mem() != 0 && "Input memory not allocated");
+    assert(out_mem2->mem() != 0 && "Output memory not allocated");
     dev->launch_kernel(input_prog->get_kernel(), dims, std::make_tuple(in_mem), 0, 0);
-    // Launch output kernel
     dev->launch_kernel(output_prog->get_kernel(), dims, std::make_tuple(out_mem2), 0, 0);
     std::vector<int> in_result = in_mem->copy_to_host();
     std::vector<int> out_result = out_mem2->copy_to_host();
@@ -410,15 +405,13 @@ void test_kernel_launch(actor_system& sys) {
     }
     std::cout << "  -> Sequential single-argument kernels executed successfully.\n";
     std::cout << "---- Kernel Launch tests passed ----\n";
-    manager::shutdown();
 }
 
-void test_actor_facade_debug(actor_system& sys) {
+void test_actor_facade_debug([[maybe_unused]] actor_system& sys) {
     std::cout << "\n=== Test Actor Facade Debug ===\n";
     
     // Test 1: Direct kernel launch
     std::cout << "Test 1: Testing direct kernel launch...\n";
-    manager::init(sys);
     manager& mgr = manager::get();
     device_ptr dev = mgr.find_device(0);
     const char* kernel = R"(
@@ -459,11 +452,11 @@ void test_actor_facade_debug(actor_system& sys) {
     }
     std::cout << "  -> Actor facade kernel executed successfully.\n";
     std::cout << "---- Actor Facade Debug tests passed ----\n";
-    manager::shutdown();
 }
 
 void test_main(caf::actor_system& sys) {
     std::cout << "\n===== Running CUDA CAF Tests =====\n";
+    manager::init(sys);
     test_platform(sys);
     test_device(sys);
     test_manager(sys);
@@ -475,5 +468,6 @@ void test_main(caf::actor_system& sys) {
     test_argument_translation(sys);
     test_kernel_launch(sys);
     test_actor_facade_debug(sys);
+    manager::shutdown();
     std::cout << "\n===== All CUDA CAF Tests Completed Successfully =====\n";
 }
