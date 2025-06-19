@@ -19,10 +19,12 @@ public:
   program(void*, void*, void*, std::map<std::string, void*>) {
     throw std::runtime_error("CUDA support disabled: program ctor");
   }
+~program() {
+    std::cout << "Destroying program, kernel=" << kernel_ << "\n";
+}
 
-  ~program() override = default;
 
-  program(std::string name,device_ptr device,int device_id,int context_id,int stream_id, std::vector<char> ptx) {
+program(std::string name,device_ptr device,int device_id,int context_id,int stream_id, std::vector<char> ptx) {
 
 	  name_ = name;
   	CUmodule module;
