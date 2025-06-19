@@ -24,24 +24,32 @@ public:
 }
 
 
-program(std::string name,device_ptr device,int device_id,int context_id,int stream_id, std::vector<char> ptx) {
+program(std::string name,
+        device_ptr device,
+        int device_id,
+        int context_id,
+        int stream_id,
+        std::vector<char> ptx)
+  : name_(std::move(name)),
+    device_id(device_id),
+    context_id(context_id),
+    stream_id(stream_id),
+    device_(device) {
 
-	  name_ = name;
-  	CUmodule module;
-    CHECK_CUDA(cuModuleLoadData(&module, ptx.data()));
+  // Ensure the correct context is active
+  CUcontext ctx = device_->getContext(context_id);
+  CHECK_CUDA(cuCtxPushCurrent(ctx));
 
-    // Get kernel function handle
-    //Note this will work on single device systems but for multi gpu computes
-    //this is not thread safe, will have to come back and fix this 
-    CUfunction kernel;
-    CHECK_CUDA(cuModuleGetFunction(&kernel, module, name.c_str()));
-  
-    kernel_ = kernel;
-    device_ = device;
-    this -> device_id = device_id;
-    this -> context_id = context_id;
-    this -> stream_id = stream_id;
-  }
+  CUmodule module;
+  CHECK_CUDA(cuModuleLoadData(&module, ptx.data()));
+
+  CUfunction kernel;
+  CHECK_CUDA(cuModuleGetFunction(&kernel, module, name_.c_str()));
+
+  CHECK_CUDA(cuCtxPopCurrent(nullptr));
+
+  kernel_ = kernel;
+}
 
 
 //some getter methods
