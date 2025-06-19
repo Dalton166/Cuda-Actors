@@ -54,9 +54,11 @@ public:
   }
 
   std::vector<T> copy_to_host() const {
-    if (access_ != OUT && access_ != IN_OUT) {
+   /* 
+   if (access_ != OUT && access_ != IN_OUT) {
       throw std::runtime_error("Attempt to read from a non-output memory region.");
     }
+    */
 
     std::vector<T> host_data(num_elements_);
     size_t bytes = num_elements_ * sizeof(T);
