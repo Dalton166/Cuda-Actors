@@ -92,10 +92,15 @@ void launch_kernel(CUfunction kernel,
                    int context_id) {
     std::lock_guard<std::mutex> lock(stream_mutex); // Automatically released at end of scope
 
-    std::cout << "Hello my name is carlos\n";
+    //std::cout << "Hello my name is carlos\n";
 
     CUstream stream = getStream(stream_id);
     CUcontext ctx = getContext(context_id);
+
+    // Validate resources
+    if (!ctx) throw std::runtime_error("Invalid context in launch_kernel");
+    if (!stream) throw std::runtime_error("Invalid stream in launch_kernel");
+    if (!kernel) throw std::runtime_error("Invalid kernel handle in launch_kernel");
 
     // Push context to this thread
     CHECK_CUDA(cuCtxPushCurrent(ctx));
@@ -110,14 +115,13 @@ void launch_kernel(CUfunction kernel,
         range.getGridDimX(), range.getGridDimY(), range.getGridDimZ(),   // Grid dimensions
         range.getBlockDimX(), range.getBlockDimY(), range.getBlockDimZ(),// Block dimensions
         0,                                                               // Shared memory size
-        stream,                                                          // CUDA stream
+        0,                                                          // CUDA stream
         kernel_args,                                                     // Kernel arguments
         nullptr                                                          // Extra options (usually null)
     ));
 
     //synchronize stream TODO use caf promises as a way to remove this, or in general find a way to get ride of this 
     CHECK_CUDA(cuStreamSynchronize(stream));
-
     // Pop context
     CHECK_CUDA(cuCtxPopCurrent(nullptr));
 }
