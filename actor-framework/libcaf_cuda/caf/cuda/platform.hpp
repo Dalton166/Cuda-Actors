@@ -66,33 +66,25 @@ device_ptr getDevice(int id) {
 
 
 
-private:
- program(std::string name,
-        device_ptr device,
-        int device_id,
-        int context_id,
-        int stream_id,
-        std::vector<char> ptx)
-  : name_(std::move(name)),
-    device_id(device_id),
-    context_id(context_id),
-    stream_id(stream_id),
-    device_(device) {
-
-  // Ensure the correct context is active
-  CUcontext ctx = device_->getContext(context_id);
-  CHECK_CUDA(cuCtxPushCurrent(ctx));
-
-  CUmodule module;
-  CHECK_CUDA(cuModuleLoadData(&module, ptx.data()));
-
-  CUfunction kernel;
-  CHECK_CUDA(cuModuleGetFunction(&kernel, module, name_.c_str()));
-
-  CHECK_CUDA(cuCtxPopCurrent(nullptr));
-
-  kernel_ = kernel;
-}
+private:platform() {
+    int device_count = 0;
+    check(cuDeviceGetCount(&device_count), "cuDeviceGetCount");
+    devices_.resize(device_count);
+    contexts_.resize(device_count);
+    for (int i = 0; i < device_count; ++i) {
+      CUdevice cuda_device;
+      check(cuDeviceGet(&cuda_device, i), "cuDeviceGet");
+      char name[256];
+      cuDeviceGetName(name, 256, cuda_device);
+      std::cout << "Device #" << i << ": " << name << "\n";
+      check(cuCtxCreate(&contexts_[i], CU_CTX_SCHED_AUTO | CU_CTX_MAP_HOST, cuda_device), "cuCtxCreate");
+      devices_[i] = make_counted<device>(cuda_device, contexts_[i], name, i);
+    }
+    int target_device = 0;
+    if (device_count > 0) {
+      check(cuCtxSetCurrent(contexts_[target_device]), "cuCtxSetCurrent");
+    }
+  }
 
 
   ~platform() override {
