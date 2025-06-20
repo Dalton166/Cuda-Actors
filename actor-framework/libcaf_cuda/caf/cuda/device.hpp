@@ -83,65 +83,60 @@ template <typename T>
 mem_ptr<T> make_arg(out<T> arg) {
   return caf::intrusive_ptr<mem_ref<T>>{new mem_ref<T>(scratch_argument(std::move(arg)))};
 }
+ template <typename... Ts>
+    void launch_kernel(CUfunction kernel, const nd_range& range, std::tuple<Ts...> args, int stream_id, int context_id) {
+        std::lock_guard<std::mutex> lock(stream_mutex);
 
-template <class T>
-void launch_kernel(CUfunction kernel,
-                           const nd_range& range,
-                           std::tuple<mem_ptr<T>> args,
-                           [[maybe_unused]] int stream_id,
-                           int context_id) {
-    std::lock_guard<std::mutex> lock(stream_mutex);
+        try {
+            CUstream stream = nullptr;
+            CUcontext ctx = getContext(context_id);
 
-    try {
-        CUstream stream = nullptr; // Default stream
-        CUcontext ctx = getContext(context_id);
+            if (!ctx) throw std::runtime_error("Invalid context in launch_kernel");
+            if (!kernel) throw std::runtime_error("Invalid kernel handle in launch_data");
 
-        if (!ctx) throw std::runtime_error("Invalid context in launch_kernel");
-        if (!kernel) throw std::runtime_error("Invalid kernel handle in launch_kernel");
+            CHECK_CUDA(cuCtxPushCurrent(ctx));
+            CUcontext current_ctx;
+            CHECK_CUDA(cuCtxGetCurrent(&current_ctx));
+            if (current_ctx != ctx) {
+                throw std::runtime_error("Context mismatch");
+            }
 
-        std::cout << "launch_kernel: context=" << ctx << ", kernel=" << kernel << "\n";
+            std::cout << "launch_kernel: context=" << ctx << ", kernel=" << kernel << "\n";
 
-        CHECK_CUDA(cuCtxPushCurrent(ctx));
+            auto kernel_arg_vec = extract_kernel_args(args);
+            void** kernel_args = kernel_arg_vec.data();
 
-        CUcontext current_ctx;
-        CHECK_CUDA(cuCtxGetCurrent(&current_ctx));
-        if (current_ctx != ctx) {
-            throw std::runtime_error("Context mismatch: expected " + std::to_string((uintptr_t)ctx) +
-                                     ", got " + std::to_string((uintptr_t)current_ctx));
+            for (size_t i = 0; i < kernel_arg_vec.size(); ++i) {
+                std::cout << "launch_kernel: args[" << i << "]=" << *static_cast<CUdeviceptr*>(kernel_arg_vec[i]) << "\n";
+            }
+
+            CUresult result = cuLaunchKernel(
+                kernel,
+                range.getGridDimX(), range.getGridDimY(), range.getGridDimZ(),
+                range.getBlockDimX(), range.getBlockDimY(), range.getBlockDimZ(),
+                0, stream, kernel_args, nullptr
+            );
+            if (result != CUDA_SUCCESS) {
+                const char* err_name;
+                cuGetErrorName(result, &err_name);
+                throw std::runtime_error("cuLaunchKernel failed: " + std::string(err_name ? err_name : "unknown error"));
+            }
+
+            std::cout << "Hello its me again carlos\n";
+            CHECK_CUDA(cuCtxSynchronize());
+            std::cout << "I brought some pizza\n";
+
+            CHECK_CUDA(cuCtxPopCurrent(nullptr));
+
+            // Clean up allocated CUdeviceptr objects
+            for (void* arg : kernel_arg_vec) {
+                delete static_cast<CUdeviceptr*>(arg);
+            }
+        } catch (const std::exception& e) {
+            std::cout << "launch_kernel failed: " << e.what() << "\n";
+            throw;
         }
-
-        auto kernel_arg_vec = extract_kernel_args(args);
-        void** kernel_args = kernel_arg_vec.data();
-        if (!kernel_args) throw std::runtime_error("Invalid kernel arguments in launch_kernel");
-
-        std::cout << "launch_kernel: args[0]=" << (kernel_args[0] ? *(CUdeviceptr*)kernel_args[0] : 0) << "\n";
-
-        CUresult result = cuLaunchKernel(
-            kernel,
-            range.getGridDimX(), range.getGridDimY(), range.getGridDimZ(),
-            range.getBlockDimX(), range.getBlockDimY(), range.getBlockDimZ(),
-            0,          // Shared memory size
-            nullptr,    // Default stream
-            kernel_args,
-            nullptr
-        );
-        if (result != CUDA_SUCCESS) {
-            const char* err_name;
-            cuGetErrorName(result, &err_name);
-            throw std::runtime_error("cuLaunchKernel failed: " + std::string(err_name ? err_name : "unknown error"));
-        }
-
-	std::cout << "Hello its me again carlos\n";
-        CHECK_CUDA(cuCtxSynchronize());
-
-	std::cout << "I brought some pizza\n";
-
-        CHECK_CUDA(cuCtxPopCurrent(nullptr));
-    } catch (const std::exception& e) {
-        std::cout << "launch_kernel failed: " << e.what() << "\n";
-        throw;
     }
-}
 
 
 
@@ -204,24 +199,22 @@ private:
 
     return mem_ref<T>{size, device_buffer, access, id_, contextId_};
   }
-template <typename Tuple, std::size_t... Is>
-std::vector<void*> extract_kernel_args_impl(const Tuple& t, std::index_sequence<Is...>) {
-    CUdeviceptr device_ptrs[] = { std::get<Is>(t)->mem()... };
-    std::vector<void*> args(sizeof...(Is));
-    for (size_t i = 0; i < sizeof...(Is); ++i) {
-        std::cout << "extract_kernel_args: device_ptrs[" << i << "]=" << device_ptrs[i] << "\n";
-        args[i] = &device_ptrs[i];
+ template <typename Tuple, std::size_t... Is>
+    std::vector<void*> extract_kernel_args_impl(const Tuple& t, std::index_sequence<Is...>) {
+        std::vector<void*> args(sizeof...(Is));
+        // Allocate CUdeviceptr objects on the heap to ensure lifetime
+        CUdeviceptr* device_ptrs[] = { new CUdeviceptr(std::get<Is>(t)->mem())... };
+        for (size_t i = 0; i < sizeof...(Is); ++i) {
+            args[i] = device_ptrs[i];
+            std::cout << "extract_kernel_args: device_ptrs[" << i << "]=" << *static_cast<CUdeviceptr*>(args[i]) << "\n";
+        }
+        return args;
     }
-    return args;
-}
 
-// Public interface
-template <typename... Ts>
-std::vector<void*> extract_kernel_args(const std::tuple<mem_ptr<Ts>...>& args_tuple) {
-  return extract_kernel_args_impl(args_tuple, std::index_sequence_for<Ts...>{});
-}
-
-
+    template <typename... Ts>
+    std::vector<void*> extract_kernel_args(const std::tuple<Ts...>& t) {
+        return extract_kernel_args_impl(t, std::index_sequence_for<Ts...>{});
+    }
 };
 
 
