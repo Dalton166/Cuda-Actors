@@ -122,9 +122,9 @@ mem_ptr<T> make_arg(out<T> arg) {
                 throw std::runtime_error("cuLaunchKernel failed: " + std::string(err_name ? err_name : "unknown error"));
             }
 
-            std::cout << "Hello its me again carlos\n";
+            //std::cout << "Hello its me again carlos\n";
             CHECK_CUDA(cuCtxSynchronize());
-            std::cout << "I brought some pizza\n";
+            //std::cout << "I brought some pizza\n";
 
             CHECK_CUDA(cuCtxPopCurrent(nullptr));
 
