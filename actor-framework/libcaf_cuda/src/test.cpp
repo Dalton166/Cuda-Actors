@@ -469,6 +469,182 @@ void test_kernel_launch_direct(actor_system& sys, platform_ptr plat) {
     std::cout << "---- Kernel Launch Direct tests passed ----\n";
 }
 
+void test_actor_facade_multi_buffer(actor_system& sys, platform_ptr plat) {
+    std::cout << "\n=== Test Actor Facade Multi Buffer ===\n";
+    
+    std::cout << "Test 1: Testing actor facade with multiple buffers...\n";
+    manager& mgr = manager::get();
+    device_ptr dev = mgr.find_device(0);
+    std::cout << "  -> Device context: " << dev->getContext(0) << "\n";
+    const char* kernel = R"(
+        extern "C" __global__ void multi_buffer_kernel(const int* in_data, int* inout_data, int* out_data) {
+            int idx = threadIdx.x;
+            if (idx < 5) {
+                inout_data[idx] = inout_data[idx] * 2; // Hardcoded scale=2
+                out_data[idx] = in_data[idx] + 5;      // Hardcoded offset=5
+            }
+        })";
+    program_ptr prog = mgr.create_program(kernel, "multi_buffer_kernel", dev);
+    std::cout << "  -> Program created with kernel: multi_buffer_kernel, handle: " << prog->get_kernel() << ", prog=" << prog.get() << "\n";
+    nd_range dims{1, 1, 1, 5, 1, 1};
+    
+    // Initialize host buffers
+    std::vector<int> in_host(5, 10);        // in_data: [10, 10, 10, 10, 10]
+    std::vector<int> inout_host(5, 20);     // inout_data: [20, 20, 20, 20, 20]
+    std::vector<int> out_host(5, 0);        // out_data: [0, 0, 0, 0, 0]
+    in<int> in_arg = create_in_arg(in_host);
+    in_out<int> inout_arg = create_in_out_arg(inout_host);
+    out<int> out_arg = create_out_arg(out_host);
+    
+    // Create device memory
+    mem_ptr<int> in_mem = dev->make_arg(in_arg);
+    mem_ptr<int> inout_mem = dev->make_arg(inout_arg);
+    mem_ptr<int> out_mem = dev->make_arg(out_arg);
+    assert(in_mem->mem() != 0 && "Input memory not allocated");
+    assert(inout_mem->mem() != 0 && "In-out memory not allocated");
+    assert(out_mem->mem() != 0 && "Output memory not allocated");
+    std::cout << "  -> Input memory allocated: " << in_mem->mem() << ", in_mem=" << in_mem.get() << "\n";
+    std::cout << "  -> In-out memory allocated: " << inout_mem->mem() << ", inout_mem=" << inout_mem.get() << "\n";
+    std::cout << "  -> Output memory allocated: " << out_mem->mem() << ", out_mem=" << out_mem.get() << "\n";
+    
+    actor_config actor_cfg;
+    actor_facade<false, in<int>, in_out<int>, out<int>> facade{
+        std::move(actor_cfg), prog, dims, in<int>{}, in_out<int>{}, out<int>{}};
+    std::cout << "  -> Actor facade created\n";
+    
+    try {
+        facade.run_kernel(in_arg, inout_arg, out_arg);
+        std::cout << "  -> Kernel launched via actor facade\n";
+        
+        // Validate results via inspection using copy_to_host
+        std::vector<int> inout_result = inout_mem->copy_to_host();
+        std::vector<int> out_result = out_mem->copy_to_host();
+        
+        // Expected: inout_result = [40, 40, 40, 40, 40] (20 * 2)
+        // Expected: out_result = [15, 15, 15, 15, 15] (10 + 5)
+        std::cout << " --- Expected inout_result is 40 40 40 40 40\n";
+        std::cout << " --- Expected out_result is 15 15 15 15 15\n";
+        for (size_t i = 0; i < 5; ++i) {
+            if (inout_result[i] != 40) {
+                std::cout << "  -> Failed: inout_result[" << i << "] = " << inout_result[i] << ", expected 40\n";
+            }
+            if (out_result[i] != 15) {
+                std::cout << "  -> Failed: out_result[" << i << "] = " << out_result[i] << ", expected 15\n";
+            }
+        }
+        std::cout << "  -> Multi-buffer kernel executed successfully\n";
+    } catch (const std::exception& e) {
+        std::cout << "  -> Failed: CUDA error during actor facade kernel launch: " << e.what() << "\n";
+        throw;
+    }
+    std::cout << "---- Actor Facade Multi Buffer tests passed ----\n";
+}
+
+void test_kernel_launch_multi_buffer(actor_system& sys, platform_ptr plat) {
+    std::cout << "\n=== Test Kernel Launch Multi Buffer ===\n";
+    
+    manager& mgr = manager::get();
+    device_ptr dev = mgr.find_device(0);
+    std::cout << "  -> Device context: " << dev->getContext(0) << "\n";
+
+    std::cout << "Test 1: Testing direct kernel launch with multiple buffers...\n";
+    {
+        const char* kernel_code = R"(
+            extern "C" __global__ void multi_buffer_kernel(const int* in_data, int* inout_data, int* out_data, int scale, int offset) {
+                int idx = threadIdx.x;
+                if (idx < 5) {
+                    inout_data[idx] = inout_data[idx] * scale; // Modify in_out buffer
+                    out_data[idx] = in_data[idx] + offset;     // Write to out buffer
+                }
+            })";
+        program_ptr prog = mgr.create_program(kernel_code, "multi_buffer_kernel", dev);
+        std::cout << "  -> Program created with kernel: multi_buffer_kernel, handle: " << prog->get_kernel() << ", prog=" << prog.get() << "\n";
+        
+        // Initialize host buffers
+        std::vector<int> in_host(5, 10);        // in_data: [10, 10, 10, 10, 10]
+        std::vector<int> inout_host(5, 20);     // inout_data: [20, 20, 20, 20, 20]
+        std::vector<int> out_host(5, 0);        // out_data: [0, 0, 0, 0, 0]
+        in<int> in_arg = create_in_arg(in_host);
+        in_out<int> inout_arg = create_in_out_arg(inout_host);
+        out<int> out_arg = create_out_arg(out_host);
+        
+        // Create device memory for buffers
+        mem_ptr<int> in_mem = dev->make_arg(in_arg);
+        mem_ptr<int> inout_mem = dev->make_arg(inout_arg);
+        mem_ptr<int> out_mem = dev->make_arg(out_arg);
+        assert(in_mem->mem() != 0 && "Input memory not allocated");
+        assert(inout_mem->mem() != 0 && "In-out memory not allocated");
+        assert(out_mem->mem() != 0 && "Output memory not allocated");
+        std::cout << "  -> Input memory allocated: " << in_mem->mem() << ", in_mem=" << in_mem.get() << "\n";
+        std::cout << "  -> In-out memory allocated: " << inout_mem->mem() << ", inout_mem=" << inout_mem.get() << "\n";
+        std::cout << "  -> Output memory allocated: " << out_mem->mem() << ", out_mem=" << out_mem.get() << "\n";
+        
+        // Allocate device memory for scalar arguments
+        int scale = 2;  // inout_data[i] = inout_data[i] * 2
+        int offset = 5; // out_data[i] = in_data[i] + 5
+        CUdeviceptr scale_dev, offset_dev;
+        CHECK_CUDA(cuMemAlloc(&scale_dev, sizeof(int)));
+        CHECK_CUDA(cuMemAlloc(&offset_dev, sizeof(int)));
+        CHECK_CUDA(cuMemcpyHtoD(scale_dev, &scale, sizeof(int)));
+        CHECK_CUDA(cuMemcpyHtoD(offset_dev, &offset, sizeof(int)));
+        
+        nd_range dims{1, 1, 1, 5, 1, 1};
+        try {
+            CUcontext ctx = dev->getContext(0);
+            CUcontext current_ctx;
+            CHECK_CUDA(cuCtxGetCurrent(&current_ctx));
+            std::cout << "  -> Current context before launch: " << current_ctx << "\n";
+            std::cout << "  -> Launching kernel with context: " << ctx << ", kernel: " << prog->get_kernel() << "\n";
+            CUdeviceptr in_dev = in_mem->mem();
+	    CUdeviceptr inout_dev = inout_mem->mem();
+            CUdeviceptr out_dev = out_mem->mem();
+
+	    void* kernel_args[] = {
+    	    &in_dev, &inout_dev, &out_dev, &scale_dev, &offset_dev
+            }; 
+	   CHECK_CUDA(cuLaunchKernel(
+                prog->get_kernel(),
+                dims.getGridDimX(), dims.getGridDimY(), dims.getGridDimZ(),
+                dims.getBlockDimX(), dims.getBlockDimY(), dims.getBlockDimZ(),
+                0, nullptr, kernel_args, nullptr
+            ));
+            std::cout << "  -> Kernel launched\n";
+            CHECK_CUDA(cuCtxSynchronize());
+            std::cout << "  -> Context synchronized\n";
+            
+            // Validate results via inspection using copy_to_host
+            std::vector<int> inout_result = inout_mem->copy_to_host();
+            std::vector<int> out_result = out_mem->copy_to_host();
+            
+            // Expected: inout_result = [40, 40, 40, 40, 40] (20 * 2)
+            // Expected: out_result = [15, 15, 15, 15, 15] (10 + 5)
+            std::cout << " --- Expected inout_result is 40 40 40 40 40\n";
+            std::cout << " --- Expected out_result is 15 15 15 15 15\n";
+            for (size_t i = 0; i < 5; ++i) {
+                if (inout_result[i] != 40) {
+                    std::cout << "  -> Failed: inout_result[" << i << "] = " << inout_result[i] << ", expected 40\n";
+                }
+                if (out_result[i] != 15) {
+                    std::cout << "  -> Failed: out_result[" << i << "] = " << out_result[i] << ", expected 15\n";
+                }
+            }
+            std::cout << "  -> Multi-buffer kernel launched successfully\n";
+            
+            // Free scalar device memory
+            CHECK_CUDA(cuMemFree(scale_dev));
+            CHECK_CUDA(cuMemFree(offset_dev));
+        } catch (const std::exception& e) {
+            std::cout << "  -> Failed: CUDA error during kernel launch: " << e.what() << "\n";
+            CHECK_CUDA(cuMemFree(scale_dev));
+            CHECK_CUDA(cuMemFree(offset_dev));
+            throw;
+        }
+        std::cout << "  -> End of scope: prog=" << prog.get() << ", out_mem=" << out_mem.get() << "\n";
+    }
+    std::cout << "---- Kernel Launch Multi Buffer tests passed ----\n";
+}
+
+
 void test_main(caf::actor_system& sys) {
     std::cout << "\n===== Running CUDA CAF Tests =====\n";
     manager::init(sys);
@@ -489,6 +665,8 @@ void test_main(caf::actor_system& sys) {
         test_kernel_launch_direct(sys, plat); // Added new test
         test_kernel_launch(sys, plat);
         test_actor_facade(sys, plat);
+	test_actor_facade_multi_buffer(sys, plat);
+        test_kernel_launch_multi_buffer(sys, plat);
     } catch (const std::exception& e) {
         std::cout << "Test failed: " << e.what() << "\n";
         manager::shutdown();
