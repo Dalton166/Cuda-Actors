@@ -26,6 +26,7 @@ public:
       id_(id),
       streamId_(0),
       contextId_(0) {
+    //CHECK_CUDA(cuCtxSetCurrent(context_));
     CHECK_CUDA(cuStreamCreate(&stream_, 0));
     name_ = name;
   }
@@ -83,47 +84,63 @@ mem_ptr<T> make_arg(out<T> arg) {
   return caf::intrusive_ptr<mem_ref<T>>{new mem_ref<T>(scratch_argument(std::move(arg)))};
 }
 
-
-template <typename T>
+template <class T>
 void launch_kernel(CUfunction kernel,
-                   const caf::cuda::nd_range& range,
-                   std::tuple<mem_ptr<T>> args,
-                   int stream_id,
-                   int context_id) {
-    std::lock_guard<std::mutex> lock(stream_mutex); // Automatically released at end of scope
+                           const nd_range& range,
+                           std::tuple<mem_ptr<T>> args,
+                           [[maybe_unused]] int stream_id,
+                           int context_id) {
+    std::lock_guard<std::mutex> lock(stream_mutex);
 
-    //std::cout << "Hello my name is carlos\n";
+    try {
+        CUstream stream = nullptr; // Default stream
+        CUcontext ctx = getContext(context_id);
 
-    CUstream stream = getStream(stream_id);
-    CUcontext ctx = getContext(context_id);
+        if (!ctx) throw std::runtime_error("Invalid context in launch_kernel");
+        if (!kernel) throw std::runtime_error("Invalid kernel handle in launch_kernel");
 
-    // Validate resources
-    if (!ctx) throw std::runtime_error("Invalid context in launch_kernel");
-    if (!stream) throw std::runtime_error("Invalid stream in launch_kernel");
-    if (!kernel) throw std::runtime_error("Invalid kernel handle in launch_kernel");
+        std::cout << "launch_kernel: context=" << ctx << ", kernel=" << kernel << "\n";
 
-    // Push context to this thread
-    CHECK_CUDA(cuCtxPushCurrent(ctx));
+        CHECK_CUDA(cuCtxPushCurrent(ctx));
 
-    // Extract kernel arguments (assumed to return void** suitable for cuLaunchKernel)
-    auto kernel_arg_vec = extract_kernel_args(args);
-    void** kernel_args = kernel_arg_vec.data();
+        CUcontext current_ctx;
+        CHECK_CUDA(cuCtxGetCurrent(&current_ctx));
+        if (current_ctx != ctx) {
+            throw std::runtime_error("Context mismatch: expected " + std::to_string((uintptr_t)ctx) +
+                                     ", got " + std::to_string((uintptr_t)current_ctx));
+        }
 
-    // Launch the kernel using nd_range for dimensions
-    CHECK_CUDA(cuLaunchKernel(
-        kernel,
-        range.getGridDimX(), range.getGridDimY(), range.getGridDimZ(),   // Grid dimensions
-        range.getBlockDimX(), range.getBlockDimY(), range.getBlockDimZ(),// Block dimensions
-        0,                                                               // Shared memory size
-        0,                                                          // CUDA stream
-        kernel_args,                                                     // Kernel arguments
-        nullptr                                                          // Extra options (usually null)
-    ));
+        auto kernel_arg_vec = extract_kernel_args(args);
+        void** kernel_args = kernel_arg_vec.data();
+        if (!kernel_args) throw std::runtime_error("Invalid kernel arguments in launch_kernel");
 
-    //synchronize stream TODO use caf promises as a way to remove this, or in general find a way to get ride of this 
-    CHECK_CUDA(cuStreamSynchronize(stream));
-    // Pop context
-    CHECK_CUDA(cuCtxPopCurrent(nullptr));
+        std::cout << "launch_kernel: args[0]=" << (kernel_args[0] ? *(CUdeviceptr*)kernel_args[0] : 0) << "\n";
+
+        CUresult result = cuLaunchKernel(
+            kernel,
+            range.getGridDimX(), range.getGridDimY(), range.getGridDimZ(),
+            range.getBlockDimX(), range.getBlockDimY(), range.getBlockDimZ(),
+            0,          // Shared memory size
+            nullptr,    // Default stream
+            kernel_args,
+            nullptr
+        );
+        if (result != CUDA_SUCCESS) {
+            const char* err_name;
+            cuGetErrorName(result, &err_name);
+            throw std::runtime_error("cuLaunchKernel failed: " + std::string(err_name ? err_name : "unknown error"));
+        }
+
+	std::cout << "Hello its me again carlos\n";
+        CHECK_CUDA(cuCtxSynchronize());
+
+	std::cout << "I brought some pizza\n";
+
+        CHECK_CUDA(cuCtxPopCurrent(nullptr));
+    } catch (const std::exception& e) {
+        std::cout << "launch_kernel failed: " << e.what() << "\n";
+        throw;
+    }
 }
 
 
@@ -187,18 +204,15 @@ private:
 
     return mem_ref<T>{size, device_buffer, access, id_, contextId_};
   }
-
-    template <typename Tuple, std::size_t... Is>
+template <typename Tuple, std::size_t... Is>
 std::vector<void*> extract_kernel_args_impl(const Tuple& t, std::index_sequence<Is...>) {
-  // Store CUdeviceptrs in a temporary array so we can take their addresses
-  static_assert(sizeof...(Is) > 0, "At least one kernel argument is required.");
-  CUdeviceptr device_ptrs[] = { std::get<Is>(t)->mem()... };
-
-  std::vector<void*> args(sizeof...(Is));
-  for (size_t i = 0; i < sizeof...(Is); ++i)
-    args[i] = &device_ptrs[i];
-
-  return args;
+    CUdeviceptr device_ptrs[] = { std::get<Is>(t)->mem()... };
+    std::vector<void*> args(sizeof...(Is));
+    for (size_t i = 0; i < sizeof...(Is); ++i) {
+        std::cout << "extract_kernel_args: device_ptrs[" << i << "]=" << device_ptrs[i] << "\n";
+        args[i] = &device_ptrs[i];
+    }
+    return args;
 }
 
 // Public interface
