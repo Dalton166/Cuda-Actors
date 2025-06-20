@@ -20,17 +20,22 @@ public:
 
   mem_ref() = default;
 
-  mem_ref(size_t num_elements, CUdeviceptr memory, int access, int device_id = 0, int context_id = 0)
+mem_ref(size_t num_elements, CUdeviceptr memory, int access, int device_id = 0, int context_id = 0)
     : num_elements_{num_elements},
       memory_{memory},
       access_{access},
       device_id{device_id},
       context_id{context_id} {
-    // nop
+  if (memory_ == 0) {
+    std::cerr << "Fatal error: mem_ref constructor received null device pointer.\n"
+              << "  -> num_elements: " << num_elements_ << "\n"
+              << "  -> access: " << access_ << "\n"
+              << "  -> device_id: " << device_id << ", context_id: " << context_id << std::endl;
+    std::abort();
   }
-
+}
   ~mem_ref() {
-    reset();
+	  reset();
   }
 
   mem_ref(mem_ref&&) noexcept = default;
@@ -46,7 +51,8 @@ public:
 
   void reset() {
     if (memory_) {
-      cuMemFree(memory_);
+       std::cout << "Destroying mem_ref: memory=" << memory_ << "\n";
+      CHECK_CUDA(cuMemFree(memory_));
       memory_ = 0;
     }
     num_elements_ = 0;
@@ -54,11 +60,9 @@ public:
   }
 
   std::vector<T> copy_to_host() const {
-   /* 
    if (access_ != OUT && access_ != IN_OUT) {
       throw std::runtime_error("Attempt to read from a non-output memory region.");
     }
-    */
 
     std::vector<T> host_data(num_elements_);
     size_t bytes = num_elements_ * sizeof(T);
