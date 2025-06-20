@@ -68,6 +68,12 @@ template <typename T>
 struct in_out {
     using value_type = T;
     std::vector<T> buffer;
+
+    in_out() = default;
+
+    in_out(T val) {
+      buffer.push_back(val);
+    }
 };
 
 
