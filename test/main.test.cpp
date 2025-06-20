@@ -105,7 +105,7 @@ void actor_facade_spawn_test(caf::actor_system& sys) {
 
 void caf_main(caf::actor_system& sys) {
 
-	caf::cuda::manager::init(sys);
+//	caf::cuda::manager::init(sys);
 //	actor_facade_spawn_test(sys);
 
       //actor_facade_launch_kernel_test(sys);
