@@ -259,7 +259,7 @@ void test_actor_facade(actor_system& sys, platform_ptr plat) {
     assert(out_mem->mem() != 0 && "Output memory not allocated");
     std::cout << "  -> Output memory allocated: " << out_mem->mem() << ", out_mem=" << out_mem.get() << "\n";
     actor_config actor_cfg;
-    actor_facade<false, out<int>> facade{std::move(actor_cfg), prog, dims, std::move(output)};
+    actor_facade<false, out<int>> facade{std::move(actor_cfg), prog, dims, out<int> {}};
     std::cout << "  -> Actor facade created\n";
     try {
         facade.run_kernel(output);
@@ -485,11 +485,11 @@ void test_main(caf::actor_system& sys) {
         test_create_program(sys, plat);
         test_mem_ref(sys, plat);
         test_command(sys, plat);
-        //test_actor_facade(sys, plat);
         test_mem_ref_extended(sys, plat);
         test_argument_translation(sys, plat);
         test_kernel_launch_direct(sys, plat); // Added new test
         test_kernel_launch(sys, plat);
+        test_actor_facade(sys, plat);
     } catch (const std::exception& e) {
         std::cout << "Test failed: " << e.what() << "\n";
         manager::shutdown();
