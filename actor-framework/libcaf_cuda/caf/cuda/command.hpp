@@ -32,11 +32,17 @@ public:
           nd_range dims,
           Us&&... xs)
     : rp(std::move(promise)),
-      program_(std::move(program)),
+      program_(program),
       dims_(dims),
       mem_refs(convert_data_to_args(std::forward<Us>(xs)...)) {
     static_assert(sizeof...(Us) == sizeof...(Ts), "Argument count mismatch");
   }
+
+
+  ~command() {
+        std::cout << "Destroying command: program=" << program_.get() << "\n";
+    }
+
 
   void enqueue() {
     launch_kernel(program_, dims_, mem_refs, program_->get_stream_id());
@@ -45,7 +51,7 @@ public:
     print_and_cleanup_outputs(mem_refs);
   }
 
-  ~command() override = default;
+ // ~command() override = default;
 
 
    template <class A, class... S>
