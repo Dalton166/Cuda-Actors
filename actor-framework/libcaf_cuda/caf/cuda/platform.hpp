@@ -73,15 +73,23 @@ platform() {
   devices_.resize(device_count);
   contexts_.resize(device_count);
 
-  // --- Check for silent context creation before starting ---
+  // Check for existing active context
   CUcontext active_ctx = nullptr;
   CUresult ctx_status = cuCtxGetCurrent(&active_ctx);
   if (ctx_status == CUDA_SUCCESS && active_ctx != nullptr) {
     std::cerr << "[Warning] Unexpected active CUDA context detected before platform initialization.\n";
     std::cerr << "  -> This may indicate the CUDA Runtime API was used elsewhere (e.g., cudaMalloc).\n";
     std::cerr << "  -> Existing context address: " << active_ctx << "\n";
-    // Optionally:
-    // throw std::runtime_error("Unexpected CUDA context already active");
+
+    // Pop the existing context to clear it
+    CUcontext popped_ctx = nullptr;
+    CUresult pop_status = cuCtxPopCurrent(&popped_ctx);
+    if (pop_status == CUDA_SUCCESS && popped_ctx == active_ctx) {
+      std::cerr << "  -> Popped existing CUDA context: " << popped_ctx << "\n";
+    } else {
+      std::cerr << "  -> Failed to pop the existing CUDA context.\n";
+      // You might want to throw or handle this error
+    }
   }
 
   for (int i = 0; i < device_count; ++i) {
@@ -92,7 +100,7 @@ platform() {
     cuDeviceGetName(name, 256, cuda_device);
     std::cout << "Device #" << i << ": " << name << "\n";
 
-    // --- Explicit context creation (Driver API only) ---
+    // Explicit context creation (Driver API only)
     check(cuCtxCreate(&contexts_[i], CU_CTX_SCHED_AUTO | CU_CTX_MAP_HOST, cuda_device), "cuCtxCreate");
 
     devices_[i] = make_counted<device>(cuda_device, contexts_[i], name, i);
@@ -106,10 +114,11 @@ platform() {
 
 
 
+
   ~platform() override {
     for (auto ctx : contexts_) {
-	    std::cout << "Ahoi matey\n";
-	    //check(cuCtxDestroy(ctx), "cuCtxDestroy");
+	    //std::cout << "Ahoi matey\n";
+	    check(cuCtxDestroy(ctx), "cuCtxDestroy");
     }
   }
 

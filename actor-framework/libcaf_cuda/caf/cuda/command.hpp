@@ -45,8 +45,10 @@ public:
 
 
   void enqueue() {
+	  std::cout << "Launch initiated\n";
     launch_kernel(program_, dims_, mem_refs, program_->get_stream_id());
 
+    std::cout << "Kernel has successfully launched\n";
     // Kernel done, data ready to copy back and cleanup
     print_and_cleanup_outputs(mem_refs);
   }

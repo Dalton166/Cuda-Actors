@@ -6,5 +6,5 @@ CXX_DEFINES =
 
 CXX_INCLUDES = -I/student/nqr159/cuda-actors/actor-framework/include -I/student/nqr159/cuda-actors/actor-framework/libcaf_io -I/student/nqr159/cuda-actors/actor-framework/libcaf_core -I/student/nqr159/cuda-actors/actor-framework/libcaf_opencl -I/student/nqr159/cuda-actors/actor-framework/build/libcaf_core -I/student/nqr159/cuda-actors/actor-framework/libcaf_cuda -isystem /usr/local/cuda/include
 
-CXX_FLAGS = -std=c++17
+CXX_FLAGS = -g -std=c++17
 
