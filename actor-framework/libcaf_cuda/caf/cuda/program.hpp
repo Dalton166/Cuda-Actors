@@ -36,8 +36,16 @@ program(std::string name,
     stream_id(stream_id),
     device_(device) {
 
-  // Ensure the correct context is active
+
   CUcontext ctx = device_->getContext(context_id);
+	  //  CUcontext current_ctx;
+//CHECK_CUDA(cuCtxGetCurrent(&current_ctx));
+//if (current_ctx != ctx) {
+  //throw std::runtime_error("Context mismatch during program construction.");
+//}
+
+
+  // Ensure the correct context is active
   CHECK_CUDA(cuCtxPushCurrent(ctx));
 
   CUmodule module;
