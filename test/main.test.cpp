@@ -40,36 +40,62 @@ void compare_strings(const char* a, const char* b, int* result, int length) {
 }
 )";
 
-void actor_facade_launch_kernel_test(caf::actor_system& sys) {
-    caf::cuda::manager& mgr = caf::cuda::manager::get();
-    int length = 10;
-    std::vector<char> str1(length);
-    std::vector<char> str2(length);
-    std::vector<int> result(length);
-    std::vector<int> len(1);
-    len[0] = length;
+#include <caf/all.hpp>
+#include <caf/cuda/all.hpp>
+#include <iostream>
+#include <vector>
+#include <chrono>
 
-    // 1 dimension for blocks and grids
-    caf::cuda::nd_range dim(1,1,1,1,1,1);
+using namespace caf;
+using namespace std::chrono_literals;
 
-    // Spawn the CUDA actor
-    auto gpuActor = mgr.spawn(kernel_code, "compare_strings", dim,in<char>{},in<char>{},out<int>{},in<int>{});
+void actor_facade_launch_kernel_test(actor_system& sys) {
+  caf::cuda::manager& mgr = caf::cuda::manager::get();
 
-    // Create the necessary input/output args
-    auto arg1 = caf::cuda::create_in_arg(str1);
-    auto arg2 = caf::cuda::create_in_arg(str2);
-    auto arg3 = caf::cuda::create_out_arg(result);
-    auto arg4 = caf::cuda::create_in_arg(len);
+  int length = 10;
+  std::vector<char> str1(length, 'A');  // example content
+  std::vector<char> str2(length, 'B');
+  std::vector<int> result(length);
+  std::vector<int> len(1, length);
 
-    // Send a message with the args to the actor
-    // The actor_facade is expected to handle this message and call run_kernel internally
-     //anon_mail(gpuActor, arg1, arg2, arg3, arg4);
-     anon_mail(gpuActor, str1, str2, result, length);
-     //anon_mail(gpuActor, std::vector<char>{str1}, std::vector<char>{str2}, std::vector<int>{result}, length);
+  // 1D grid/block dimensions
+  caf::cuda::nd_range dim(1,1,1,1,1,1);
 
+  // Spawn your CUDA actor
+  auto gpuActor = mgr.spawn(kernel_code, "compare_strings", dim,
+                            in<char>{}, in<char>{}, out<int>{}, in<int>{});
 
-    // Optionally, you can wait for a response or schedule followup steps
+  // Spawn an event_based_actor that will send the message and handle response
+  scoped_actor self{sys};
+
+  // Compose the message arguments as expected by actor_facade
+  auto arg1 = caf::cuda::create_in_arg(str1);
+  auto arg2 = caf::cuda::create_in_arg(str2);
+  auto arg3 = caf::cuda::create_out_arg(result);
+  auto arg4 = caf::cuda::create_in_arg(len);
+
+  // Use an event_based_actor to send via mail and chain then()
+  sys.spawn([=](event_based_actor* self_actor) {
+    // Send via mail() to gpuActor
+    self_actor->mail(gpuActor, arg1, arg2, arg3, arg4)
+      .request(gpuActor, 10s)
+      .then(
+        [self_actor](const std::vector<int>& results) {
+          aout(self_actor) << "Kernel finished, results: ";
+          for (auto v : results) aout(self_actor) << v << ' ';
+          aout(self_actor) << std::endl;
+          self_actor->quit();
+        }
+      );
+  });
+
+  // Wait for all actors (including your spawned one) to finish
+  sys.await_all_actors_done();
 }
+
+
+
+
 
 
 
@@ -105,11 +131,11 @@ void actor_facade_spawn_test(caf::actor_system& sys) {
 
 void caf_main(caf::actor_system& sys) {
 
-//	caf::cuda::manager::init(sys);
+	caf::cuda::manager::init(sys);
 //	actor_facade_spawn_test(sys);
 
-      //actor_facade_launch_kernel_test(sys);
-       test_main(sys);
+      actor_facade_launch_kernel_test(sys);
+//       test_main(sys);
 	
 //	return 0;
 }
