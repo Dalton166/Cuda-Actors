@@ -22,15 +22,15 @@ namespace caf::cuda {
 template <bool PassConfig, class... Ts>
 class actor_facade : public caf::local_actor, public caf::resumable {
 public:
- static caf::actor create(
+  static caf::actor create(
     caf::actor_system& sys,
     caf::actor_config&& actor_conf,
     program_ptr program,
     nd_range dims,
     Ts&&... xs
   ) {
-    std::cout << "Actor has successfully spawned and was created\n";
-      return caf::make_actor<actor_facade<PassConfig, std::decay_t<Ts>...>, caf::actor>(
+    CAF_LOG_DEBUG("Creating actor with ID: " << sys.next_actor_id());
+    return caf::make_actor<actor_facade<PassConfig, std::decay_t<Ts>...>, caf::actor>(
       sys.next_actor_id(),
       sys.node(),
       &sys,
@@ -41,60 +41,49 @@ public:
   }
 
   static caf::actor create(
-  caf::actor_system* sys,
-  caf::actor_config&& actor_conf,
-  program_ptr program,
-  nd_range dims,
-  Ts&&... xs
-) {
-  std::cout << "Actor has successfully spawned and was created\n";
-  return caf::make_actor<actor_facade<PassConfig, std::decay_t<Ts>...>, caf::actor>(
-    sys->next_actor_id(),
-    sys->node(),
-    sys,
-    std::move(actor_conf),
-    std::move(program),
-    std::move(dims),
-    std::forward<Ts>(xs)...
-  );
-}
-  /*
-  actor_facade(caf::actor_config& cfg) : caf::local_actor(cfg), caf::resumable() {
-    throw std::runtime_error("CUDA support disabled: actor_facade ctor");
+    caf::actor_system* sys,
+    caf::actor_config&& actor_conf,
+    program_ptr program,
+    nd_range dims,
+    Ts&&... xs
+  ) {
+    CAF_LOG_DEBUG("Creating actor with ID: " << sys->next_actor_id());
+    return caf::make_actor<actor_facade<PassConfig, std::decay_t<Ts>...>, caf::actor>(
+      sys->next_actor_id(),
+      sys->node(),
+      sys,
+      std::move(actor_conf),
+      std::move(program),
+      std::move(dims),
+      std::forward<Ts>(xs)...);
   }
-	*/
-actor_facade(caf::actor_config&& cfg, program_ptr prog, nd_range nd, Ts&&... xs)
-  : 
-    local_actor(cfg),
-    config_(std::move(cfg))
-  , program_(std::move(prog))
-  , dims_(std::move(nd)) // <-- initialize your nd_range member here
-{
-    std::cout << "Actor has successfully spawned and was created\n";
-}
 
+  actor_facade(caf::actor_config&& cfg, program_ptr prog, nd_range nd, Ts&&... xs)
+    : local_actor(cfg),
+      config_(std::move(cfg)),
+      program_(std::move(prog)),
+      dims_(std::move(nd)) {
+    CAF_LOG_DEBUG("Actor constructed with config: " << &cfg);
+  }
 
-//template <class... Ts>
-void create_command(program_ptr program, Ts&&... xs) {
+  void create_command(program_ptr program, Ts&&... xs) {
+    CAF_LOG_DEBUG("Creating command for kernel launch");
     caf::response_promise rp = make_response_promise();
-
     using command_t = command<caf::actor, raw_t<Ts>...>;
-    auto cmd = make_counted<command_t>(rp, program,dims_, std::forward<Ts>(xs)...);
-    cmd -> enqueue(); //launches the kernel
-}
+    auto cmd = make_counted<command_t>(rp, program, dims_, std::forward<Ts>(xs)...);
+    cmd->enqueue(); // launches the kernel
+  }
 
-
-//temperary workaround for the fact that actor_facade cannot communicate with other actors so far be sure to use in, in_out or out types otherwise this will crash 
-//template <class... Ts>
-void run_kernel(Ts&... xs) {
+  void run_kernel(Ts&... xs) {
+    CAF_LOG_DEBUG("Running kernel");
     create_command(program_, std::forward<Ts>(xs)...);
-}
+  }
 
 private:
   caf::actor_config config_;
-  std::queue<mailbox_element_ptr> mailbox_; // Mailbox for messages
   program_ptr program_;
   nd_range dims_;
+  std::queue<mailbox_element_ptr> mailbox_; // Custom mailbox for CAF 1.0.2
 
   void print_args() {
     std::cout << "(no args)\n";
@@ -106,37 +95,37 @@ private:
     print_args(std::forward<Rest>(rest)...);
   }
 
-//-------------------------Basic implementation, will need to implement fully later
   bool handle_message(const message& msg) {
-    if (!msg.match_elements<raw_t<Ts>...>()) {
-      std::cerr << "Message argument types do not match wrapper types!\n";
-      return false;
+    CAF_LOG_DEBUG("Handling message");
+    if (msg.match_elements<Ts...>()) {
+      CAF_LOG_DEBUG("Matched wrapper types");
+      return unpack_and_run_wrapped(msg, std::index_sequence_for<Ts...>{});
     }
-
-    // Extract raw values from message
-    // Need index sequence
-    return unpack_and_run(msg, std::index_sequence_for<Ts...>{});
+    if (msg.match_elements<raw_t<Ts>...>()) {
+      CAF_LOG_DEBUG("Matched raw types");
+      return unpack_and_run(msg, std::index_sequence_for<Ts...>{});
+    }
+    CAF_LOG_ERROR("Message argument types do not match wrapper or raw types");
+    return false;
   }
 
-template <std::size_t... Is>
-bool unpack_and_run(const message& msg, std::index_sequence<Is...>) {
-  // Extract raw values (e.g., char, int)
-  auto unpacked = std::make_tuple(msg.get_as<raw_t<Ts>>(Is)...);
+  template <std::size_t... Is>
+  bool unpack_and_run_wrapped(const message& msg, std::index_sequence<Is...>) {
+    CAF_LOG_DEBUG("Unpacking wrapped types");
+    auto wrapped = std::make_tuple(msg.get_as<Ts>(Is)...);
+    print_wrapped(std::get<Is>(wrapped)...);
+    return true;
+  }
 
-  std::cout << "Hi kids\n";
-  // Optional: no need to check has_value() if get_as returns raw values
-  // Assume msg.match_elements<raw_t<Ts>...>() already checked
+  template <std::size_t... Is>
+  bool unpack_and_run(const message& msg, std::index_sequence<Is...>) {
+    CAF_LOG_DEBUG("Unpacking raw types");
+    auto unpacked = std::make_tuple(msg.get_as<raw_t<Ts>>(Is)...);
+    auto wrapped = std::make_tuple(Ts(std::get<Is>(unpacked))...);
+    print_wrapped(std::get<Is>(wrapped)...);
+    return true;
+  }
 
-  // Wrap raw values into wrapper types
-  auto wrapped = std::make_tuple(
-    Ts(std::get<Is>(unpacked))...  // Requires constructor Ts(raw_t<Ts>)
-  );
-
-  // For demo, print contents:
-  print_wrapped(std::get<Is>(wrapped)...);
-
-  return true;
-}
   void print_wrapped() {
     std::cout << "(no args)\n";
   }
@@ -144,65 +133,80 @@ bool unpack_and_run(const message& msg, std::index_sequence<Is...>) {
   template <typename T, typename... Rest>
   void print_wrapped(T&& first, Rest&&... rest) {
     std::cout << "Buffer contents: ";
-    for (auto& v : first.buffer)
+    for (auto& v : first.buffer) {
       std::cout << v << ' ';
+    }
     std::cout << '\n';
     print_wrapped(std::forward<Rest>(rest)...);
   }
-// Implement caf::resumable interface
+
+  // Implement caf::resumable interface
   subtype_t subtype() const noexcept override {
-    return subtype_t(0); // Placeholder: minimal type identifier
+    return subtype_t(0); // Placeholder
   }
 
-  resumable::resume_result resume(scheduler*, size_t) override {
+  resumable::resume_result resume(scheduler* sched, [[maybe_unused]] size_t max) override {
+    CAF_LOG_DEBUG("Resuming actor, mailbox size: " << mailbox_.size());
     while (!mailbox_.empty()) {
-      auto& msg = mailbox_.front();
-      if (msg && msg->content()) {
-        handle_message(msg->content());
-      }
+      auto msg = std::move(mailbox_.front());
       mailbox_.pop();
+      if (msg && msg->content()) {
+        current_mailbox_element(msg.get()); // Set for CAF message processing
+        handle_message(msg->content());
+        current_mailbox_element(nullptr); // Reset after processing
+      }
     }
-      std::cout << "Hello world\n";
+    if (sched) {
+      CAF_LOG_DEBUG("Scheduling actor after resume");
+      sched->schedule(this);
+    }
     return resumable::done;
   }
-void ref_resumable() const noexcept override {
-    // Minimal: do nothing or call ref_counted::ref()
+
+  void ref_resumable() const noexcept override {
+    CAF_LOG_DEBUG("Referencing resumable");
   }
 
   void deref_resumable() const noexcept override {
-    // Minimal: do nothing or call ref_counted::deref()
+    CAF_LOG_DEBUG("Dereferencing resumable");
   }
 
   // Implement caf::local_actor virtual methods
-  bool enqueue(mailbox_element_ptr what, scheduler*) override {
-    if (what) {
-      mailbox_.push(std::move(what));
-      return true; // Message enqueued
+  bool enqueue(mailbox_element_ptr what, scheduler* sched) override {
+    if (!what) {
+      CAF_LOG_DEBUG("Enqueue failed: null message");
+      return false;
     }
-    return false;
+    CAF_LOG_DEBUG("Enqueuing message, mailbox size: " << mailbox_.size());
+    bool was_empty = mailbox_.empty();
+    mailbox_.push(std::move(what));
+    if (was_empty && sched) {
+      CAF_LOG_DEBUG("Scheduling actor");
+      sched->schedule(this);
+    }
+    return true;
   }
 
-  void launch(scheduler* where, bool lazy, bool interruptible) override {
-    if (!lazy && where) {
-      where->schedule(this); // Schedule the actor (works since we inherit from resumable)
-    
+  void launch(scheduler* sched, bool lazy, [[maybe_unused]] bool interruptible) override {
+    if (!lazy && sched) {
+      CAF_LOG_DEBUG("Launching actor");
+      sched->schedule(this);
     }
   }
 
   void do_unstash(mailbox_element_ptr what) override {
     if (what) {
-      enqueue(std::move(what), nullptr); // Re-enqueue stashed message
+      CAF_LOG_DEBUG("Unstashing message");
+      mailbox_.push(std::move(what));
     }
   }
 
   void force_close_mailbox() override {
+    CAF_LOG_DEBUG("Closing mailbox, clearing " << mailbox_.size() << " messages");
     while (!mailbox_.empty()) {
-      mailbox_.pop(); // Clear mailbox
+      mailbox_.pop();
     }
   }
-
-
-
 };
 
 } // namespace caf::cuda
