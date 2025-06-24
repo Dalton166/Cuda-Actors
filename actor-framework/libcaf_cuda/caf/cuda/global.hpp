@@ -121,7 +121,20 @@ void inline check(CUresult result, const char* msg) {
 
 
 
+template <class Inspector, typename T>
+bool inspect(Inspector& f, in<T>& x) {
+  return f.object(x).fields(f.field("buffer", x.buffer));
+}
 
+template <class Inspector, typename T>
+bool inspect(Inspector& f, out<T>& x) {
+  return f.object(x).fields(f.field("buffer", x.buffer));
+}
+
+template <class Inspector, typename T>
+bool inspect(Inspector& f, in_out<T>& x) {
+  return f.object(x).fields(f.field("buffer", x.buffer));
+}
 
 
 
