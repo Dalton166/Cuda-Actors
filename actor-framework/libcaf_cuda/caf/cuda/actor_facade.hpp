@@ -95,36 +95,57 @@ private:
     print_args(std::forward<Rest>(rest)...);
   }
 
-  bool handle_message(const message& msg) {
-    CAF_LOG_DEBUG("Handling message");
-    if (msg.match_elements<Ts...>()) {
-      CAF_LOG_DEBUG("Matched wrapper types");
-      return unpack_and_run_wrapped(msg, std::index_sequence_for<Ts...>{});
+bool handle_message(const message& msg) {
+  CAF_LOG_DEBUG("Handling message");
+  std::cout << "Hello\n";
+
+  // Check first argument is caf::actor
+  if (!msg.types().empty() && msg.types()[0] == caf::type_id_v<caf::actor>) {
+    // Extract the sender actor (first argument)
+    auto sender = msg.get_as<caf::actor>(0);
+
+    // Prepare to handle the rest of the args (from index 1 on)
+    if (msg.match_elements<caf::actor, Ts...>()) {
+      // Wrapped types match (with sender + wrappers)
+      return unpack_and_run_wrapped(sender, msg, std::index_sequence_for<Ts...>{});
     }
-    if (msg.match_elements<raw_t<Ts>...>()) {
-      CAF_LOG_DEBUG("Matched raw types");
-      return unpack_and_run(msg, std::index_sequence_for<Ts...>{});
+    if (msg.match_elements<caf::actor, raw_t<Ts>...>()) {
+      // Raw types match (with sender + raw types)
+      return unpack_and_run(sender, msg, std::index_sequence_for<Ts...>{});
     }
-    CAF_LOG_ERROR("Message argument types do not match wrapper or raw types");
-    return false;
   }
 
-  template <std::size_t... Is>
-  bool unpack_and_run_wrapped(const message& msg, std::index_sequence<Is...>) {
-    CAF_LOG_DEBUG("Unpacking wrapped types");
-    auto wrapped = std::make_tuple(msg.get_as<Ts>(Is)...);
-    print_wrapped(std::get<Is>(wrapped)...);
-    return true;
-  }
+  std::cout << "Message argument types do not match expected pattern\n";
+  std::cout << "Message types: " << to_string(msg.types()) << "\n";
+  CAF_LOG_ERROR("Message argument types do not match expected pattern");
+  return false;
+}
 
-  template <std::size_t... Is>
-  bool unpack_and_run(const message& msg, std::index_sequence<Is...>) {
-    CAF_LOG_DEBUG("Unpacking raw types");
-    auto unpacked = std::make_tuple(msg.get_as<raw_t<Ts>>(Is)...);
-    auto wrapped = std::make_tuple(Ts(std::get<Is>(unpacked))...);
-    print_wrapped(std::get<Is>(wrapped)...);
-    return true;
-  }
+template <std::size_t... Is>
+bool unpack_and_run_wrapped(caf::actor sender, const message& msg, std::index_sequence<Is...>) {
+  CAF_LOG_DEBUG("Unpacking wrapped types with sender");
+  // Extract wrapped args starting from index 1
+  auto wrapped = std::make_tuple(msg.get_as<Ts>(Is + 1)...);
+  print_wrapped(std::get<Is>(wrapped)...);
+
+  // Pass sender + wrapped args to run_kernel
+  run_kernel(std::get<Is>(wrapped)...);
+  return true;
+}
+
+template <std::size_t... Is>
+bool unpack_and_run(caf::actor sender, const message& msg, std::index_sequence<Is...>) {
+  CAF_LOG_DEBUG("Unpacking raw types with sender");
+  // Extract raw args starting from index 1
+  auto unpacked = std::make_tuple(msg.get_as<raw_t<Ts>>(Is + 1)...);
+  // Wrap them
+  auto wrapped = std::make_tuple(Ts(std::get<Is>(unpacked))...);
+  print_wrapped(std::get<Is>(wrapped)...);
+
+  // Pass sender + wrapped args to run_kernel
+  run_kernel(std::get<Is>(wrapped)...);
+  return true;
+}
 
   void print_wrapped() {
     std::cout << "(no args)\n";
