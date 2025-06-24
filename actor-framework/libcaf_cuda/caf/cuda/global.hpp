@@ -10,6 +10,11 @@
 #include "caf/cuda/nd_range.hpp"
 #include "caf/cuda/cuda-actors.hpp"
 #include <nvrtc.h>
+// CAF type ID registration
+#include <caf/type_id.hpp>
+
+
+
 
 
 
@@ -131,6 +136,16 @@ void inline check(CUresult result, const char* msg) {
     do { nvrtcResult res = call; if (res != NVRTC_SUCCESS) { \
         std::cerr << "NVRTC Error: " << nvrtcGetErrorString(res) << std::endl; exit(1); }} while(0)
 
+
+// CAF type ID registration
+#include <caf/type_id.hpp>
+
+// Define a custom type ID block for CUDA types
+CAF_BEGIN_TYPE_ID_BLOCK(cuda, first_custom_type_id)
+  CAF_ADD_TYPE_ID(cuda, (in<int>))
+  CAF_ADD_TYPE_ID(cuda, (out<int>))
+  CAF_ADD_TYPE_ID(cuda, (in_out<int>))
+CAF_END_TYPE_ID_BLOCK(cuda)
 
 
 
