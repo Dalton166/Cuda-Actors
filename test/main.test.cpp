@@ -15,6 +15,7 @@
 #include <caf/type_id.hpp>
 #include "caf/detail/test.hpp"
 
+/*
 CAF_BEGIN_TYPE_ID_BLOCK(cuda_test, caf::first_custom_type_id)
 
   CAF_ADD_TYPE_ID(cuda_test, (std::vector<char>))
@@ -24,6 +25,8 @@ CAF_BEGIN_TYPE_ID_BLOCK(cuda_test, caf::first_custom_type_id)
   CAF_ADD_TYPE_ID(cuda_test, (out<int>))
 
 CAF_END_TYPE_ID_BLOCK(cuda_test)
+*/
+
 
 //using namespace caf;
 
@@ -145,5 +148,5 @@ CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in<char>)
 CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in<int>)
 CAF_ALLOW_UNSAFE_MESSAGE_TYPE(out<int>)
 
-CAF_MAIN(caf::id_block::cuda_test)
+CAF_MAIN()
 
