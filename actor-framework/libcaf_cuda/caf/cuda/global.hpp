@@ -142,7 +142,10 @@ void inline check(CUresult result, const char* msg) {
 
 // Define a custom type ID block for CUDA types
 CAF_BEGIN_TYPE_ID_BLOCK(cuda, first_custom_type_id)
+  CAF_ADD_TYPE_ID(cuda, (std::vector<char>))
+  CAF_ADD_TYPE_ID(cuda, (std::vector<int>))
   CAF_ADD_TYPE_ID(cuda, (in<int>))
+  CAF_ADD_TYPE_ID(cuda, (in<char>))
   CAF_ADD_TYPE_ID(cuda, (out<int>))
   CAF_ADD_TYPE_ID(cuda, (in_out<int>))
 CAF_END_TYPE_ID_BLOCK(cuda)
