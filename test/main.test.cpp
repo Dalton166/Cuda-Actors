@@ -81,8 +81,7 @@ void actor_facade_launch_kernel_test(actor_system& sys) {
   sys.spawn([=](event_based_actor* self_actor) {
     // Send via mail() to gpuActor
     self_actor->mail(gpuActor, arg1, arg2, arg3, arg4)
-      .request(gpuActor, 10s)
-      .then(
+      .request(gpuActor, 10s).then(
         [self_actor](const std::vector<int>& results) {
           aout(self_actor) << "Kernel finished, results: ";
           for (auto v : results) aout(self_actor) << v << ' ';
@@ -134,6 +133,10 @@ void actor_facade_spawn_test(caf::actor_system& sys) {
 
 void caf_main(caf::actor_system& sys) {
 
+	  caf::core::init_global_meta_objects();
+  caf::init_global_meta_objects<caf::id_block::cuda>(); // 👈 This is the missing piece
+
+
 	caf::cuda::manager::init(sys);
 //	actor_facade_spawn_test(sys);
 
@@ -144,9 +147,9 @@ void caf_main(caf::actor_system& sys) {
 }
 
 
-CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in<char>)
-CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in<int>)
-CAF_ALLOW_UNSAFE_MESSAGE_TYPE(out<int>)
+//CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in<char>)
+//CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in<int>)
+//:CAF_ALLOW_UNSAFE_MESSAGE_TYPE(out<int>)
 
 CAF_MAIN()
 
