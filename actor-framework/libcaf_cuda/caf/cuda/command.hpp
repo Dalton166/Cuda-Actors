@@ -44,15 +44,15 @@ public:
     }
 
 
-  void enqueue() {
-	  std::cout << "Launch initiated\n";
-    launch_kernel(program_, dims_, mem_refs, program_->get_stream_id());
-
+ void enqueue() {
+    std::cout << "Launch initiated\n";
+    auto outputs = launch_kernel(program_, dims_, mem_refs, program_->get_stream_id());
     std::cout << "Kernel has successfully launched\n";
-    // Kernel done, data ready to copy back and cleanup
-    print_and_cleanup_outputs(mem_refs);
-  }
-
+    rp.deliver(outputs);
+    for_each_tuple(mem_refs, [](auto& mem) {
+      if (mem) mem->reset();
+    });
+  } 
  // ~command() override = default;
 
 
@@ -133,15 +133,16 @@ private:
     for_each_tuple_impl(t, std::forward<Func>(f), std::index_sequence_for<Is...>{});
   }
 
-  // Launch kernel wrapper
-  void launch_kernel(program_ptr program,
+  // Launch kernel wrapper 
+  auto launch_kernel(program_ptr program,
                      const caf::cuda::nd_range& range,
                      std::tuple<mem_ptr<raw_t<Ts>> ...> args,
-                     int stream_id) {
+                     int stream_id)
+    -> std::tuple<std::optional<std::vector<raw_t<Ts>>>...> {
     int context_id = program->get_context_id();
     CUfunction kernel = program->get_kernel();
     device_ptr dev = program->get_device();
-    dev->launch_kernel(kernel, range, args, stream_id, context_id);
+    return dev->launch_kernel(kernel, range, args, stream_id, context_id);
   }
 };
 
