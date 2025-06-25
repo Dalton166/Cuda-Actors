@@ -45,9 +45,9 @@ public:
 
 
  void enqueue() {
-    std::cout << "Launch initiated\n";
+    //std::cout << "Launch initiated\n";
     auto outputs = launch_kernel(program_, dims_, mem_refs, program_->get_stream_id());
-    std::cout << "Kernel has successfully launched\n";
+    //std::cout << "Kernel has successfully launched\n";
     rp.deliver(std::move(outputs));
     for_each_tuple(mem_refs, [](auto& mem) {
       if (mem) mem->reset();

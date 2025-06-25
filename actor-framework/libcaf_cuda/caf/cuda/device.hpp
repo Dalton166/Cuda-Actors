@@ -103,13 +103,13 @@ mem_ptr<T> make_arg(out<T> arg) {
         throw std::runtime_error("Context mismatch");
       }
 
-      std::cout << "launch_kernel: context=" << ctx << ", kernel=" << kernel << "\n";
+//      std::cout << "launch_kernel: context=" << ctx << ", kernel=" << kernel << "\n";
 
       auto kernel_arg_vec = extract_kernel_args(args);
       void** kernel_args = kernel_arg_vec.data();
 
       for (size_t i = 0; i < kernel_arg_vec.size(); ++i) {
-        std::cout << "launch_kernel: args[" << i << "]=" << *static_cast<CUdeviceptr*>(kernel_arg_vec[i]) << "\n";
+  //      std::cout << "launch_kernel: args[" << i << "]=" << *static_cast<CUdeviceptr*>(kernel_arg_vec[i]) << "\n";
       }
 
       CUresult result = cuLaunchKernel(

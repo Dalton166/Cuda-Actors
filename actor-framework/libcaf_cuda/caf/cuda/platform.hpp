@@ -98,7 +98,7 @@ platform() {
 
     char name[256];
     cuDeviceGetName(name, 256, cuda_device);
-    std::cout << "Device #" << i << ": " << name << "\n";
+    //std::cout << "Device #" << i << ": " << name << "\n";
 
     // Explicit context creation (Driver API only)
     check(cuCtxCreate(&contexts_[i], CU_CTX_SCHED_AUTO | CU_CTX_MAP_HOST, cuda_device), "cuCtxCreate");
