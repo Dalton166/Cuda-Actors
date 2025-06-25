@@ -48,12 +48,13 @@ public:
     std::cout << "Launch initiated\n";
     auto outputs = launch_kernel(program_, dims_, mem_refs, program_->get_stream_id());
     std::cout << "Kernel has successfully launched\n";
-    rp.deliver(outputs);
+    rp.deliver(std::move(outputs));
     for_each_tuple(mem_refs, [](auto& mem) {
       if (mem) mem->reset();
     });
-  } 
- // ~command() override = default;
+  }
+
+// ~command() override = default;
 
 
    template <class A, class... S>
@@ -134,16 +135,17 @@ private:
   }
 
   // Launch kernel wrapper 
-  auto launch_kernel(program_ptr program,
+ auto launch_kernel(program_ptr program,
                      const caf::cuda::nd_range& range,
-                     std::tuple<mem_ptr<raw_t<Ts>> ...> args,
+                     std::tuple<mem_ptr<raw_t<Ts>>...> args,
                      int stream_id)
-    -> std::tuple<std::optional<std::vector<raw_t<Ts>>>...> {
+    -> std::vector<output_buffer> {
     int context_id = program->get_context_id();
     CUfunction kernel = program->get_kernel();
     device_ptr dev = program->get_device();
     return dev->launch_kernel(kernel, range, args, stream_id, context_id);
   }
+
 };
 
 // intrusive_ptr reference counting for command
