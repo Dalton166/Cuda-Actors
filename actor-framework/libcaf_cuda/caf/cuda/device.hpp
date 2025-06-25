@@ -84,60 +84,68 @@ mem_ptr<T> make_arg(out<T> arg) {
   return caf::intrusive_ptr<mem_ref<T>>{new mem_ref<T>(scratch_argument(std::move(arg)))};
 }
  template <typename... Ts>
-    void launch_kernel(CUfunction kernel, const nd_range& range, std::tuple<Ts...> args, int stream_id, int context_id) {
-        std::lock_guard<std::mutex> lock(stream_mutex);
+  auto launch_kernel(CUfunction kernel, const nd_range& range, std::tuple<Ts...> args, int stream_id, int context_id)
+    -> std::tuple<std::optional<std::vector<typename Ts::element_type::value_type>>...> {
+    std::lock_guard<std::mutex> lock(stream_mutex);
 
-        try {
-            CUstream stream = nullptr;
-            CUcontext ctx = getContext(context_id);
+    try {
+      CUstream stream = nullptr;
+      CUcontext ctx = getContext(context_id);
 
-            if (!ctx) throw std::runtime_error("Invalid context in launch_kernel");
-            if (!kernel) throw std::runtime_error("Invalid kernel handle in launch_data");
+      if (!ctx) throw std::runtime_error("Invalid context in launch_kernel");
+      if (!kernel) throw std::runtime_error("Invalid kernel handle in launch_kernel");
 
-            CHECK_CUDA(cuCtxPushCurrent(ctx));
-            CUcontext current_ctx;
-            CHECK_CUDA(cuCtxGetCurrent(&current_ctx));
-            if (current_ctx != ctx) {
-                throw std::runtime_error("Context mismatch");
-            }
+      CHECK_CUDA(cuCtxPushCurrent(ctx));
+      CUcontext current_ctx;
+      CHECK_CUDA(cuCtxGetCurrent(&current_ctx));
+      if (current_ctx != ctx) {
+        throw std::runtime_error("Context mismatch");
+      }
 
-            std::cout << "launch_kernel: context=" << ctx << ", kernel=" << kernel << "\n";
+      std::cout << "launch_kernel: context=" << ctx << ", kernel=" << kernel << "\n";
 
-            auto kernel_arg_vec = extract_kernel_args(args);
-            void** kernel_args = kernel_arg_vec.data();
+      auto kernel_arg_vec = extract_kernel_args(args);
+      void** kernel_args = kernel_arg_vec.data();
 
-            for (size_t i = 0; i < kernel_arg_vec.size(); ++i) {
-                std::cout << "launch_kernel: args[" << i << "]=" << *static_cast<CUdeviceptr*>(kernel_arg_vec[i]) << "\n";
-            }
+      for (size_t i = 0; i < kernel_arg_vec.size(); ++i) {
+        std::cout << "launch_kernel: args[" << i << "]=" << *static_cast<CUdeviceptr*>(kernel_arg_vec[i]) << "\n";
+      }
 
-            CUresult result = cuLaunchKernel(
-                kernel,
-                range.getGridDimX(), range.getGridDimY(), range.getGridDimZ(),
-                range.getBlockDimX(), range.getBlockDimY(), range.getBlockDimZ(),
-                0, stream, kernel_args, nullptr
-            );
-            if (result != CUDA_SUCCESS) {
-                const char* err_name;
-                cuGetErrorName(result, &err_name);
-                throw std::runtime_error("cuLaunchKernel failed: " + std::string(err_name ? err_name : "unknown error"));
-            }
+      CUresult result = cuLaunchKernel(
+        kernel,
+        range.getGridDimX(), range.getGridDimY(), range.getGridDimZ(),
+        range.getBlockDimX(), range.getBlockDimY(), range.getBlockDimZ(),
+        0, stream, kernel_args, nullptr
+      );
+      if (result != CUDA_SUCCESS) {
+        const char* err_name;
+        cuGetErrorName(result, &err_name);
+        throw std::runtime_error("cuLaunchKernel failed: " + std::string(err_name ? err_name : "unknown error"));
+      }
 
-            //std::cout << "Hello its me again carlos\n";
-            CHECK_CUDA(cuCtxSynchronize());
-            //std::cout << "I brought some pizza\n";
+      CHECK_CUDA(cuCtxSynchronize());
 
-            CHECK_CUDA(cuCtxPopCurrent(nullptr));
+      auto make_output_tuple = [](auto&&... arg) {
+        return std::make_tuple(
+          (arg && (arg->access() == OUT || arg->access() == IN_OUT)
+           ? std::optional<std::vector<typename std::decay_t<decltype(*arg)>::value_type>>{arg->copy_to_host()}
+           : std::nullopt)...
+        );
+      };
+      auto outputs = std::apply(make_output_tuple, args);
 
-            // Clean up allocated CUdeviceptr objects
-            for (void* arg : kernel_arg_vec) {
-                delete static_cast<CUdeviceptr*>(arg);
-            }
-        } catch (const std::exception& e) {
-            std::cout << "launch_kernel failed: " << e.what() << "\n";
-            throw;
-        }
+      CHECK_CUDA(cuCtxPopCurrent(nullptr));
+
+      for (void* arg : kernel_arg_vec) {
+        delete static_cast<CUdeviceptr*>(arg);
+      }
+
+      return outputs;
+    } catch (const std::exception& e) {
+      std::cout << "launch_kernel failed: " << e.what() << "\n";
+      throw;
     }
-
+  }
 
 
 
