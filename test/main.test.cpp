@@ -62,37 +62,43 @@ void actor_facade_launch_kernel_test(actor_system& sys) {
   std::vector<int> len(1, length);
 
   // 1D grid/block dimensions
-  caf::cuda::nd_range dim(1,1,1,1,1,1);
+  caf::cuda::nd_range dim(1, 1, 1, 1, 1, 1);
 
-  // Spawn your CUDA actor
+  // Spawn CUDA actor
   auto gpuActor = mgr.spawn(kernel_code, "compare_strings", dim,
                             in<char>{}, in<char>{}, out<int>{}, in<int>{});
 
-  // Spawn an event_based_actor that will send the message and handle response
+  // Spawn an event_based_actor to send the message and handle response
   scoped_actor self{sys};
 
-  // Compose the message arguments as expected by actor_facade
+  // Compose message arguments
   auto arg1 = caf::cuda::create_in_arg(str1);
   auto arg2 = caf::cuda::create_in_arg(str2);
   auto arg3 = caf::cuda::create_out_arg(result);
   auto arg4 = caf::cuda::create_in_arg(len);
 
-  // Use an event_based_actor to send via mail and chain then()
+  // Send message and handle response
   sys.spawn([=](event_based_actor* self_actor) {
-    // Send via mail() to gpuActor
     self_actor->mail(gpuActor, arg1, arg2, arg3, arg4)
       .request(gpuActor, 10s).then(
-        [self_actor](const std::vector<int>& results) {
+        [self_actor](const std::vector<output_buffer>& outputs) {
           aout(self_actor) << "Kernel finished, results: ";
-          for (auto v : results) aout(self_actor) << v << ' ';
+          for (size_t i = 0; i < outputs.size(); ++i) {
+            std::visit([&](const auto& vec) {
+              for (const auto& val : vec) {
+                aout(self_actor) << val << ' ';
+              }
+            }, outputs[i].data);
+          }
           aout(self_actor) << std::endl;
           self_actor->quit();
         }
       );
   });
 
-  // Wait for all actors (including your spawned one) to finish
-  sys.await_all_actors_done();
+  // Wait for all actors to finish
+  //sys.await_all_actors_done();
+  std::this_thread::sleep_for(2s);
 }
 
 
