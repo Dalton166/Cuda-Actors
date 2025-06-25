@@ -136,6 +136,19 @@ bool inspect(Inspector& f, in_out<T>& x) {
   return f.object(x).fields(f.field("buffer", x.buffer));
 }
 
+using buffer_variant = std::variant<std::vector<char>, std::vector<int>, std::vector<float>, std::vector<double>>;
+
+struct output_buffer {
+  buffer_variant data;
+
+  // CAF serialization for output_buffer
+  template <class Inspector>
+  typename Inspector::result_type inspect(Inspector& f, output_buffer& x) {
+    return f.object(x).fields(f.field("data", x.data));
+  }
+};
+
+
 
 
 // Check CUDA errors macro
@@ -165,11 +178,13 @@ CAF_BEGIN_TYPE_ID_BLOCK(cuda, first_custom_type_id)
   CAF_ADD_TYPE_ID(cuda, (std::vector<double>))
 
   // Register the variant holding all possible vector types
-  CAF_ADD_TYPE_ID(cuda, (std::variant<std::vector<int>, std::vector<float>, std::vector<double>, std::vector<char>>))
+  CAF_ADD_TYPE_ID(cuda, (buffer_variant))
 
-  // Register the outer vector of variants for kernel outputs
-  CAF_ADD_TYPE_ID(cuda, (std::vector<std::variant<std::vector<int>, std::vector<float>, std::vector<double>, std::vector<char>>>))
+  // Register the output_buffer struct
+  CAF_ADD_TYPE_ID(cuda, (output_buffer))
 
+  // Register the vector of output buffers
+  CAF_ADD_TYPE_ID(cuda, (std::vector<output_buffer>))
 CAF_END_TYPE_ID_BLOCK(cuda)
 
 
