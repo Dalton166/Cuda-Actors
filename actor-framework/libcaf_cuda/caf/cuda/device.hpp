@@ -224,7 +224,7 @@ private:
         CUdeviceptr* device_ptrs[] = { new CUdeviceptr(std::get<Is>(t)->mem())... };
         for (size_t i = 0; i < sizeof...(Is); ++i) {
             args[i] = device_ptrs[i];
-            std::cout << "extract_kernel_args: device_ptrs[" << i << "]=" << *static_cast<CUdeviceptr*>(args[i]) << "\n";
+            //std::cout << "extract_kernel_args: device_ptrs[" << i << "]=" << *static_cast<CUdeviceptr*>(args[i]) << "\n";
         }
         return args;
     }

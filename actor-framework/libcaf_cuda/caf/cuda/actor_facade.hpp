@@ -126,7 +126,7 @@ bool unpack_and_run_wrapped(caf::actor sender, const message& msg, std::index_se
   CAF_LOG_DEBUG("Unpacking wrapped types with sender");
   // Extract wrapped args starting from index 1
   auto wrapped = std::make_tuple(msg.get_as<Ts>(Is + 1)...);
-  print_wrapped(std::get<Is>(wrapped)...);
+  //print_wrapped(std::get<Is>(wrapped)...);
 
   // Pass sender + wrapped args to run_kernel
   run_kernel(std::get<Is>(wrapped)...);
@@ -140,7 +140,7 @@ bool unpack_and_run(caf::actor sender, const message& msg, std::index_sequence<I
   auto unpacked = std::make_tuple(msg.get_as<raw_t<Ts>>(Is + 1)...);
   // Wrap them
   auto wrapped = std::make_tuple(Ts(std::get<Is>(unpacked))...);
-  print_wrapped(std::get<Is>(wrapped)...);
+  //print_wrapped(std::get<Is>(wrapped)...);
 
   // Pass sender + wrapped args to run_kernel
   run_kernel(std::get<Is>(wrapped)...);
