@@ -161,6 +161,15 @@ CAF_BEGIN_TYPE_ID_BLOCK(cuda, first_custom_type_id)
   CAF_ADD_TYPE_ID(cuda, (in<char>))
   CAF_ADD_TYPE_ID(cuda, (out<int>))
   CAF_ADD_TYPE_ID(cuda, (in_out<int>))
+  CAF_ADD_TYPE_ID(cuda, (std::vector<float>))
+  CAF_ADD_TYPE_ID(cuda, (std::vector<double>))
+
+  // Register the variant holding all possible vector types
+  CAF_ADD_TYPE_ID(cuda, (std::variant<std::vector<int>, std::vector<float>, std::vector<double>, std::vector<char>>))
+
+  // Register the outer vector of variants for kernel outputs
+  CAF_ADD_TYPE_ID(cuda, (std::vector<std::variant<std::vector<int>, std::vector<float>, std::vector<double>, std::vector<char>>>))
+
 CAF_END_TYPE_ID_BLOCK(cuda)
 
 
