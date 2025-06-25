@@ -83,9 +83,10 @@ template <typename T>
 mem_ptr<T> make_arg(out<T> arg) {
   return caf::intrusive_ptr<mem_ref<T>>{new mem_ref<T>(scratch_argument(std::move(arg)))};
 }
+
  template <typename... Ts>
   auto launch_kernel(CUfunction kernel, const nd_range& range, std::tuple<Ts...> args, int stream_id, int context_id)
-    -> std::tuple<std::optional<std::vector<typename Ts::element_type::value_type>>...> {
+    -> std::vector<output_buffer> {
     std::lock_guard<std::mutex> lock(stream_mutex);
 
     try {
@@ -125,14 +126,24 @@ mem_ptr<T> make_arg(out<T> arg) {
 
       CHECK_CUDA(cuCtxSynchronize());
 
-      auto make_output_tuple = [](auto&&... arg) {
-        return std::make_tuple(
-          (arg && (arg->access() == OUT || arg->access() == IN_OUT)
-           ? std::optional<std::vector<typename std::decay_t<decltype(*arg)>::value_type>>{arg->copy_to_host()}
-           : std::nullopt)...
-        );
+      std::vector<output_buffer> outputs;
+      auto collect_outputs = [&outputs](auto&& arg) {
+        if (arg && (arg->access() == OUT || arg->access() == IN_OUT)) {
+          using T = typename std::decay_t<decltype(*arg)>::value_type;
+          if constexpr (std::is_same_v<T, char>) {
+            outputs.emplace_back(output_buffer{buffer_variant{arg->copy_to_host()}});
+          } else if constexpr (std::is_same_v<T, int>) {
+            outputs.emplace_back(output_buffer{buffer_variant{arg->copy_to_host()}});
+          } else if constexpr (std::is_same_v<T, float>) {
+            outputs.emplace_back(output_buffer{buffer_variant{arg->copy_to_host()}});
+          } else if constexpr (std::is_same_v<T, double>) {
+            outputs.emplace_back(output_buffer{buffer_variant{arg->copy_to_host()}});
+          } else {
+            throw std::runtime_error("Unsupported output type: " + std::string(typeid(T).name()));
+          }
+        }
       };
-      auto outputs = std::apply(make_output_tuple, args);
+      std::apply([&](auto&&... arg) { (collect_outputs(arg), ...); }, args);
 
       CHECK_CUDA(cuCtxPopCurrent(nullptr));
 
@@ -146,7 +157,6 @@ mem_ptr<T> make_arg(out<T> arg) {
       throw;
     }
   }
-
 
 
 private:
