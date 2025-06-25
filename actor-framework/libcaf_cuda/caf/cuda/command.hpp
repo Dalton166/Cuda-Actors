@@ -153,16 +153,16 @@ private:
 template <class Actor, class... Ts>
 inline void intrusive_ptr_add_ref(command<Actor, Ts...>* ptr) {
   ++(ptr->ref_count);
-  std::cout << "intrusive_ptr_add_ref: ref_count=" << ptr->ref_count.load() << "\n";
+  //std::cout << "intrusive_ptr_add_ref: ref_count=" << ptr->ref_count.load() << "\n";
 }
 
 template <class Actor, class... Ts>
 inline void intrusive_ptr_release(command<Actor, Ts...>* ptr) {
   if (--(ptr->ref_count) == 0) {
-    std::cout << "intrusive_ptr_release: deleting command\n";
+    //std::cout << "intrusive_ptr_release: deleting command\n";
     delete ptr;
   } else {
-    std::cout << "intrusive_ptr_release: ref_count=" << ptr->ref_count.load() << "\n";
+    //std::cout << "intrusive_ptr_release: ref_count=" << ptr->ref_count.load() << "\n";
   }
 }
 
