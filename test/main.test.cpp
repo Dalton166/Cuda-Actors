@@ -5,15 +5,7 @@
  * should however test the actor facade spawn function 
  */
 
-#include <caf/all.hpp>  // Includes most CAF essentials
-
-#include "caf/cuda/actor_facade.hpp"
-#include "caf/cuda/manager.hpp"
-#include "caf/cuda/nd_range.hpp"
-#include "caf/cuda/all.hpp"
-#include "caf/cuda/utility.hpp"
-#include <caf/type_id.hpp>
-#include "caf/detail/test.hpp"
+#include "main.test.hpp"
 
 /*
 CAF_BEGIN_TYPE_ID_BLOCK(cuda_test, caf::first_custom_type_id)
