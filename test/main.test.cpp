@@ -57,7 +57,7 @@ void actor_facade_launch_kernel_test(actor_system& sys) {
 
   int length = 10;
   std::vector<char> str1(length, 'A');  // example content
-  std::vector<char> str2(length, 'B');
+  std::vector<char> str2(length, 'A');
   std::vector<int> result(length);
   std::vector<int> len(1, length);
 
@@ -84,12 +84,15 @@ void actor_facade_launch_kernel_test(actor_system& sys) {
         [self_actor](const std::vector<output_buffer>& outputs) {
           aout(self_actor) << "Kernel finished, results: ";
           for (size_t i = 0; i < outputs.size(); ++i) {
-            std::visit([&](const auto& vec) {
-              for (const auto& val : vec) {
-                aout(self_actor) << val << ' ';
-              }
-            }, outputs[i].data);
-          }
+  std::visit([&](const auto& vec) {
+    aout(self_actor) << "Output[" << i << "]: [ ";
+    for (const auto& val : vec) {
+      aout(self_actor) << val << " ";
+    }
+    aout(self_actor) << "]\n";
+  }, outputs[i].data);
+}
+
           aout(self_actor) << std::endl;
           self_actor->quit();
         }
