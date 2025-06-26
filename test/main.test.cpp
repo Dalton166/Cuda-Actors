@@ -202,7 +202,46 @@ void test_mmul(caf::actor_system& sys) {
 }
 
 
+//serial mmul for reference
 
+
+void serial_matrix_multiply(const std::vector<int>& a,
+                            const std::vector<int>& b,
+                            std::vector<int>& c,
+                            int N) {
+  for (int i = 0; i < N; ++i) {
+    for (int j = 0; j < N; ++j) {
+      int sum = 0;
+      for (int k = 0; k < N; ++k) {
+        sum += a[i * N + k] * b[k * N + j];
+      }
+      c[i * N + j] = sum;
+    }
+  }
+}
+
+void serial_matrix_multiply_test() {
+  int N = 1024;
+  std::vector<int> h_a(N * N);
+  std::vector<int> h_b(N * N);
+  std::vector<int> h_c(N * N, 0);
+
+  std::generate(h_a.begin(), h_a.end(), []() { return rand() % 10; });
+  std::generate(h_b.begin(), h_b.end(), []() { return rand() % 10; });
+
+  std::cout << "[INFO] Starting serial matrix multiplication...\n";
+
+  auto start = std::chrono::high_resolution_clock::now();
+
+  serial_matrix_multiply(h_a, h_b, h_c, N);
+
+  auto end = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> duration = end - start;
+
+  std::cout << std::fixed << std::setprecision(6);
+  std::cout << "[INFO] Serial matrix multiplication time: "
+            << duration.count() << " seconds\n";
+}
 
 
 
@@ -248,6 +287,7 @@ void caf_main(caf::actor_system& sys) {
       	//actor_facade_launch_kernel_test(sys);
         //test_main(sys);
 
+	serial_matrix_multiply_test();
 	test_mmul(sys);
 	
 //	return 0;
