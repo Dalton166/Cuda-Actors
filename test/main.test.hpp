@@ -9,7 +9,7 @@
 #include "caf/cuda/utility.hpp"
 #include <caf/type_id.hpp>
 #include "caf/detail/test.hpp"
-
+#include <cassert>
 
 //function signatures of tests
 void test_mmul(caf::actor_system& sys);
