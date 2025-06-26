@@ -83,10 +83,12 @@ void actor_facade_launch_kernel_test(actor_system& sys) {
 
 const char* matrixMulKernel = R"(
 extern "C" __global__
-void matrixMul(const int* a, const int* b, int* c, int N) {
+void matrixMul(const int* a, const int* b, int* c, int *N_val) {
+    
+    int N = *N_val;
     int row = blockIdx.y * blockDim.y + threadIdx.y;
     int col = blockIdx.x * blockDim.x + threadIdx.x;
-
+    //printf("N = %d\n", N);
     if (row < N && col < N) {
         int temp = 0;
         for (int k = 0; k < N; ++k) {
@@ -123,9 +125,10 @@ void test_mmul(caf::actor_system& sys) {
   // Matrix dimension (N x N)
   int N = 1024;
   int THREADS = 32;
-  int BLOCKS = N / THREADS;
+  int BLOCKS = (N + THREADS - 1) / THREADS;
 
   // Setup kernel launch configuration
+  // in form of grid x,y,z block x,y,z 
   caf::cuda::nd_range dim(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
 
   // Spawn CUDA actor for matrix multiplication kernel
@@ -238,11 +241,13 @@ void caf_main(caf::actor_system& sys) {
 	  caf::init_global_meta_objects<caf::id_block::cuda>(); // 👈 This is the missing piece
 
 
+	
 	caf::cuda::manager::init(sys);
-//	actor_facade_spawn_test(sys);
+	//actor_facade_spawn_test(sys);
+      	//actor_facade_launch_kernel_test(sys);
+        //test_main(sys);
 
-      actor_facade_launch_kernel_test(sys);
-//       test_main(sys);
+	test_mmul(sys);
 	
 //	return 0;
 }
