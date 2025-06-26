@@ -119,46 +119,50 @@ void verify_result(std::vector<int> &a, std::vector<int> &b, std::vector<int> &c
     }
   }
 }
+#include <iostream>
+#include <iomanip> // for std::setprecision
+#include <chrono>
+
 void test_mmul(caf::actor_system& sys) {
   caf::cuda::manager& mgr = caf::cuda::manager::get();
 
-  // Matrix dimension (N x N)
   int N = 1024;
   int THREADS = 32;
   int BLOCKS = (N + THREADS - 1) / THREADS;
 
-  // Setup kernel launch configuration
-  // in form of grid x,y,z block x,y,z 
   caf::cuda::nd_range dim(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
 
-  // Spawn CUDA actor for matrix multiplication kernel
   auto gpuActor = mgr.spawn(matrixMulKernel, "matrixMul", dim,
                             in<int>{}, in<int>{}, out<int>{}, in<int>{});
 
-  // Allocate and initialize host matrices
   std::vector<int> h_a(N * N);
   std::vector<int> h_b(N * N);
-  std::vector<int> h_c(N * N, 0);  // initialized to 0
+  std::vector<int> h_c(N * N, 0);
   std::vector<int> h_n(1, N);
 
   std::generate(h_a.begin(), h_a.end(), []() { return rand() % 10; });
   std::generate(h_b.begin(), h_b.end(), []() { return rand() % 10; });
 
-  // Compose device arguments
   auto arg1 = caf::cuda::create_in_arg(h_a);
   auto arg2 = caf::cuda::create_in_arg(h_b);
   auto arg3 = caf::cuda::create_out_arg(h_c);
   auto arg4 = caf::cuda::create_in_arg(h_n);
 
-  // Spawn an actor to send the message and receive the result
   sys.spawn([=](caf::event_based_actor* self_actor) {
+    auto start = std::chrono::high_resolution_clock::now();
+
     self_actor->mail(gpuActor, arg1, arg2, arg3, arg4)
       .request(gpuActor, 30s).then(
         [=](const std::vector<output_buffer>& outputs) {
+          auto end = std::chrono::high_resolution_clock::now();
+          std::chrono::duration<double> duration = end - start;
+
+          std::cout << std::fixed << std::setprecision(6);
+          std::cout << "[INFO] Kernel round-trip time: " << duration.count() << " seconds\n";
+
           std::vector<int> result;
           bool got_output = false;
 
-          // Extract the result from outputs
           for (const auto& out : outputs) {
             std::visit([&](const auto& vec) {
               if constexpr (std::is_same_v<std::decay_t<decltype(vec)>, std::vector<int>>) {
@@ -169,11 +173,9 @@ void test_mmul(caf::actor_system& sys) {
           }
 
           if (!got_output) {
-            aout(self_actor) << "No output data received!\n";
+            std::cout << "[ERROR] No output data received!\n";
           } else {
-            aout(self_actor) << "Verifying result..." << std::endl;
-
-            // Verify GPU result against CPU computation
+            std::cout << "[INFO] Verifying result...\n";
             std::vector<int> expected(N * N);
             for (int i = 0; i < N; ++i) {
               for (int j = 0; j < N; ++j) {
@@ -185,21 +187,20 @@ void test_mmul(caf::actor_system& sys) {
               }
             }
 
-            bool success = std::equal(result.begin(), result.end(), expected.begin());
-            if (success) {
-              aout(self_actor) << "Matrix multiplication result verified successfully!\n";
+            if (std::equal(result.begin(), result.end(), expected.begin())) {
+              std::cout << "[SUCCESS] Matrix multiplication result verified successfully.\n";
             } else {
-              aout(self_actor) << "Mismatch found in matrix multiplication results!\n";
+              std::cout << "[FAILURE] Mismatch found in matrix multiplication results.\n";
             }
           }
 
           self_actor->quit();
-        }
-      );
+        });
   });
 
-  std::this_thread::sleep_for(std::chrono::seconds(5)); // Wait for actor to complete
+  std::this_thread::sleep_for(std::chrono::seconds(5));
 }
+
 
 
 
