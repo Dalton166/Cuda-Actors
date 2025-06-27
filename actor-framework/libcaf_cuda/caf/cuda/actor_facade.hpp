@@ -66,6 +66,14 @@ public:
     CAF_LOG_DEBUG("Actor constructed with config: " << &cfg);
   }
 
+
+
+  ~actor_facade() {
+  
+	  std::cout << "destroying actor facade\n";
+  
+  }
+
   void create_command(program_ptr program, Ts&&... xs) {
     CAF_LOG_DEBUG("Creating command for kernel launch");
     caf::response_promise rp = make_response_promise();
@@ -166,23 +174,24 @@ bool unpack_and_run(caf::actor sender, const message& msg, std::index_sequence<I
     return subtype_t(0); // Placeholder
   }
 
-  resumable::resume_result resume(scheduler* sched, [[maybe_unused]] size_t max) override {
+ resumable::resume_result resume(scheduler* sched, [[maybe_unused]] size_t max) override {
     CAF_LOG_DEBUG("Resuming actor, mailbox size: " << mailbox_.size());
     while (!mailbox_.empty()) {
-      auto msg = std::move(mailbox_.front());
-      mailbox_.pop();
-      if (msg && msg->content()) {
-        current_mailbox_element(msg.get()); // Set for CAF message processing
-        handle_message(msg->content());
-        current_mailbox_element(nullptr); // Reset after processing
-      }
+        auto msg = std::move(mailbox_.front());
+        mailbox_.pop();
+        if (msg && msg->content()) {
+            current_mailbox_element(msg.get());
+            handle_message(msg->content());
+            current_mailbox_element(nullptr);
+        }
     }
-    if (sched) {
-      CAF_LOG_DEBUG("Scheduling actor after resume");
-      sched->schedule(this);
+    // Only schedule if mailbox is not empty or actor is still active
+    if (sched && !mailbox_.empty()) {
+        CAF_LOG_DEBUG("Scheduling actor after resume");
+        sched->schedule(this);
     }
-    return resumable::done;
-  }
+    return mailbox_.empty() ? resumable::done : resumable::resume_later;
+}
 
   void ref_resumable() const noexcept override {
     CAF_LOG_DEBUG("Referencing resumable");
