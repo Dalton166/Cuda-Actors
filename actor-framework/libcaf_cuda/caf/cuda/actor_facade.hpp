@@ -173,25 +173,35 @@ bool unpack_and_run(caf::actor sender, const message& msg, std::index_sequence<I
   subtype_t subtype() const noexcept override {
     return subtype_t(0); // Placeholder
   }
+resumable::resume_result resume(scheduler* sched, size_t) override {
+  CAF_LOG_DEBUG("Resuming actor, mailbox size: " << mailbox_.size());
+  while (!mailbox_.empty()) {
+    auto msg = std::move(mailbox_.front());
+    mailbox_.pop();
 
- resumable::resume_result resume(scheduler* sched, [[maybe_unused]] size_t max) override {
-    CAF_LOG_DEBUG("Resuming actor, mailbox size: " << mailbox_.size());
-    while (!mailbox_.empty()) {
-        auto msg = std::move(mailbox_.front());
-        mailbox_.pop();
-        if (msg && msg->content()) {
-            current_mailbox_element(msg.get());
-            handle_message(msg->content());
-            current_mailbox_element(nullptr);
-        }
+    if (msg && msg->content().match_elements<exit_msg>()) {
+      auto exit = msg->content().get_as<exit_msg>(0);
+      CAF_LOG_DEBUG("Received exit_msg with reason: " << to_string(exit.reason));
+      current_mailbox_element(nullptr);
+      this->quit(static_cast<exit_reason>(exit.reason.code()));
+      return resumable::done;
     }
-    // Only schedule if mailbox is not empty or actor is still active
-    if (sched && !mailbox_.empty()) {
-        CAF_LOG_DEBUG("Scheduling actor after resume");
-        sched->schedule(this);
+
+    if (msg && msg->content()) {
+      current_mailbox_element(msg.get());
+      handle_message(msg->content());
+      current_mailbox_element(nullptr);
     }
-    return mailbox_.empty() ? resumable::done : resumable::resume_later;
+  }
+
+  if (sched && !mailbox_.empty()) {
+    sched->schedule(this);
+    return resumable::resume_later;
+  }
+
+  return resumable::done;
 }
+
 
   void ref_resumable() const noexcept override {
     CAF_LOG_DEBUG("Referencing resumable");
@@ -237,6 +247,15 @@ bool unpack_and_run(caf::actor sender, const message& msg, std::index_sequence<I
       mailbox_.pop();
     }
   }
-};
+  void quit(exit_reason reason) {
+  CAF_LOG_DEBUG("Quitting actor with reason: " << to_string(reason));
+  force_close_mailbox();
+  current_mailbox_element(nullptr);
+  }
 
+
+
+
+
+};
 } // namespace caf::cuda
