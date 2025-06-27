@@ -70,7 +70,7 @@ public:
 
   ~actor_facade() {
   
-	  std::cout << "destroying actor facade\n";
+	 // std::cout << "destroying actor facade\n";
   
   }
 
@@ -105,7 +105,7 @@ private:
 
 bool handle_message(const message& msg) {
   CAF_LOG_DEBUG("Handling message");
-  std::cout << "Hello\n";
+  //std::cout << "Hello\n";
 
   // Check first argument is caf::actor
   if (!msg.types().empty() && msg.types()[0] == caf::type_id_v<caf::actor>) {
