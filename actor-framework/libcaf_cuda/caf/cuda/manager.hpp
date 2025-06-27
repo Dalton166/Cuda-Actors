@@ -9,6 +9,7 @@
 #include <caf/actor.hpp>
 #include <caf/intrusive_ptr.hpp>
 #include <caf/detail/type_list.hpp>
+#include <caf/init_global_meta_objects.hpp>
 
 #include "caf/detail/spawn_helper.hpp"
 
@@ -44,9 +45,11 @@ public:
     }
     CHECK_CUDA(cuInit(0));
     CUcontext ctx = nullptr;
-cuCtxGetCurrent(&ctx);
-std::cout << "Before cuCtxCreate, context: " << ctx << std::endl;
+    cuCtxGetCurrent(&ctx);
+    std::cout << "Before cuCtxCreate, context: " << ctx << std::endl;
     instance_ = new manager(sys);
+    //caf::core::init_global_meta_objects();
+     caf::init_global_meta_objects<caf::id_block::cuda>();
   }
 
   /// Returns the singleton instance. Crashes if not yet initialized.
