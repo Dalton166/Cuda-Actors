@@ -14,9 +14,9 @@ using namespace std::chrono_literals;
 
 const char* kernel_code = R"(
 extern "C" __global__
-void compare_strings(const char* a, const char* b, int* result, int length) {
+void compare_strings(const char* a, const char* b, int* result, int * length) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < length) {
+    if (idx < * length) {
         result[idx] = (a[idx] == b[idx]) ? 1 : 0;
     }
 }
@@ -49,7 +49,7 @@ void actor_facade_launch_kernel_test(actor_system& sys) {
   std::vector<int> result(length);
   std::vector<int> len(1, length);
 
-  caf::cuda::nd_range dim((length + 255) / 256, 1, 1, 256, 1, 1);
+  caf::cuda::nd_range dim( 10, 1, 1, 1, 1, 1);
 
   auto gpuActor = mgr.spawn(kernel_code, "compare_strings", dim,
                             in<char>{}, in<char>{}, out<int>{}, in<int>{});
@@ -83,7 +83,8 @@ void actor_facade_launch_kernel_test(actor_system& sys) {
         });
   });
 
-  std::this_thread::sleep_for(5s);
+  sys.await_all_actors_done();
+  //std::this_thread::sleep_for(5s);
 }
 
 void serial_matrix_multiply(const std::vector<int>& a,
@@ -123,7 +124,7 @@ void serial_matrix_multiply_test() {
   std::cout << "[INFO] Serial matrix multiplication time: "
             << duration.count() << " seconds\n";
 
-  std::this_thread::sleep_for(5s);
+  //std::this_thread::sleep_for(5s);
 }
 
 void test_mmul(caf::actor_system& sys) {
@@ -283,10 +284,10 @@ void test_concurrent_mmul(caf::actor_system& sys) {
 
 void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
-  //actor_facade_launch_kernel_test(sys);
+  actor_facade_launch_kernel_test(sys);
   //serial_matrix_multiply_test();
-  test_mmul(sys);
-  test_concurrent_mmul(sys);
+  //test_mmul(sys);
+  //test_concurrent_mmul(sys);
 }
 
 CAF_MAIN()
