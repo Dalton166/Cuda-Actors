@@ -149,7 +149,7 @@ void test_mmul(caf::actor_system& sys) {
   std::generate(h_a.begin(), h_a.end(), []() { return rand() % 10; });
   std::generate(h_b.begin(), h_b.end(), []() { return rand() % 10; });
 
-  serial_matrix_multiply(h_a, h_b, h_ref, N);
+  //serial_matrix_multiply(h_a, h_b, h_ref, N);
 
   auto arg1 = caf::cuda::create_in_arg(h_a);
   auto arg2 = caf::cuda::create_in_arg(h_b);
@@ -180,7 +180,9 @@ void test_mmul(caf::actor_system& sys) {
         });
   });
 
-  std::this_thread::sleep_for(5s);
+  //std::this_thread::sleep_for(5s);
+  //caf::cuda::manager::shutdown();
+  sys.await_all_actors_done();
 }
 
 void test_concurrent_mmul(caf::actor_system& sys) {
@@ -275,13 +277,14 @@ void test_concurrent_mmul(caf::actor_system& sys) {
         });
   });
 
-  std::this_thread::sleep_for(5s);
+  //std::this_thread::sleep_for(5s);
+  sys.await_all_actors_done();
 }
 
 void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
   //actor_facade_launch_kernel_test(sys);
-  serial_matrix_multiply_test();
+  //serial_matrix_multiply_test();
   test_mmul(sys);
   test_concurrent_mmul(sys);
 }
