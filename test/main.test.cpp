@@ -150,7 +150,7 @@ void test_mmul(caf::actor_system& sys) {
   std::generate(h_a.begin(), h_a.end(), []() { return rand() % 10; });
   std::generate(h_b.begin(), h_b.end(), []() { return rand() % 10; });
 
-  //serial_matrix_multiply(h_a, h_b, h_ref, N);
+  serial_matrix_multiply(h_a, h_b, h_ref, N);
 
   auto arg1 = caf::cuda::create_in_arg(h_a);
   auto arg2 = caf::cuda::create_in_arg(h_b);
@@ -282,12 +282,74 @@ void test_concurrent_mmul(caf::actor_system& sys) {
   sys.await_all_actors_done();
 }
 
+
+void test_mmul_raw_data(caf::actor_system& sys) {
+  std::cout << "[TEST] Starting test_mmul_raw_data\n";
+
+  caf::cuda::manager& mgr = caf::cuda::manager::get();
+
+  int N = 1024;
+  int THREADS = 32;
+  int BLOCKS = (N + THREADS - 1) / THREADS;
+
+  caf::cuda::nd_range dim(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
+
+  std::vector<int> h_a(N * N);
+  std::vector<int> h_b(N * N);
+  std::vector<int> h_c(N * N, 0);
+  std::vector<int> h_ref(N * N, 0);
+  std::vector<int> h_n(1, N); // single element vector for matrix size
+
+  std::generate(h_a.begin(), h_a.end(), []() { return rand() % 10; });
+  std::generate(h_b.begin(), h_b.end(), []() { return rand() % 10; });
+
+  serial_matrix_multiply(h_a, h_b, h_ref, N);
+
+  // Spawn actor expecting raw args: std::vector<int>, std::vector<int>, ...
+  auto gpuActor = mgr.spawn(matrixMulKernel, "matrixMul", dim,
+                            h_a, h_b, h_c, h_n);
+
+  sys.spawn([=](caf::event_based_actor* self) {
+    auto start = std::chrono::high_resolution_clock::now();
+    self->request(gpuActor, std::chrono::seconds(10),
+                  h_a, h_b, h_c, h_n).then(
+      [=](const std::vector<output_buffer>& outputs) {
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start;
+
+        std::vector<int> result;
+        for (const auto& out : outputs) {
+          std::visit([&](const auto& vec) {
+            using T = std::decay_t<decltype(vec)>;
+            if constexpr (std::is_same_v<T, std::vector<int>>) {
+              result = vec;
+            }
+          }, out.data);
+        }
+
+        bool match = result == h_ref;
+        std::cout << "[INFO] Kernel round-trip time: " << elapsed.count() << " seconds\n";
+        std::cout << (match ? "[PASS] GPU result matches reference\n"
+                            : "[FAIL] Mismatch in GPU result\n");
+
+        self->send_exit(gpuActor, caf::exit_reason::user_shutdown);
+        self->quit();
+      });
+  });
+
+  sys.await_all_actors_done();
+}
+
+
+
+
 void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
-  actor_facade_launch_kernel_test(sys);
-  //serial_matrix_multiply_test();
+  //actor_facade_launch_kernel_test(sys);
   //test_mmul(sys);
+  test_mmul_raw_data(sys);
   //test_concurrent_mmul(sys);
+  //serial_matrix_multiply_test();
 }
 
 CAF_MAIN()
