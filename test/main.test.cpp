@@ -8,6 +8,7 @@
 #include <chrono>
 #include <thread>
 #include <algorithm>
+#include <numeric>
 
 using namespace caf;
 using namespace std::chrono_literals;
@@ -49,7 +50,7 @@ void actor_facade_launch_kernel_test(actor_system& sys) {
   std::vector<int> result(length);
   std::vector<int> len(1, length);
 
-  caf::cuda::nd_range dim( 10, 1, 1, 1, 1, 1);
+  caf::cuda::nd_range dim(10, 1, 1, 1, 1, 1);
 
   auto gpuActor = mgr.spawn(kernel_code, "compare_strings", dim,
                             in<char>{}, in<char>{}, out<int>{}, in<int>{});
@@ -84,7 +85,6 @@ void actor_facade_launch_kernel_test(actor_system& sys) {
   });
 
   sys.await_all_actors_done();
-  //std::this_thread::sleep_for(5s);
 }
 
 void serial_matrix_multiply(const std::vector<int>& a,
@@ -123,8 +123,6 @@ void serial_matrix_multiply_test() {
   std::cout << std::fixed << std::setprecision(6);
   std::cout << "[INFO] Serial matrix multiplication time: "
             << duration.count() << " seconds\n";
-
-  //std::this_thread::sleep_for(5s);
 }
 
 void test_mmul(caf::actor_system& sys) {
@@ -181,8 +179,6 @@ void test_mmul(caf::actor_system& sys) {
         });
   });
 
-  //std::this_thread::sleep_for(5s);
-  //caf::cuda::manager::shutdown();
   sys.await_all_actors_done();
 }
 
@@ -278,10 +274,8 @@ void test_concurrent_mmul(caf::actor_system& sys) {
         });
   });
 
-  //std::this_thread::sleep_for(5s);
   sys.await_all_actors_done();
 }
-
 
 void test_mmul_raw_data(caf::actor_system& sys) {
   std::cout << "[TEST] Starting test_mmul_raw_data\n";
@@ -298,20 +292,17 @@ void test_mmul_raw_data(caf::actor_system& sys) {
   std::vector<int> h_b(N * N);
   std::vector<int> h_c(N * N, 0);
   std::vector<int> h_ref(N * N, 0);
-  std::vector<int> h_n(1, N); // single element vector for matrix size
+  std::vector<int> h_n(1, N);
 
   std::generate(h_a.begin(), h_a.end(), []() { return rand() % 10; });
   std::generate(h_b.begin(), h_b.end(), []() { return rand() % 10; });
 
-  serial_matrix_multiply(h_a, h_b, h_ref, N);
-
   auto gpuActor = mgr.spawn(matrixMulKernel, "matrixMul", dim,
-                            in<int>{},in<int>{},out<int>{}, in<int>{});
+                            in<int>{}, in<int>{}, out<int>{}, in<int>{});
 
   sys.spawn([=](caf::event_based_actor* self) {
     auto start = std::chrono::high_resolution_clock::now();
-    self->request(gpuActor, std::chrono::seconds(10),
-                  h_a, h_b, h_c, h_n).then(
+    self->mail(gpuActor, h_a, h_b, h_c, h_n).request(gpuActor, 10s).then(
       [=](const std::vector<output_buffer>& outputs) {
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = end - start;
@@ -339,17 +330,96 @@ void test_mmul_raw_data(caf::actor_system& sys) {
   sys.await_all_actors_done();
 }
 
+void test_concurrent_supervisor_mmul(actor_system& sys) {
+  std::cout << "[TEST] Starting test_concurrent_supervisor_mmul\n";
 
+  // Supervisor actor behavior
+  auto supervisor_actor = [](event_based_actor* self, int id) {
+    caf::cuda::manager& mgr = caf::cuda::manager::get();
+    const int N = 1024;
+    const int THREADS = 32;
+    const int BLOCKS = (N + THREADS - 1) / THREADS;
+    caf::cuda::nd_range dim(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
 
+    // Spawn a unique GPU actor for this supervisor
+    auto gpuActor = mgr.spawn(matrixMulKernel, "matrixMul", dim,
+                              in<int>{}, in<int>{}, out<int>{}, in<int>{});
+
+    int count = 0;
+    std::vector<double> times;
+
+    // Function to start or continue an iteration
+    auto start_iteration = [self, gpuActor, &count, &times, id, N]() mutable {
+      if (count < 20) {
+        // Generate random 1024x1024 matrices
+        std::vector<int> h_a(N * N);
+        std::vector<int> h_b(N * N);
+        std::vector<int> h_c(N * N, 0);
+        std::vector<int> h_n(1, N);
+
+        std::generate(h_a.begin(), h_a.end(), []() { return rand() % 10; });
+        std::generate(h_b.begin(), h_b.end(), []() { return rand() % 10; });
+
+        auto arg1 = caf::cuda::create_in_arg(h_a);
+        auto arg2 = caf::cuda::create_in_arg(h_b);
+        auto arg3 = caf::cuda::create_out_arg(h_c);
+        auto arg4 = caf::cuda::create_in_arg(h_n);
+
+        auto start = std::chrono::high_resolution_clock::now();
+
+        // Send message to GPU actor and wait for response
+        self->mail(gpuActor, arg1, arg2, arg3, arg4)
+          .request(gpuActor, 10s)
+          .then([self, start, gpuActor, &count, &times, id](const std::vector<output_buffer>&) mutable {
+            auto end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> elapsed = end - start;
+            std::cout << "[INFO] Supervisor " << id << " Iteration " << count
+                      << " round-trip time: " << elapsed.count() << " seconds\n";
+            times.push_back(elapsed.count());
+            count++;
+
+            if (count < 20) {
+              // Trigger the next iteration
+              self->send(self, std::string("start"));
+            } else {
+              // All iterations complete, report average time
+              double avg_time = std::accumulate(times.begin(), times.end(), 0.0) / times.size();
+              std::cout << "[INFO] Supervisor " << id << " Average round-trip time: "
+                        << avg_time << " seconds\n";
+              self->send_exit(gpuActor, exit_reason::user_shutdown);
+              self->quit();
+            }
+          });
+      }
+    };
+
+    // Define actor behavior to handle the "start" message
+    self->become([start_iteration](const std::string& msg) mutable {
+      if (msg == "start") {
+        start_iteration();
+      }
+    });
+
+    // Kick off the first iteration
+    self->send(self, std::string("start"));
+  };
+
+  // Spawn 5 supervisor actors to test concurrency
+  for (int i = 0; i < 5; ++i) {
+    sys.spawn(supervisor_actor, i);
+  }
+
+  sys.await_all_actors_done();
+}
 
 void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
   //actor_facade_launch_kernel_test(sys);
   //test_mmul(sys);
-  test_mmul_raw_data(sys);
+  //test_mmul_raw_data(sys);
   //test_concurrent_mmul(sys);
   //serial_matrix_multiply_test();
+  test_concurrent_supervisor_mmul(sys);
 }
 
 CAF_MAIN()
-
