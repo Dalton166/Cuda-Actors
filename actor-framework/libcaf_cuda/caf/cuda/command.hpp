@@ -19,6 +19,7 @@
 #include "caf/cuda/arguments.hpp"
 #include "caf/cuda/opencl_err.hpp"
 #include "caf/cuda/device.hpp"
+#include <caf/send.hpp>
 
 namespace caf::cuda {
 
@@ -27,11 +28,13 @@ class command : public ref_counted {
 public:
   // Constructor template to perfectly forward argument wrappers (in/out/in_out)
   template <typename... Us>
-  command(caf::response_promise promise,
+   command(caf::response_promise promise,
+          caf::actor self,
           program_ptr program,
           nd_range dims,
           Us&&... xs)
     : rp(std::move(promise)),
+      self_(std::move(self)),
       program_(program),
       dims_(dims),
       mem_refs(convert_data_to_args(std::forward<Us>(xs)...)) {
@@ -44,16 +47,18 @@ public:
     }
 
 
- void enqueue() {
-    //std::cout << "Launch initiated\n";
+  void enqueue() {
     auto outputs = launch_kernel(program_, dims_, mem_refs, program_->get_stream_id());
-    //std::cout << "Kernel has successfully launched\n";
     rp.deliver(std::move(outputs));
+
+    // Cleanup
     for_each_tuple(mem_refs, [](auto& mem) {
       if (mem) mem->reset();
     });
-  }
 
+    // Notify actor that work is complete
+    anon_send(self_, kernel_done_atom_v);
+  }
 // ~command() override = default;
 
 
@@ -68,6 +73,7 @@ public:
 private:
   program_ptr program_;
   caf::response_promise rp;
+  caf::actor self_;
   nd_range dims_;
   std::tuple<mem_ptr<raw_t<Ts>>...> mem_refs;
   std::atomic<int> ref_count{0};
