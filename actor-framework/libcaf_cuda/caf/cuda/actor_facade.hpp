@@ -61,22 +61,55 @@ public:
     : local_actor(cfg),
       config_(std::move(cfg)),
       program_(std::move(prog)),
-      dims_(std::move(nd)) {
+      dims_(nd) {
   }
 
-  ~actor_facade() = default;
+  ~actor_facade() {
+  
+	  std::cout << "Destroying gpu actor\n";
+  }
+
 
   void create_command(program_ptr program, Ts&&... xs) {
-    pending_promises_++;
-    using command_t = command<caf::actor, raw_t<Ts>...>;
-    auto cmd = make_counted<command_t>(
-      make_response_promise(),
-      caf::actor_cast<caf::actor>(this),
-      program,
-      dims_,
-      std::forward<Ts>(xs)...);
-    cmd->enqueue();
-  }
+  pending_promises_++;
+
+  // Log dims_ before command creation
+  std::cout << "[LOG] create_command: BEFORE make_counted\n";
+  std::cout << "[LOG] dims_.grid = (" 
+            << dims_.getGridDimX() << ", " 
+            << dims_.getGridDimY() << ", " 
+            << dims_.getGridDimZ() << ")\n";
+  std::cout << "[LOG] dims_.block = (" 
+            << dims_.getBlockDimX() << ", " 
+            << dims_.getBlockDimY() << ", " 
+            << dims_.getBlockDimZ() << ")\n";
+
+  // Optional: log types and values of arguments
+  std::cout << "[LOG] Argument count: " << sizeof...(xs) << "\n";
+  //(std::cout << ... << ("[LOG] Arg: " + to_string_debug(xs) + "\n")); // see helper below
+
+  using command_t = command<caf::actor, raw_t<Ts>...>;
+  auto cmd = make_counted<command_t>(
+    make_response_promise(),
+    caf::actor_cast<caf::actor>(this),
+    program,
+    dims_,
+    std::forward<Ts>(xs)...);
+
+  // Log dims_ after command creation
+  std::cout << "[LOG] create_command: AFTER make_counted, before enqueue\n";
+  std::cout << "[LOG] dims_.grid = (" 
+            << dims_.getGridDimX() << ", " 
+            << dims_.getGridDimY() << ", " 
+            << dims_.getGridDimZ() << ")\n";
+  std::cout << "[LOG] dims_.block = (" 
+            << dims_.getBlockDimX() << ", " 
+            << dims_.getBlockDimY() << ", " 
+            << dims_.getBlockDimZ() << ")\n";
+
+  cmd->enqueue();
+}
+
 
   void run_kernel(Ts&... xs) {
     create_command(program_, std::forward<Ts>(xs)...);
