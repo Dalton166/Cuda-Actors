@@ -305,9 +305,8 @@ void test_mmul_raw_data(caf::actor_system& sys) {
 
   serial_matrix_multiply(h_a, h_b, h_ref, N);
 
-  // Spawn actor expecting raw args: std::vector<int>, std::vector<int>, ...
   auto gpuActor = mgr.spawn(matrixMulKernel, "matrixMul", dim,
-                            h_a, h_b, h_c, h_n);
+                            in<int>{},in<int>{},out<int>{}, in<int>{});
 
   sys.spawn([=](caf::event_based_actor* self) {
     auto start = std::chrono::high_resolution_clock::now();
