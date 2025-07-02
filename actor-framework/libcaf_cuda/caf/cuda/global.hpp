@@ -166,7 +166,9 @@ bool inspect(Inspector& f, output_buffer& x) {
 #include <caf/type_id.hpp>
 
 // Define a custom type ID block for CUDA types
-CAF_BEGIN_TYPE_ID_BLOCK(cuda, first_custom_type_id)
+CAF_BEGIN_TYPE_ID_BLOCK(cuda, caf::first_custom_type_id)
+
+  // Your type IDs
   CAF_ADD_TYPE_ID(cuda, (std::vector<char>))
   CAF_ADD_TYPE_ID(cuda, (std::vector<int>))
   CAF_ADD_TYPE_ID(cuda, (in<int>))
@@ -176,16 +178,15 @@ CAF_BEGIN_TYPE_ID_BLOCK(cuda, first_custom_type_id)
   CAF_ADD_TYPE_ID(cuda, (std::vector<float>))
   CAF_ADD_TYPE_ID(cuda, (std::vector<double>))
 
-  // Register the variant holding all possible vector types
   CAF_ADD_TYPE_ID(cuda, (buffer_variant))
 
-  // Register the output_buffer struct
   CAF_ADD_TYPE_ID(cuda, (output_buffer))
-
-  // Register the vector of output buffers
   CAF_ADD_TYPE_ID(cuda, (std::vector<output_buffer>))
-CAF_END_TYPE_ID_BLOCK(cuda)
 
+  // Your atoms — atoms count as types too!
+  CAF_ADD_ATOM(cuda, kernel_done_atom)
+
+CAF_END_TYPE_ID_BLOCK(cuda)
 
 
 namespace caf::cuda {
