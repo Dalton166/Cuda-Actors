@@ -20,7 +20,7 @@ public:
     throw std::runtime_error("CUDA support disabled: program ctor");
   }
 ~program() {
-    std::cout << "Destroying program, kernel=" << kernel_ << "\n";
+    //std::cout << "Destroying program, kernel=" << kernel_ << "\n";
 }
 
 
