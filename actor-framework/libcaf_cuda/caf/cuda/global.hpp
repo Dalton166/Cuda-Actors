@@ -10,6 +10,11 @@
 #include "caf/cuda/nd_range.hpp"
 #include "caf/cuda/cuda-actors.hpp"
 #include <nvrtc.h>
+// CAF type ID registration
+#include <caf/type_id.hpp>
+
+
+
 
 
 
@@ -116,8 +121,33 @@ void inline check(CUresult result, const char* msg) {
 
 
 
+template <class Inspector, typename T>
+bool inspect(Inspector& f, in<T>& x) {
+  return f.object(x).fields(f.field("buffer", x.buffer));
+}
+
+template <class Inspector, typename T>
+bool inspect(Inspector& f, out<T>& x) {
+  return f.object(x).fields(f.field("buffer", x.buffer));
+}
+
+template <class Inspector, typename T>
+bool inspect(Inspector& f, in_out<T>& x) {
+  return f.object(x).fields(f.field("buffer", x.buffer));
+}
+
+using buffer_variant = std::variant<std::vector<char>, std::vector<int>, std::vector<float>, std::vector<double>>;
+
+struct output_buffer {
+  buffer_variant data;
+
+};
 
 
+template <class Inspector>
+bool inspect(Inspector& f, output_buffer& x) {
+  return f.object(x).fields(f.field("data", x.data));
+}
 
 
 // Check CUDA errors macro
@@ -132,6 +162,31 @@ void inline check(CUresult result, const char* msg) {
         std::cerr << "NVRTC Error: " << nvrtcGetErrorString(res) << std::endl; exit(1); }} while(0)
 
 
+// CAF type ID registration
+#include <caf/type_id.hpp>
+
+// Define a custom type ID block for CUDA types
+CAF_BEGIN_TYPE_ID_BLOCK(cuda, caf::first_custom_type_id)
+
+  // Your type IDs
+  CAF_ADD_TYPE_ID(cuda, (std::vector<char>))
+  CAF_ADD_TYPE_ID(cuda, (std::vector<int>))
+  CAF_ADD_TYPE_ID(cuda, (in<int>))
+  CAF_ADD_TYPE_ID(cuda, (in<char>))
+  CAF_ADD_TYPE_ID(cuda, (out<int>))
+  CAF_ADD_TYPE_ID(cuda, (in_out<int>))
+  CAF_ADD_TYPE_ID(cuda, (std::vector<float>))
+  CAF_ADD_TYPE_ID(cuda, (std::vector<double>))
+
+  CAF_ADD_TYPE_ID(cuda, (buffer_variant))
+
+  CAF_ADD_TYPE_ID(cuda, (output_buffer))
+  CAF_ADD_TYPE_ID(cuda, (std::vector<output_buffer>))
+
+  // Your atoms — atoms count as types too!
+  CAF_ADD_ATOM(cuda, kernel_done_atom)
+
+CAF_END_TYPE_ID_BLOCK(cuda)
 
 
 namespace caf::cuda {

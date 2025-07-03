@@ -3,6 +3,7 @@
 #include <vector>
 #include <cstddef>
 #include <stdexcept>
+#include <iostream>
 
 namespace caf::cuda {
 
@@ -41,6 +42,12 @@ public:
   // Optional: Getters for full vectors
   const dim_vec& getGridDims() const { return gridDim; }
   const dim_vec& getBlockDims() const { return blockDim; }
+
+  ~nd_range() {
+  
+	  //std::cout << "Destroying range\n";
+  }
+
 
 private:
   // Dimensions are stored in order of x, y, z

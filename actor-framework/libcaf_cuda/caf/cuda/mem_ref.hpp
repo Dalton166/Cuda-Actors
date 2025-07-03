@@ -51,7 +51,7 @@ mem_ref(size_t num_elements, CUdeviceptr memory, int access, int device_id = 0, 
 
   void reset() {
     if (memory_) {
-       std::cout << "Destroying mem_ref: memory=" << memory_ << "\n";
+       //std::cout << "Destroying mem_ref: memory=" << memory_ << "\n";
       CHECK_CUDA(cuMemFree(memory_));
       memory_ = 0;
     }

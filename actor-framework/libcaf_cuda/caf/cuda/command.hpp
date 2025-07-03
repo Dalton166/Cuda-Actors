@@ -19,6 +19,7 @@
 #include "caf/cuda/arguments.hpp"
 #include "caf/cuda/opencl_err.hpp"
 #include "caf/cuda/device.hpp"
+#include <caf/send.hpp>
 
 namespace caf::cuda {
 
@@ -27,11 +28,13 @@ class command : public ref_counted {
 public:
   // Constructor template to perfectly forward argument wrappers (in/out/in_out)
   template <typename... Us>
-  command(caf::response_promise promise,
+   command(caf::response_promise promise,
+          caf::actor self,
           program_ptr program,
           nd_range dims,
           Us&&... xs)
     : rp(std::move(promise)),
+      self_(std::move(self)),
       program_(program),
       dims_(dims),
       mem_refs(convert_data_to_args(std::forward<Us>(xs)...)) {
@@ -40,20 +43,23 @@ public:
 
 
   ~command() {
-        std::cout << "Destroying command: program=" << program_.get() << "\n";
+        //std::cout << "Destroying command: program=" << program_.get() << "\n";
     }
 
 
   void enqueue() {
-	  std::cout << "Launch initiated\n";
-    launch_kernel(program_, dims_, mem_refs, program_->get_stream_id());
+    auto outputs = launch_kernel(program_, dims_, mem_refs, program_->get_stream_id());
+    rp.deliver(std::move(outputs));
 
-    std::cout << "Kernel has successfully launched\n";
-    // Kernel done, data ready to copy back and cleanup
-    print_and_cleanup_outputs(mem_refs);
+    // Cleanup
+    for_each_tuple(mem_refs, [](auto& mem) {
+      if (mem) mem->reset();
+    });
+
+    // Notify actor that work is complete
+    anon_send(self_, kernel_done_atom_v);
   }
-
- // ~command() override = default;
+// ~command() override = default;
 
 
    template <class A, class... S>
@@ -67,6 +73,7 @@ public:
 private:
   program_ptr program_;
   caf::response_promise rp;
+  caf::actor self_;
   nd_range dims_;
   std::tuple<mem_ptr<raw_t<Ts>>...> mem_refs;
   std::atomic<int> ref_count{0};
@@ -133,16 +140,18 @@ private:
     for_each_tuple_impl(t, std::forward<Func>(f), std::index_sequence_for<Is...>{});
   }
 
-  // Launch kernel wrapper
-  void launch_kernel(program_ptr program,
+  // Launch kernel wrapper 
+ auto launch_kernel(program_ptr program,
                      const caf::cuda::nd_range& range,
-                     std::tuple<mem_ptr<raw_t<Ts>> ...> args,
-                     int stream_id) {
+                     std::tuple<mem_ptr<raw_t<Ts>>...> args,
+                     int stream_id)
+    -> std::vector<output_buffer> {
     int context_id = program->get_context_id();
     CUfunction kernel = program->get_kernel();
     device_ptr dev = program->get_device();
-    dev->launch_kernel(kernel, range, args, stream_id, context_id);
+    return dev->launch_kernel(kernel, range, args, stream_id, context_id);
   }
+
 };
 
 // intrusive_ptr reference counting for command
@@ -150,16 +159,16 @@ private:
 template <class Actor, class... Ts>
 inline void intrusive_ptr_add_ref(command<Actor, Ts...>* ptr) {
   ++(ptr->ref_count);
-  std::cout << "intrusive_ptr_add_ref: ref_count=" << ptr->ref_count.load() << "\n";
+  //std::cout << "intrusive_ptr_add_ref: ref_count=" << ptr->ref_count.load() << "\n";
 }
 
 template <class Actor, class... Ts>
 inline void intrusive_ptr_release(command<Actor, Ts...>* ptr) {
   if (--(ptr->ref_count) == 0) {
-    std::cout << "intrusive_ptr_release: deleting command\n";
+    //std::cout << "intrusive_ptr_release: deleting command\n";
     delete ptr;
   } else {
-    std::cout << "intrusive_ptr_release: ref_count=" << ptr->ref_count.load() << "\n";
+    //std::cout << "intrusive_ptr_release: ref_count=" << ptr->ref_count.load() << "\n";
   }
 }
 
