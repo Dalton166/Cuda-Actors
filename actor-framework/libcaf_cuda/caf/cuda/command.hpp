@@ -43,7 +43,7 @@ public:
 
 
   ~command() {
-        std::cout << "Destroying command: program=" << program_.get() << "\n";
+        //std::cout << "Destroying command: program=" << program_.get() << "\n";
     }
 
 

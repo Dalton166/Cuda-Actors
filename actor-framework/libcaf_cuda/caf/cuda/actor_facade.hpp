@@ -132,7 +132,7 @@ private:
     if (!msg.types().empty() && msg.types()[0] == caf::type_id_v<caf::actor>) {
       auto sender = msg.get_as<caf::actor>(0);
       if (msg.match_elements<caf::actor, Ts...>()) {
-           std::cout << "Wrapper types recognized, running kernel\n";
+           //std::cout << "Wrapper types recognized, running kernel\n";
 	   return unpack_and_run_wrapped(sender, msg, std::index_sequence_for<Ts...>{});
       }
       if (msg.match_elements<caf::actor, raw_t<Ts>...>()) {
@@ -173,7 +173,7 @@ private:
       current_mailbox_element(msg.get());
 
       if (msg->content().match_elements<kernel_done_atom>()) {
-	      std::cout << "Asynchronous kernel has finished\n";
+	      //std::cout << "Asynchronous kernel has finished\n";
 	if (--pending_promises_ == 0 && shutdown_requested_) {
           quit(exit_reason::user_shutdown);
           return resumable::done;
