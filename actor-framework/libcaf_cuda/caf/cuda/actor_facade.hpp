@@ -17,6 +17,8 @@
 #include "caf/cuda/global.hpp"
 #include "caf/cuda/program.hpp"
 #include "caf/cuda/command.hpp"
+#include <random>
+#include <climits>
 
 namespace caf::cuda {
 
@@ -127,6 +129,16 @@ private:
   std::queue<mailbox_element_ptr> mailbox_;
   std::atomic<int> pending_promises_ = 0;
   std::atomic<bool> shutdown_requested_ = false;
+  int actor_id = generate_id();
+
+
+  int generate_id() {
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    static std::uniform_int_distribution<int> distrib(INT_MIN, INT_MAX);
+
+    return distrib(gen);
+}
 
   bool handle_message(const message& msg) {
     if (!msg.types().empty() && msg.types()[0] == caf::type_id_v<caf::actor>) {
