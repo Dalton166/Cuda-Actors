@@ -99,6 +99,7 @@ public:
     caf::actor_cast<caf::actor>(this),
     program,
     dims_,
+    actor_id,
     std::forward<Ts>(xs)...);
 
   cmd->enqueue();
