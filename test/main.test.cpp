@@ -528,7 +528,7 @@ void caf_main(caf::actor_system& sys) {
   //test_concurrent_mmul(sys);
   //serial_matrix_multiply_test();
   //test_concurrent_supervisor_mmul(sys);
-  run_concurrent_mmul_test(sys,2,1024);
+  run_concurrent_mmul_test(sys,10,1024);
 }
 
 CAF_MAIN()
