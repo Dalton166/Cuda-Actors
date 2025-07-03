@@ -183,6 +183,65 @@ void test_mmul(caf::actor_system& sys) {
 }
 
 
+void test_mmul_large(caf::actor_system& sys) {
+  std::cout << "[TEST] Starting test_mmul\n";
+
+  caf::cuda::manager& mgr = caf::cuda::manager::get();
+
+  int N = 10000;
+  int THREADS = 32;
+  int BLOCKS = (N + THREADS - 1) / THREADS;
+
+  caf::cuda::nd_range dim(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
+
+  auto gpuActor = mgr.spawn(matrixMulKernel, "matrixMul", dim,
+                            in<int>{}, in<int>{}, out<int>{}, in<int>{});
+
+  std::vector<int> h_a(N * N);
+  std::vector<int> h_b(N * N);
+  std::vector<int> h_c(N * N, 0);
+  std::vector<int> h_ref(N * N, 0);
+  std::vector<int> h_n(1, N);
+
+  std::generate(h_a.begin(), h_a.end(), []() { return rand() % 10; });
+  std::generate(h_b.begin(), h_b.end(), []() { return rand() % 10; });
+
+  serial_matrix_multiply(h_a, h_b, h_ref, N);
+
+  auto arg1 = caf::cuda::create_in_arg(h_a);
+  auto arg2 = caf::cuda::create_in_arg(h_b);
+  auto arg3 = caf::cuda::create_out_arg(h_c);
+  auto arg4 = caf::cuda::create_in_arg(h_n);
+
+  sys.spawn([=](event_based_actor* self_actor) {
+    auto start = std::chrono::high_resolution_clock::now();
+    self_actor->mail(gpuActor, arg1, arg2, arg3, arg4)
+      .request(gpuActor, 10s).then(
+        [=](const std::vector<output_buffer>& outputs) {
+          auto end = std::chrono::high_resolution_clock::now();
+          std::chrono::duration<double> elapsed = end - start;
+          std::vector<int> result;
+          for (const auto& out : outputs) {
+            std::visit([&](const auto& vec) {
+              if constexpr (std::is_same_v<std::decay_t<decltype(vec)>, std::vector<int>>) {
+                result = vec;
+              }
+            }, out.data);
+          }
+
+          bool match = result == h_ref;
+          std::cout << "[INFO] Kernel round-trip time: " << elapsed.count() << " seconds\n";
+          std::cout << (match ? "[PASS] GPU result matches reference\n" : "[FAIL] Mismatch in GPU result\n");
+          self_actor->send_exit(gpuActor, exit_reason::user_shutdown);
+          self_actor->quit();
+        });
+  });
+
+  sys.await_all_actors_done();
+}
+
+
+
 
 void test_mmul_raw_data(caf::actor_system& sys) {
   std::cout << "[TEST] Starting test_mmul_raw_data\n";
@@ -346,10 +405,7 @@ void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
   //actor_facade_launch_kernel_test(sys);
   //test_mmul(sys);
-  //test_mmul_raw_data(sys);
-  //test_concurrent_mmul(sys);
-  //serial_matrix_multiply_test();
-  //test_concurrent_supervisor_mmul(sys);
+  //test_mmul_large(sys);
   run_concurrent_mmul_test(sys,10,1024);
 }
 
