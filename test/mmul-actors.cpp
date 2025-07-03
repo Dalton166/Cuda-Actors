@@ -1,12 +1,7 @@
-#include <caf/all.hpp>  // Includes most CAF essentials
+//file not in use since I am not wasting time messing around with cmake
 
-#include "caf/cuda/actor_facade.hpp"
-#include "caf/cuda/manager.hpp"
-#include "caf/cuda/nd_range.hpp"
-#include "caf/cuda/all.hpp"
-#include "caf/cuda/utility.hpp"
-#include <caf/type_id.hpp>
-#include "caf/detail/test.hpp"
+
+#include "main.test.hpp"
 
 const char* matrixMulKernel = R"(
 extern "C" __global__
