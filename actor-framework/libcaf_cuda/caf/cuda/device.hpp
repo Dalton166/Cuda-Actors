@@ -74,61 +74,64 @@ public:
   }
 
   template <typename... Ts>
-  std::vector<output_buffer> launch_kernel(CUfunction kernel,
-                                           const nd_range& range,
-                                           std::tuple<Ts...> args,
-                                           int actor_id) {
-    CUstream stream = get_stream_for_actor(actor_id);
-    CUcontext ctx = getContext();
+std::vector<output_buffer> launch_kernel(CUfunction kernel,
+                                         const nd_range& range,
+                                         std::tuple<Ts...> args,
+                                         int actor_id) {
+  CUstream stream = get_stream_for_actor(actor_id);
+  CUcontext ctx = getContext();
 
-    std::lock_guard<std::mutex> lock(stream_mutex_);
+  CHECK_CUDA(cuCtxPushCurrent(ctx));
 
-    CHECK_CUDA(cuCtxPushCurrent(ctx));
+  auto kernel_arg_vec = extract_kernel_args(args);
+  void** kernel_args = kernel_arg_vec.data();
 
-    auto kernel_arg_vec = extract_kernel_args(args);
-    void** kernel_args = kernel_arg_vec.data();
+  CUresult result = cuLaunchKernel(
+    kernel,
+    range.getGridDimX(), range.getGridDimY(), range.getGridDimZ(),
+    range.getBlockDimX(), range.getBlockDimY(), range.getBlockDimZ(),
+    0, stream, kernel_args, nullptr);
 
-    CUresult result = cuLaunchKernel(
-      kernel,
-      range.getGridDimX(), range.getGridDimY(), range.getGridDimZ(),
-      range.getBlockDimX(), range.getBlockDimY(), range.getBlockDimZ(),
-      0, stream, kernel_args, nullptr);
-
-    if (result != CUDA_SUCCESS) {
-      const char* err_name = nullptr;
-      cuGetErrorName(result, &err_name);
-      throw std::runtime_error(std::string("cuLaunchKernel failed: ") + (err_name ? err_name : "unknown error"));
-    }
-
-    CHECK_CUDA(cuStreamSynchronize(stream));
-
-    CHECK_CUDA(cuCtxPopCurrent(nullptr));
-
-    std::vector<output_buffer> outputs;
-    auto collect_outputs = [&outputs](auto&& arg) {
-      if (arg && (arg->access() == OUT || arg->access() == IN_OUT)) {
-        using T = typename std::decay_t<decltype(*arg)>::value_type;
-        if constexpr (std::is_same_v<T, char>) {
-          outputs.emplace_back(output_buffer{buffer_variant{arg->copy_to_host()}});
-        } else if constexpr (std::is_same_v<T, int>) {
-          outputs.emplace_back(output_buffer{buffer_variant{arg->copy_to_host()}});
-        } else if constexpr (std::is_same_v<T, float>) {
-          outputs.emplace_back(output_buffer{buffer_variant{arg->copy_to_host()}});
-        } else if constexpr (std::is_same_v<T, double>) {
-          outputs.emplace_back(output_buffer{buffer_variant{arg->copy_to_host()}});
-        } else {
-          throw std::runtime_error("Unsupported output type: " + std::string(typeid(T).name()));
-        }
-      }
-    };
-    std::apply([&](auto&&... arg) { (collect_outputs(arg), ...); }, args);
-
-    for (void* arg : kernel_arg_vec) {
-      delete static_cast<CUdeviceptr*>(arg);
-    }
-
-    return outputs;
+  if (result != CUDA_SUCCESS) {
+    const char* err_name = nullptr;
+    cuGetErrorName(result, &err_name);
+    throw std::runtime_error(std::string("cuLaunchKernel failed: ") + (err_name ? err_name : "unknown error"));
   }
+
+  // Synchronize only the actor's stream to ensure kernel completion
+  CHECK_CUDA(cuStreamSynchronize(stream));
+
+  CHECK_CUDA(cuCtxPopCurrent(nullptr));
+
+  std::vector<output_buffer> outputs;
+
+  // Collect outputs from args that are out or in_out
+  auto collect_outputs = [&outputs](auto&& arg) {
+    if (arg && (arg->access() == OUT || arg->access() == IN_OUT)) {
+      using T = typename std::decay_t<decltype(*arg)>::value_type;
+      if constexpr (std::is_same_v<T, char>) {
+        outputs.emplace_back(output_buffer{buffer_variant{arg->copy_to_host()}});
+      } else if constexpr (std::is_same_v<T, int>) {
+        outputs.emplace_back(output_buffer{buffer_variant{arg->copy_to_host()}});
+      } else if constexpr (std::is_same_v<T, float>) {
+        outputs.emplace_back(output_buffer{buffer_variant{arg->copy_to_host()}});
+      } else if constexpr (std::is_same_v<T, double>) {
+        outputs.emplace_back(output_buffer{buffer_variant{arg->copy_to_host()}});
+      } else {
+        throw std::runtime_error("Unsupported output type: " + std::string(typeid(T).name()));
+      }
+    }
+  };
+
+  std::apply([&](auto&&... arg) { (collect_outputs(arg), ...); }, args);
+
+  // Clean up kernel argument pointers allocated in extract_kernel_args
+  for (void* arg_ptr : kernel_arg_vec) {
+    delete static_cast<CUdeviceptr*>(arg_ptr);
+  }
+
+  return outputs;
+}
 
 private:
   CUdevice device_;
