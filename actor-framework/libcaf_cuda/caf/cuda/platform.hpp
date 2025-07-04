@@ -118,7 +118,7 @@ platform() {
   ~platform() override {
     for (auto ctx : contexts_) {
 	    //std::cout << "Ahoi matey\n";
-	    check(cuCtxDestroy(ctx), "cuCtxDestroy");
+	    //check(cuCtxDestroy(ctx), "cuCtxDestroy");
     }
   }
 
