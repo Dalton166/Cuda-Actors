@@ -371,8 +371,8 @@ caf::behavior supervisor_fun(caf::stateful_actor<supervisor_state>* self, int id
           }
         },
         [self](caf::error& err) {
-          std::cerr << "[ERROR] Kernel execution failed: " << caf::to_string(err) << std::endl;
-          self->quit(err);
+          std::cout << "[ERROR] Kernel execution failed: " << caf::to_string(err) << std::endl;
+          //self->quit(err);
         });
   };
 
@@ -403,10 +403,11 @@ inline void run_concurrent_mmul_test(caf::actor_system& sys,
 
 void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
+  //test_main(sys);
   //actor_facade_launch_kernel_test(sys);
-  //test_mmul(sys);
+  // test_mmul(sys);
   //test_mmul_large(sys);
-  run_concurrent_mmul_test(sys,10,1024);
+   run_concurrent_mmul_test(sys,15,1024);
 }
 
 CAF_MAIN()
