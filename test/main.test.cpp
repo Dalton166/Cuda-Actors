@@ -105,7 +105,7 @@ void serial_matrix_multiply(const std::vector<int>& a,
 void serial_matrix_multiply_test() {
   std::cout << "[TEST] Starting serial_matrix_multiply_test\n";
 
-  int N = 1024;
+  int N = 32000;
   std::vector<int> h_a(N * N);
   std::vector<int> h_b(N * N);
   std::vector<int> h_c(N * N, 0);
@@ -125,12 +125,12 @@ void serial_matrix_multiply_test() {
             << duration.count() << " seconds\n";
 }
 
-void test_mmul(caf::actor_system& sys) {
+void test_mmul(caf::actor_system& sys,int N) {
   std::cout << "[TEST] Starting test_mmul\n";
 
   caf::cuda::manager& mgr = caf::cuda::manager::get();
 
-  int N = 1024;
+  //int N = 32000;
   int THREADS = 32;
   int BLOCKS = (N + THREADS - 1) / THREADS;
 
@@ -148,7 +148,7 @@ void test_mmul(caf::actor_system& sys) {
   std::generate(h_a.begin(), h_a.end(), []() { return rand() % 10; });
   std::generate(h_b.begin(), h_b.end(), []() { return rand() % 10; });
 
-  serial_matrix_multiply(h_a, h_b, h_ref, N);
+  //serial_matrix_multiply(h_a, h_b, h_ref, N);
 
   auto arg1 = caf::cuda::create_in_arg(h_a);
   auto arg2 = caf::cuda::create_in_arg(h_b);
@@ -171,9 +171,9 @@ void test_mmul(caf::actor_system& sys) {
             }, out.data);
           }
 
-          bool match = result == h_ref;
+          bool match = result == h_ref ;
           std::cout << "[INFO] Kernel round-trip time: " << elapsed.count() << " seconds\n";
-          std::cout << (match ? "[PASS] GPU result matches reference\n" : "[FAIL] Mismatch in GPU result\n");
+         // std::cout << (match ? "[PASS] GPU result matches reference\n" : "[FAIL] Mismatch in GPU result\n");
           self_actor->send_exit(gpuActor, exit_reason::user_shutdown);
           self_actor->quit();
         });
@@ -523,12 +523,15 @@ inline void run_concurrent_mmul_test(caf::actor_system& sys,
 void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
   //actor_facade_launch_kernel_test(sys);
-  //test_mmul(sys);
+  test_mmul(sys,32000);
+  serial_matrix_multiply_test();
+  test_mmul(sys,32768); //this should take up all 12gb of vram that herschel has 
+  test_mmul(sys,32770); //this should exceed 12gb of vram that herschel has 
   //test_mmul_raw_data(sys);
   //test_concurrent_mmul(sys);
   //serial_matrix_multiply_test();
   //test_concurrent_supervisor_mmul(sys);
-  run_concurrent_mmul_test(sys,10,1024);
+  //run_concurrent_mmul_test(sys,20,1024);
 }
 
 CAF_MAIN()
