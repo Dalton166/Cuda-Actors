@@ -197,7 +197,7 @@ private:
 
       if (msg->content().match_elements<exit_msg>()) {
         
-	std::cout << "Exit message received\n";
+	//std::cout << "Exit message received\n";
 	auto exit = msg->content().get_as<exit_msg>(0);
         shutdown_requested_ = true;
         if (pending_promises_ == 0) {
