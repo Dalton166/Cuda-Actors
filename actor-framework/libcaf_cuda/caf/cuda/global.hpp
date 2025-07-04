@@ -3,7 +3,7 @@
 #include <string>
 #include <iostream>
 #include <stdexcept>
-
+#include <chrono>
 #include <caf/logger.hpp>
 #include <cuda.h>
 #include "caf/cuda/types.hpp" //be sure to include any caf-cuda headers after this one
@@ -12,7 +12,6 @@
 #include <nvrtc.h>
 // CAF type ID registration
 #include <caf/type_id.hpp>
-
 
 
 
