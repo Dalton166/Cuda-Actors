@@ -407,7 +407,7 @@ void caf_main(caf::actor_system& sys) {
   //actor_facade_launch_kernel_test(sys);
   // test_mmul(sys);
   //test_mmul_large(sys);
-   run_concurrent_mmul_test(sys,15,1024);
+  run_concurrent_mmul_test(sys,15,1024);
 }
 
 CAF_MAIN()
