@@ -1,0 +1,277 @@
+==990671== NVPROF is profiling process 990671, command: ./test
+[INFO] Supervisor 2 Iteration 0 Round-trip: 0.803209 s
+[TIMER] handle_message took: 605.276 ms
+[TIMER] kernel_done_atom handled: 0.000112 ms
+[INFO] Supervisor 1 Iteration 0 Round-trip: 0.841126 s
+[TIMER] handle_message took: 764.288 ms
+[TIMER] kernel_done_atom handled: 7.1e-05 ms
+[INFO] Supervisor 3 Iteration 0 Round-trip: 1.00974 s
+[TIMER] handle_message took: 808.371 ms
+[TIMER] kernel_done_atom handled: 8.3e-05 ms
+[INFO] Supervisor 0 Iteration 0 Round-trip: 0.859648 s
+[TIMER] handle_message took: 642.196 ms
+[TIMER] kernel_done_atom handled: 9.8e-05 ms
+[TIMER] handle_message took: 640.946 ms
+[TIMER] kernel_done_atom handled: 5.4e-05 ms
+[INFO] Supervisor 2 Iteration 1 Round-trip: 0.851688 s
+[TIMER] handle_message took: 599.754 ms
+[TIMER] kernel_done_atom handled: 6.6e-05 ms
+[INFO] Supervisor 1 Iteration 1 Round-trip: 0.825222 s
+[TIMER] handle_message took: 669.415 ms
+[INFO] Supervisor 3 Iteration 1 Round-trip: 0.87681 s
+[TIMER] kernel_done_atom handled: 5.9e-05 ms
+[TIMER] handle_message took: 605.711 ms
+[TIMER] kernel_done_atom handled: 6.6e-05 ms
+[INFO] Supervisor 0 Iteration 1 Round-trip: 0.826927 s
+[INFO] Supervisor 2 Iteration 2 Round-trip: 0.783003 s
+[TIMER] handle_message took: 602.966 ms
+[TIMER] kernel_done_atom handled: 5.4e-05 ms
+[TIMER] handle_message took: 615.587 ms
+[TIMER] kernel_done_atom handled: 5.8e-05 ms
+[INFO] Supervisor 1 Iteration 2 Round-trip: 0.868978 s
+[INFO] Supervisor 3 Iteration 2 Round-trip: 0.86916 s
+[TIMER] handle_message took: 635.291 ms
+[TIMER] kernel_done_atom handled: 5.3e-05 ms
+[TIMER] handle_message took: 622.707 ms
+[TIMER] kernel_done_atom handled: 5.5e-05 ms
+[INFO] Supervisor 0 Iteration 2 Round-trip: 0.871855 s
+[TIMER] handle_message took: 595.825 ms
+[INFO] Supervisor 2 Iteration 3 Round-trip: 0.847369 s
+[TIMER] kernel_done_atom handled: 7.6e-05 ms
+[INFO] Supervisor 3 Iteration 3 Round-trip: 0.858553 s
+[TIMER] handle_message took: 659.708 ms
+[TIMER] kernel_done_atom handled: 6.6e-05 ms
+[INFO] Supervisor 1 Iteration 3 Round-trip: 0.875742 s
+[TIMER] handle_message took: 664.65 ms
+[TIMER] kernel_done_atom handled: 5.4e-05 ms
+[TIMER] handle_message took: 606.463 ms
+[INFO] Supervisor 0 Iteration 3 Round-trip: 0.805005 s
+[TIMER] kernel_done_atom handled: 7.9e-05 ms
+[TIMER] handle_message took: 577.29 ms
+[INFO] Supervisor 2 Iteration 4 Round-trip: 0.790685 s
+[TIMER] kernel_done_atom handled: 0.000113 ms
+[INFO] Supervisor 1 Iteration 4 Round-trip: 0.814744 s
+[TIMER] handle_message took: 605.033 ms
+[TIMER] kernel_done_atom handled: 7.1e-05 ms
+[TIMER] handle_message took: 726.641 ms
+[TIMER] kernel_done_atom handled: 7.8e-05 ms
+[INFO] Supervisor 3 Iteration 4 Round-trip: 0.974886 s
+[TIMER] handle_message took: 562.98 ms
+[TIMER] kernel_done_atom handled: 8e-05 ms
+[INFO] Supervisor 0 Iteration 4 Round-trip: 0.804663 s
+[INFO] Supervisor 2 Iteration 5 Round-trip: 0.83026 s
+[TIMER] handle_message took: 626.004 ms
+[TIMER] kernel_done_atom handled: 0.000156 ms
+[TIMER] handle_message took: 663.908 ms
+[TIMER] kernel_done_atom handled: 7.6e-05 ms
+[INFO] Supervisor 1 Iteration 5 Round-trip: 0.887341 s
+[INFO] Supervisor 3 Iteration 5 Round-trip: 0.796528 s
+[TIMER] handle_message took: 610.525 ms
+[TIMER] kernel_done_atom handled: 8.4e-05 ms
+[TIMER] handle_message took: 620.485 ms
+[INFO] Supervisor 0 Iteration 5 Round-trip: 0.838639 s
+[TIMER] kernel_done_atom handled: 5.6e-05 ms
+[INFO] Supervisor 2 Iteration 6 Round-trip: 0.826376 s
+[TIMER] handle_message took: 640.567 ms
+[TIMER] kernel_done_atom handled: 7.1e-05 ms
+[INFO] Supervisor 1 Iteration 6 Round-trip: 0.825892 s
+[TIMER] handle_message took: 641.866 ms
+[TIMER] kernel_done_atom handled: 5.4e-05 ms
+[INFO] Supervisor 3 Iteration 6 Round-trip: 0.799156 s
+[TIMER] handle_message took: 591.708 ms
+[TIMER] kernel_done_atom handled: 0.000169 ms
+[INFO] Supervisor 0 Iteration 6 Round-trip: 0.810412 s
+[TIMER] handle_message took: 613.996 ms
+[TIMER] kernel_done_atom handled: 6.7e-05 ms
+[INFO] Supervisor 2 Iteration 7 Round-trip: 0.80156 s
+[TIMER] handle_message took: 616.148 ms
+[TIMER] kernel_done_atom handled: 6.6e-05 ms
+[INFO] Supervisor 1 Iteration 7 Round-trip: 0.896479 s
+[TIMER] handle_message took: 728.99 ms
+[TIMER] kernel_done_atom handled: 8.2e-05 ms
+[INFO] Supervisor 3 Iteration 7 Round-trip: 1.00044 s
+[TIMER] handle_message took: 809.901 ms
+[TIMER] kernel_done_atom handled: 0.000169 ms
+[INFO] Supervisor 0 Iteration 7 Round-trip: 0.914065 s
+[TIMER] handle_message took: 670.388 ms
+[TIMER] kernel_done_atom handled: 0.000167 ms
+[TIMER] handle_message took: 576.913 ms
+[TIMER] kernel_done_atom handled: 0.000109 ms
+[INFO] Supervisor 2 Iteration 8 Round-trip: 0.789289 s
+[INFO] Supervisor 1 Iteration 8 Round-trip: 0.874544 s
+[TIMER] handle_message took: 693.758 ms
+[TIMER] kernel_done_atom handled: 7.7e-05 ms
+[INFO] Supervisor 3 Iteration 8 Round-trip: 1.10822 s
+[TIMER] handle_message took: 820.582 ms
+[TIMER] kernel_done_atom handled: 0.000158 ms
+[INFO] Supervisor 0 Iteration 8 Round-trip: 1.06994 s
+[TIMER] handle_message took: 801.814 ms
+[TIMER] kernel_done_atom handled: 8.5e-05 ms
+[INFO] Supervisor 2 Iteration 9 Round-trip: 1.09708 s
+[TIMER] handle_message took: 810.165 ms
+[TIMER] kernel_done_atom handled: 0.000245 ms
+[TIMER] handle_message took: 804.9 ms
+[INFO] Supervisor 1 Iteration 9 Round-trip: 1.09948 s
+[TIMER] kernel_done_atom handled: 8.1e-05 ms
+[INFO] Supervisor 3 Iteration 9 Round-trip: 1.17305 s
+[TIMER] handle_message took: 872.061 ms
+[TIMER] kernel_done_atom handled: 0.00025 ms
+[TIMER] handle_message took: 798.835 ms
+[TIMER] kernel_done_atom handled: 7.4e-05 ms
+[INFO] Supervisor 0 Iteration 9 Round-trip: 1.09863 s
+[INFO] Supervisor 2 Iteration 10 Round-trip: 1.10617 s
+[TIMER] handle_message took: 791.35 ms
+[TIMER] kernel_done_atom handled: 0.00031 ms
+[INFO] Supervisor 1 Iteration 10 Round-trip: 1.11138 s
+[TIMER] handle_message took: 831.44 ms
+[TIMER] kernel_done_atom handled: 9.4e-05 ms
+[INFO] Supervisor 3 Iteration 10 Round-trip: 1.08386 s
+[TIMER] handle_message took: 814.367 ms
+[TIMER] kernel_done_atom handled: 0.000203 ms
+[INFO] Supervisor 0 Iteration 10 Round-trip: 1.14966 s
+[TIMER] handle_message took: 837.505 ms
+[TIMER] kernel_done_atom handled: 6.3e-05 ms
+[INFO] Supervisor 2 Iteration 11 Round-trip: 1.12278 s
+[TIMER] handle_message took: 846.34 ms
+[TIMER] kernel_done_atom handled: 0.000159 ms
+[INFO] Supervisor 1 Iteration 11 Round-trip: 1.07421 s
+[TIMER] handle_message took: 806.806 ms
+[TIMER] kernel_done_atom handled: 6.9e-05 ms
+[INFO] Supervisor 3 Iteration 11 Round-trip: 1.08976 s
+[TIMER] handle_message took: 807.502 ms
+[TIMER] kernel_done_atom handled: 7.9e-05 ms
+[INFO] Supervisor 0 Iteration 11 Round-trip: 1.07689 s
+[TIMER] handle_message took: 806.101 ms
+[TIMER] kernel_done_atom handled: 8.9e-05 ms
+[TIMER] handle_message took: 840.807 ms
+[INFO] Supervisor 2 Iteration 12 Round-trip: 1.14608 s
+[TIMER] kernel_done_atom handled: 0.000105 ms
+[INFO] Supervisor 1 Iteration 12 Round-trip: 1.0938 s
+[TIMER] handle_message took: 816.43 ms
+[TIMER] kernel_done_atom handled: 8.1e-05 ms
+[INFO] Supervisor 3 Iteration 12 Round-trip: 1.10024 s
+[TIMER] handle_message took: 815.945 ms
+[TIMER] kernel_done_atom handled: 0.00022 ms
+[TIMER] handle_message took: 815.09 ms
+[INFO] Supervisor 0 Iteration 12 Round-trip: 1.11865 s
+[TIMER] kernel_done_atom handled: 9.2e-05 ms
+[TIMER] handle_message took: 793.483 ms
+[INFO] Supervisor 2 Iteration 13 Round-trip: 1.12305 s
+[TIMER] kernel_done_atom handled: 0.000286 ms
+[TIMER] handle_message took: 818.746 ms
+[INFO] Supervisor 1 Iteration 13 Round-trip: 1.12139 s
+[TIMER] kernel_done_atom handled: 8.4e-05 ms
+[TIMER] handle_message took: 815.51 ms
+[INFO] Supervisor 3 Iteration 13 Round-trip: 1.10227 s
+[TIMER] kernel_done_atom handled: 0.000316 ms
+[INFO] Supervisor 0 Iteration 13 Round-trip: 1.0827 s
+[TIMER] handle_message took: 786.494 ms
+[TIMER] kernel_done_atom handled: 0.00029 ms
+[INFO] Supervisor 2 Iteration 14 Round-trip: 1.10145 s
+[TIMER] handle_message took: 823.794 ms
+[TIMER] kernel_done_atom handled: 0.000216 ms
+[INFO] Supervisor 1 Iteration 14 Round-trip: 1.11828 s
+[TIMER] handle_message took: 821.703 ms
+[TIMER] kernel_done_atom handled: 0.000161 ms
+[INFO] Supervisor 3 Iteration 14 Round-trip: 1.10777 s
+[TIMER] handle_message took: ==990671== Profiling application: ./test
+822.43 ms
+[TIMER] kernel_done_atom handled: 0.000168 ms
+[TIMER] handle_message took: 791.972 ms
+[INFO] Supervisor 0 Iteration 14 Round-trip: 1.08258 s
+[TIMER] kernel_done_atom handled: 6e-05 ms
+[INFO] Supervisor 2 Iteration 15 Round-trip: 1.10085 s
+[TIMER] handle_message took: 822.863 ms
+[TIMER] kernel_done_atom handled: 8.2e-05 ms
+[INFO] Supervisor 1 Iteration 15 Round-trip: 1.10935 s
+[TIMER] handle_message took: 815.209 ms
+[TIMER] kernel_done_atom handled: 0.000247 ms
+[TIMER] handle_message took: 783.436 ms
+[TIMER] kernel_done_atom handled: 0.000166 ms
+[INFO] Supervisor 3 Iteration 15 Round-trip: 1.09906 s
+[TIMER] handle_message took: 873.347 ms
+[INFO] Supervisor 0 Iteration 15 Round-trip: 1.18513 s
+[TIMER] kernel_done_atom handled: 8.2e-05 ms
+[INFO] Supervisor 2 Iteration 16 Round-trip: 1.1122 s
+[TIMER] handle_message took: 823.763 ms
+[TIMER] kernel_done_atom handled: 0.000321 ms
+[TIMER] handle_message took: 819.154 ms
+[INFO] Supervisor 1 Iteration 16 Round-trip: 1.10314 s
+[TIMER] kernel_done_atom handled: 6e-05 ms
+[TIMER] handle_message took: 804.989 ms
+[INFO] Supervisor 3 Iteration 16 Round-trip: 1.08504 s
+[TIMER] kernel_done_atom handled: 0.000145 ms
+[TIMER] handle_message took: 839.915 ms
+[INFO] Supervisor 0 Iteration 16 Round-trip: 1.13326 s
+[TIMER] kernel_done_atom handled: 7.9e-05 ms
+[TIMER] handle_message took: 787.375 ms
+[TIMER] kernel_done_atom handled: 0.000181 ms
+[INFO] Supervisor 2 Iteration 17 Round-trip: 1.1073 s
+[TIMER] handle_message took: 833.662 ms
+[INFO] Supervisor 1 Iteration 17 Round-trip: 1.12532 s
+[TIMER] kernel_done_atom handled: 7.7e-05 ms
+[INFO] Supervisor 3 Iteration 17 Round-trip: 1.21993 s
+[TIMER] handle_message took: 945.424 ms
+[TIMER] kernel_done_atom handled: 8.1e-05 ms
+[TIMER] handle_message took: 802.889 ms
+[INFO] Supervisor 0 Iteration 17 Round-trip: 1.12546 s
+[TIMER] kernel_done_atom handled: 0.000119 ms
+[TIMER] handle_message took: 827.542 ms
+[INFO] Supervisor 2 Iteration 18 Round-trip: 1.13755 s
+[TIMER] kernel_done_atom handled: 0.000162 ms
+[INFO] Supervisor 3 Iteration 18 Round-trip: 1.17403 s
+[TIMER] handle_message took: 873.443 ms
+[TIMER] kernel_done_atom handled: 8.8e-05 ms
+[INFO] Supervisor 1 Iteration 18 Round-trip: 1.35649 s
+[TIMER] handle_message took: 1099.05 ms
+[TIMER] kernel_done_atom handled: 0.000172 ms
+[INFO] Supervisor 0 Iteration 18 Round-trip: 1.11125 s
+[TIMER] handle_message took: 840.737 ms
+[TIMER] kernel_done_atom handled: 8.8e-05 ms
+[INFO] Supervisor 2 Iteration 19 Round-trip: 1.11851 s
+[INFO] Supervisor 2 Average time: 0.979823 s
+Exit message received
+[TIMER] exit_msg -> resume_later: 0.004275 ms
+[TIMER] kernel_done_atom -> shutdown: 0.000135 ms
+[TIMER] handle_message took: 814.337 ms
+[TIMER] handle_message took: 817.587 ms
+[INFO] Supervisor 3 Iteration 19 Round-trip: 1.04984 s
+[INFO] Supervisor 3 Average time: 1.02892 s
+[TIMER] kernel_done_atom handled: 6.7e-05 ms
+Exit message received
+[TIMER] exit_msg -> quit: 0.004447 ms
+[INFO] Supervisor 1 Iteration 19 Round-trip: 1.05655 s
+[INFO] Supervisor 1 Average time: 1.00397 s
+Exit message received
+[TIMER] exit_msg -> resume_later: 0.004366 ms
+[TIMER] kernel_done_atom -> shutdown: [TIMER] handle_message took: 0.000108 ms
+822.729 ms
+[INFO] Supervisor 0 Iteration 19 Round-trip: 0.951675 s
+[INFO] Supervisor 0 Average time: 0.995852 s
+Exit message received
+[TIMER] exit_msg -> resume_later: 0.00256 ms
+[TIMER] kernel_done_atom -> shutdown: 7.5e-05 ms
+[TIMER] handle_message took: 720.283 ms
+==990671== Profiling result:
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+ GPU activities:   73.97%  9.93992s        80  124.25ms  121.68ms  156.24ms  matrixMul
+                   17.59%  2.36326s       240  9.8469ms  1.0560us  24.374ms  [CUDA memcpy HtoD]
+                    8.44%  1.13414s        80  14.177ms  11.708ms  18.803ms  [CUDA memcpy DtoH]
+      API calls:   52.20%  3.09304s       240  12.888ms  23.191us  139.21ms  cuMemcpyHtoD
+                   30.28%  1.79441s        80  22.430ms  12.033ms  52.696ms  cuMemcpyDtoH
+                   10.71%  634.67ms       320  1.9833ms  8.5100us  122.09ms  cuMemFree
+                    3.89%  230.35ms       320  719.83us  22.026us  23.536ms  cuMemAlloc
+                    2.21%  130.65ms         1  130.65ms  130.65ms  130.65ms  cuCtxCreate
+                    0.46%  27.495ms        80  343.68us  26.088us  14.937ms  cuLaunchKernel
+                    0.21%  12.675ms         4  3.1687ms  2.8556ms  3.7574ms  cuModuleLoadData
+                    0.02%  1.3664ms       484  2.8230us     732ns  8.7350us  cuCtxPushCurrent
+                    0.01%  370.09us       484     764ns     182ns  6.3260us  cuCtxPopCurrent
+                    0.00%  57.966us        82     706ns     211ns  7.9060us  cuCtxGetCurrent
+                    0.00%  30.811us         1  30.811us  30.811us  30.811us  cuStreamCreate
+                    0.00%  15.971us         1  15.971us  15.971us  15.971us  cuDeviceGetName
+                    0.00%  14.823us        11  1.3470us     441ns  2.8160us  cuDeviceGetAttribute
+                    0.00%  11.067us         1  11.067us  11.067us  11.067us  cuDeviceGetPCIBusId
+                    0.00%  4.6630us         4  1.1650us     848ns  1.4020us  cuModuleGetFunction
+                    0.00%  1.8960us         3     632ns     331ns  1.1460us  cuDeviceGetCount
+                    0.00%     945ns         2     472ns     170ns     775ns  cuDeviceGet
+                    0.00%     875ns         1     875ns     875ns     875ns  cuCtxSetCurrent
