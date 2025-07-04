@@ -17,8 +17,8 @@
 
 #include "caf/cuda/global.hpp"
 #include "caf/cuda/types.hpp"
-#include "caf/cuda/mem_ref.hpp"
-#include "caf/cuda/stream_pool.hpp" // your new stream pool header
+//#include "caf/cuda/mem_ref.hpp"
+#include "caf/cuda/StreamPool.hpp" // your new stream pool header
 
 namespace caf::cuda {
 
@@ -49,6 +49,17 @@ public:
   CUdevice getDevice() const { return device_; }
   CUcontext getContext() const { return context_; }
   int getId() const { return id_; }
+
+  int getStreamId() const { return 0; }
+  int getContextId() const { return 0; }
+  CUcontext getContext(int id) {
+
+	  //for right now this does the same as getContext
+	  //however I can't tell if this project will end up using multiple contexts per device so use this for now
+	  return context_;
+  }
+
+
 
   CUstream get_stream_for_actor(int actor_id) {
     return stream_table_.get_stream(actor_id);
