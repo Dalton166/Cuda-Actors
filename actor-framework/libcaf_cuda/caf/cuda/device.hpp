@@ -36,7 +36,10 @@ public:
   }
 
   ~device() {
-    // StreamPool cleanup automatic
+     //stream table needs to be deleted first 
+     //since once device is destroyed, stream table cant clean up
+     //delete &stream_table_; 
+     check(cuCtxDestroy(context_), "cuCtxDestroy");
   }
 
   device(const device&) = delete;
