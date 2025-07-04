@@ -23,12 +23,16 @@ public:
   }
 
   ~StreamPool() {
+    
+    //there is no need to destroy these contexts
+    //since destroying the context destroys the streams
+    /*
     std::lock_guard<std::mutex> lock(pool_mutex_);
     while (!available_streams_.empty()) {
       auto s = available_streams_.front();
       available_streams_.pop();
       cuStreamDestroy(s);
-    }
+    }*/
   }
 
   /// Acquire a new stream from the pool. Expands if necessary.
