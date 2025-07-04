@@ -172,6 +172,28 @@ private:
     return caf::intrusive_ptr<mem_ref<T>>(new mem_ref<T>(size, device_buffer, access, id_, 0, stream));
   }
 
+
+  template <typename T>
+  mem_ptr<T> global_argument(const in_out<T>& arg, int actor_id, int access) {
+    size_t size = arg.buffer.size();
+    CUdeviceptr device_buffer = 0;
+    size_t bytes = size * sizeof(T);
+
+    CUcontext ctx = getContext();
+    CHECK_CUDA(cuCtxPushCurrent(ctx));
+
+    CHECK_CUDA(cuMemAlloc(&device_buffer, bytes));
+    CUstream stream = get_stream_for_actor(actor_id);
+    CHECK_CUDA(cuMemcpyHtoDAsync(device_buffer, arg.buffer.data(), bytes, stream));
+
+    CHECK_CUDA(cuCtxPopCurrent(nullptr));
+
+    return caf::intrusive_ptr<mem_ref<T>>(new mem_ref<T>(size, device_buffer, access, id_, 0, stream));
+  }
+
+
+
+
   template <typename T>
   mem_ptr<T> scratch_argument(const out<T>& arg, int actor_id, int access) {
     size_t size = arg.buffer.size();
