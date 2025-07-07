@@ -42,6 +42,18 @@ public:
     static_assert(sizeof...(Us) == sizeof...(Ts), "Argument count mismatch");
   }
 
+  command(program_ptr program, int id)
+  : program_(std::move(program)),
+    actor_id(id) {
+  // Instruct device to release any per-actor stream resources
+  if (program_) {
+    if (auto dev = program_->get_device()) {
+      dev->release_stream(actor_id);
+    }
+  }
+}
+
+
   ~command() = default;
 
   void enqueue() {
