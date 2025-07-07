@@ -140,21 +140,29 @@ private:
 
     return distrib(gen);
 }
-
-  bool handle_message(const message& msg) {
-    if (!msg.types().empty() && msg.types()[0] == caf::type_id_v<caf::actor>) {
-      auto sender = msg.get_as<caf::actor>(0);
-      if (msg.match_elements<caf::actor, Ts...>()) {
-           //std::cout << "Wrapper types recognized, running kernel\n";
-	   return unpack_and_run_wrapped(sender, msg, std::index_sequence_for<Ts...>{});
-      }
-      if (msg.match_elements<caf::actor, raw_t<Ts>...>()) {
-        return unpack_and_run(sender, msg, std::index_sequence_for<Ts...>{});
-      }
+bool handle_message(const caf::message& msg) {
+  if (!msg.types().empty() && msg.types()[0] == caf::type_id_v<caf::actor>) {
+    if (msg.match_elements<caf::actor, Ts...>()) {
+      return unpack_and_run_wrapped(msg, std::index_sequence_for<Ts...>{});
     }
-    std::cout << "[WARNING], message format not recognized by actor facde, droppping message\n";
-    return false;
+    if (msg.match_elements<caf::actor, std::shared_ptr<Ts>...>()) {
+      return unpack_and_run_shared(msg, std::index_sequence_for<Ts...>{});
+    }
+    if (msg.match_elements<caf::actor, raw_t<Ts>...>()) {
+      return unpack_and_run(msg, std::index_sequence_for<Ts...>{});
+    }
   }
+  std::cout << "[WARNING] message format not recognized by actor facade, dropping message\n";
+  return false;
+}
+
+template <std::size_t... Is>
+bool unpack_and_run_shared(const caf::message& msg, std::index_sequence<Is...>) {
+  auto tuple_of_ptrs = std::make_tuple(msg.get_as<std::shared_ptr<Ts>>(Is + 1)...);
+  run_kernel((*std::get<Is>(tuple_of_ptrs))...);
+  return true;
+}
+
 
   template <std::size_t... Is>
   bool unpack_and_run_wrapped(caf::actor sender, const message& msg, std::index_sequence<Is...>) {
