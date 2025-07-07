@@ -113,7 +113,7 @@ std::vector<output_buffer> launch_kernel(CUfunction kernel,
   }
 
   // Synchronize only the actor's stream to ensure kernel completion
-  CHECK_CUDA(cuStreamSynchronize(stream));
+  //CHECK_CUDA(cuStreamSynchronize(stream));
 
   CHECK_CUDA(cuCtxPopCurrent(nullptr));
 

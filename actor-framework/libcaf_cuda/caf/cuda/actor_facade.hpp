@@ -209,9 +209,16 @@ private:
         }
       }
 
-      handle_message(msg->content());
-      current_mailbox_element(nullptr);
-    }
+     auto start = std::chrono::high_resolution_clock::now();
+
+handle_message(msg->content());
+current_mailbox_element(nullptr);
+
+auto end = std::chrono::high_resolution_clock::now();
+
+auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+
+//std::cout << "[TIMING] handle_message + current_mailbox_element took: " << duration.count() << " us\n";    }
 
     return shutdown_requested_ ? resumable::resume_later : resumable::done;
   }
