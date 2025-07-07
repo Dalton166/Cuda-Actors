@@ -26,49 +26,54 @@ namespace caf::cuda {
 template <class Actor, class... Ts>
 class command : public ref_counted {
 public:
-  // Constructor template to perfectly forward argument wrappers (in/out/in_out)
   template <typename... Us>
-   command(caf::response_promise promise,
+  command(caf::response_promise promise,
           caf::actor self,
           program_ptr program,
           nd_range dims,
+          int id,
           Us&&... xs)
     : rp(std::move(promise)),
       self_(std::move(self)),
-      program_(program),
+      program_(std::move(program)),
       dims_(dims),
+      actor_id(id),
       mem_refs(convert_data_to_args(std::forward<Us>(xs)...)) {
     static_assert(sizeof...(Us) == sizeof...(Ts), "Argument count mismatch");
   }
 
-
-  ~command() {
-        //std::cout << "Destroying command: program=" << program_.get() << "\n";
+  //TODO, fix compiler errors
+  command(program_ptr program, int id)
+  : program_(std::move(program)),
+    actor_id(id) {
+  // Instruct device to release any per-actor stream resources
+  if (program_) {
+    if (auto dev = program_->get_device()) {
+      dev->release_stream_for_actor(actor_id);
     }
+  }
+}
 
+
+  ~command() = default;
 
   void enqueue() {
-    auto outputs = launch_kernel(program_, dims_, mem_refs, program_->get_stream_id());
+    auto outputs = launch_kernel(program_, dims_, mem_refs, actor_id);
     rp.deliver(std::move(outputs));
 
-    // Cleanup
     for_each_tuple(mem_refs, [](auto& mem) {
-      if (mem) mem->reset();
+      if (mem)
+        mem->reset();
     });
 
-    // Notify actor that work is complete
     anon_send(self_, kernel_done_atom_v);
   }
-// ~command() override = default;
 
-
-   template <class A, class... S>
+  template <class A, class... S>
   friend void intrusive_ptr_add_ref(command<A, S...>* ptr);
 
   template <class A, class... S>
   friend void intrusive_ptr_release(command<A, S...>* ptr);
-
-
 
 private:
   program_ptr program_;
@@ -77,59 +82,48 @@ private:
   nd_range dims_;
   std::tuple<mem_ptr<raw_t<Ts>>...> mem_refs;
   std::atomic<int> ref_count{0};
+  int actor_id;
 
-  // makeArg overloads use program_->get_device() to avoid circular dependency
   template <typename T>
   mem_ptr<T> makeArg(in<T> arg) {
-    device_ptr dev = program_->get_device();
-    return dev->make_arg(arg);
-  }
-
-  template <typename T>
-  mem_ptr<T> makeArg(in_out<T> arg) {
-    device_ptr dev = program_->get_device();
-    return dev->make_arg(arg);
+    return program_->get_device()->make_arg(arg, actor_id);
   }
 
   template <typename T>
   mem_ptr<T> makeArg(out<T> arg) {
-    device_ptr dev = program_->get_device();
-    return dev->make_arg(arg);
+    return program_->get_device()->make_arg(arg, actor_id);
   }
 
-  // Fallback for other types (raw values, etc.)
   template <typename T>
-  mem_ptr<T> makeArg(T&& arg) {
-    device_ptr dev = program_->get_device();
-    return dev->make_arg(std::forward<T>(arg));
+  mem_ptr<T> makeArg(in_out<T> arg) {
+    return program_->get_device()->make_arg(arg, actor_id);
   }
 
-  // Convert input argument wrappers to mem_ptr tuple
+  // Fallback for raw types
+  template <typename T>
+  mem_ptr<T> makeArg(T&& val) {
+    return program_->get_device()->make_arg(std::forward<T>(val), actor_id);
+  }
+
   template <typename... Args>
   auto convert_data_to_args(Args&&... args) {
     return std::make_tuple(makeArg(std::forward<Args>(args))...);
   }
 
-  // Print outputs and cleanup
   void print_and_cleanup_outputs(std::tuple<mem_ptr<raw_t<Ts>>...>& mem_refs) {
     for_each_tuple(mem_refs, [](auto& mem) {
       if (!mem) return;
-
-      const int access = mem->access();
-      if (access == OUT || access == IN_OUT) {
+      if (mem->access() == OUT || mem->access() == IN_OUT) {
         auto host_data = mem->copy_to_host();
         std::cout << "Output buffer (" << host_data.size() << "): ";
-        for (const auto& val : host_data) {
+        for (const auto& val : host_data)
           std::cout << val << " ";
-        }
         std::cout << '\n';
       }
-
       mem->reset();
     });
   }
 
-  // Tuple iteration helper
   template <typename Tuple, typename Func, size_t... Is>
   void for_each_tuple_impl(Tuple& t, Func&& f, std::index_sequence<Is...>) {
     (f(std::get<Is>(t)), ...);
@@ -140,36 +134,27 @@ private:
     for_each_tuple_impl(t, std::forward<Func>(f), std::index_sequence_for<Is...>{});
   }
 
-  // Launch kernel wrapper 
- auto launch_kernel(program_ptr program,
+  auto launch_kernel(program_ptr program,
                      const caf::cuda::nd_range& range,
                      std::tuple<mem_ptr<raw_t<Ts>>...> args,
-                     int stream_id)
+                     int actor_id)
     -> std::vector<output_buffer> {
-    int context_id = program->get_context_id();
     CUfunction kernel = program->get_kernel();
     device_ptr dev = program->get_device();
-    return dev->launch_kernel(kernel, range, args, stream_id, context_id);
+    return dev->launch_kernel(kernel, range, args, actor_id);
   }
-
 };
 
-// intrusive_ptr reference counting for command
-
+// intrusive_ptr reference counting
 template <class Actor, class... Ts>
 inline void intrusive_ptr_add_ref(command<Actor, Ts...>* ptr) {
   ++(ptr->ref_count);
-  //std::cout << "intrusive_ptr_add_ref: ref_count=" << ptr->ref_count.load() << "\n";
 }
 
 template <class Actor, class... Ts>
 inline void intrusive_ptr_release(command<Actor, Ts...>* ptr) {
-  if (--(ptr->ref_count) == 0) {
-    //std::cout << "intrusive_ptr_release: deleting command\n";
+  if (--(ptr->ref_count) == 0)
     delete ptr;
-  } else {
-    //std::cout << "intrusive_ptr_release: ref_count=" << ptr->ref_count.load() << "\n";
-  }
 }
 
 } // namespace caf::cuda

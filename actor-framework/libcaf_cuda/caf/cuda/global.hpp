@@ -3,7 +3,7 @@
 #include <string>
 #include <iostream>
 #include <stdexcept>
-
+#include <chrono>
 #include <caf/logger.hpp>
 #include <cuda.h>
 #include "caf/cuda/types.hpp" //be sure to include any caf-cuda headers after this one
@@ -12,7 +12,6 @@
 #include <nvrtc.h>
 // CAF type ID registration
 #include <caf/type_id.hpp>
-
 
 
 
@@ -121,6 +120,7 @@ void inline check(CUresult result, const char* msg) {
 
 
 
+/*
 template <class Inspector, typename T>
 bool inspect(Inspector& f, in<T>& x) {
   return f.object(x).fields(f.field("buffer", x.buffer));
@@ -135,7 +135,7 @@ template <class Inspector, typename T>
 bool inspect(Inspector& f, in_out<T>& x) {
   return f.object(x).fields(f.field("buffer", x.buffer));
 }
-
+*/
 using buffer_variant = std::variant<std::vector<char>, std::vector<int>, std::vector<float>, std::vector<double>>;
 
 struct output_buffer {
@@ -144,11 +144,12 @@ struct output_buffer {
 };
 
 
+/*
 template <class Inspector>
 bool inspect(Inspector& f, output_buffer& x) {
   return f.object(x).fields(f.field("data", x.data));
 }
-
+*/
 
 // Check CUDA errors macro
 #define CHECK_CUDA(call) \
@@ -160,6 +161,37 @@ bool inspect(Inspector& f, output_buffer& x) {
 #define CHECK_NVRTC(call) \
     do { nvrtcResult res = call; if (res != NVRTC_SUCCESS) { \
         std::cerr << "NVRTC Error: " << nvrtcGetErrorString(res) << std::endl; exit(1); }} while(0)
+
+
+// Allow unsafe message passing for performance-critical non-serialized types
+
+// Raw vectors
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(std::vector<char>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(std::vector<int>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(std::vector<float>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(std::vector<double>)
+
+// Buffer wrappers
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in<char>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in<int>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in<float>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in<double>)
+
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(out<char>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(out<int>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(out<float>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(out<double>)
+
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in_out<char>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in_out<int>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in_out<float>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in_out<double>)
+
+// output_buffer type that holds a variant of vectors
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(output_buffer)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(std::vector<output_buffer>)
+
+
 
 
 // CAF type ID registration
