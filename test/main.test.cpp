@@ -295,24 +295,25 @@ void test_mmul_raw_data(caf::actor_system& sys) {
 
   sys.await_all_actors_done();
 }
-
 #include <caf/all.hpp>
-//#include <caf/io/all.hpp>
 #include <caf/cuda/all.hpp>
 #include <chrono>
 #include <numeric>
 #include <vector>
 #include <random>
+#include <iostream>
 
 using Clock = std::chrono::high_resolution_clock;
+
 struct supervisor_state {
   caf::actor gpu_actor;
-  std::vector<double> times;
-  int count = 0;   // track iteration count
-  int id = 0;      // supervisor id
-  int N = 0;       // matrix size
+  std::vector<double> kernel_times;
+  std::vector<double> full_times;
+  int count = 0;
+  int id = 0;
+  int N = 0;
 };
-;
+
 caf::behavior supervisor_fun(caf::stateful_actor<supervisor_state>* self, int id, int N) {
   auto& st = self->state();
   st.id = id;
@@ -327,6 +328,7 @@ caf::behavior supervisor_fun(caf::stateful_actor<supervisor_state>* self, int id
 
   auto run_iteration = [self]() {
     auto& st_ref = self->state();
+    auto iteration_start = Clock::now();
 
     std::vector<int> h_a(st_ref.N * st_ref.N);
     std::vector<int> h_b(st_ref.N * st_ref.N);
@@ -341,30 +343,37 @@ caf::behavior supervisor_fun(caf::stateful_actor<supervisor_state>* self, int id
     auto arg3 = caf::cuda::create_out_arg(h_c);
     auto arg4 = caf::cuda::create_in_arg(h_n);
 
-    auto start_time = std::chrono::high_resolution_clock::now();
+    auto kernel_start = Clock::now();
 
-    // Here is the key part: mail().request() chain
     self->mail(st_ref.gpu_actor, arg1, arg2, arg3, arg4)
-      .request(st_ref.gpu_actor, std::chrono::seconds(10))
+      .request(st_ref.gpu_actor, std::chrono::seconds(100))
       .then(
-        [self, start_time](const std::vector<output_buffer>&) {
+        [self, iteration_start, kernel_start](const std::vector<output_buffer>&) {
           auto& st_ref = self->state();
-          auto end_time = std::chrono::high_resolution_clock::now();
-          double elapsed = std::chrono::duration<double>(end_time - start_time).count();
+          auto kernel_end = Clock::now();
+          auto iteration_end = Clock::now();
+
+          double kernel_time = std::chrono::duration<double>(kernel_end - kernel_start).count();
+          double full_time = std::chrono::duration<double>(iteration_end - iteration_start).count();
 
           std::cout << "[INFO] Supervisor " << st_ref.id
                     << " Iteration " << st_ref.count
-                    << " Round-trip: " << elapsed << " s\n";
+                    << " Kernel round-trip: " << kernel_time << " s, "
+                    << "Full iteration time: " << full_time << " s\n";
 
-          st_ref.times.push_back(elapsed);
+          st_ref.kernel_times.push_back(kernel_time);
+          st_ref.full_times.push_back(full_time);
           ++st_ref.count;
 
           if (st_ref.count < 20) {
-            self->mail(std::string("start")).send(self);  // trigger next iteration
+            self->delayed_send(self, std::chrono::milliseconds(0), std::string("start"));
           } else {
-            double avg = std::accumulate(st_ref.times.begin(), st_ref.times.end(), 0.0) / st_ref.times.size();
+            double kernel_avg = std::accumulate(st_ref.kernel_times.begin(), st_ref.kernel_times.end(), 0.0) / st_ref.kernel_times.size();
+            double full_avg = std::accumulate(st_ref.full_times.begin(), st_ref.full_times.end(), 0.0) / st_ref.full_times.size();
+
             std::cout << "[INFO] Supervisor " << st_ref.id
-                      << " Average time: " << avg << " s\n";
+                      << " Kernel average: " << kernel_avg << " s, "
+                      << "Full iteration average: " << full_avg << " s\n";
 
             self->send_exit(st_ref.gpu_actor, caf::exit_reason::user_shutdown);
             self->quit();
@@ -385,20 +394,24 @@ caf::behavior supervisor_fun(caf::stateful_actor<supervisor_state>* self, int id
   };
 }
 
-
 // Driver function
 inline void run_concurrent_mmul_test(caf::actor_system& sys,
                                      int num_supervisors,
                                      int matrix_size) {
+  auto start = Clock::now();
+
   for (int i = 0; i < num_supervisors; ++i) {
     auto sup = sys.spawn(supervisor_fun, i, matrix_size);
     caf::anon_send(sup, std::string("start"));
   }
+
   sys.await_all_actors_done();
+
+  auto end = Clock::now();
+  std::chrono::duration<double> duration = end - start;
+  std::cout << "[TIMER] run_concurrent_mmul_test took: "
+            << duration.count() << " seconds\n";
 }
-
-
-
 
 
 void caf_main(caf::actor_system& sys) {
@@ -406,7 +419,7 @@ void caf_main(caf::actor_system& sys) {
   //actor_facade_launch_kernel_test(sys);
   //test_mmul(sys);
   //test_mmul_large(sys);
-  run_concurrent_mmul_test(sys,10,1024);
+  run_concurrent_mmul_test(sys,1,5000);
 }
 
 CAF_MAIN()
