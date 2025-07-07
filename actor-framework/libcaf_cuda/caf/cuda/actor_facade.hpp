@@ -68,7 +68,8 @@ public:
   }
 
   ~actor_facade() {
-  
+ 
+  program_->get_device()->release_stream_for_actor(actor_id);
 	  //std::cout << "Destroying gpu actor\n";
   }
 
