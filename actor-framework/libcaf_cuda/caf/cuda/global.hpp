@@ -162,6 +162,37 @@ bool inspect(Inspector& f, output_buffer& x) {
         std::cerr << "NVRTC Error: " << nvrtcGetErrorString(res) << std::endl; exit(1); }} while(0)
 
 
+// Allow unsafe message passing for performance-critical non-serialized types
+
+// Raw vectors
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(std::vector<char>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(std::vector<int>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(std::vector<float>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(std::vector<double>)
+
+// Buffer wrappers
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in<char>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in<int>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in<float>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in<double>)
+
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(out<char>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(out<int>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(out<float>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(out<double>)
+
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in_out<char>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in_out<int>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in_out<float>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in_out<double>)
+
+// output_buffer type that holds a variant of vectors
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(output_buffer)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(std::vector<output_buffer>)
+
+
+
+
 // CAF type ID registration
 #include <caf/type_id.hpp>
 
