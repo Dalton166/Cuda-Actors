@@ -1,4 +1,3 @@
-/* stream_pool.hpp */
 #pragma once
 
 #include <vector>
@@ -8,6 +7,7 @@
 #include <shared_mutex>
 #include <cuda.h>
 #include <stdexcept>
+#include <iostream>
 
 namespace caf::cuda {
 
@@ -15,24 +15,16 @@ namespace caf::cuda {
 /// Allocation table is owned externally by device.
 class StreamPool {
 public:
-  /// Construct pool with a given number of pre-created streams.
-  explicit StreamPool(size_t initial_size = 32) {
+  /// Construct pool with a given CUDA context and number of pre-created streams.
+  explicit StreamPool(CUcontext ctx, size_t initial_size = 32)
+    : ctx_(ctx) {
     for (size_t i = 0; i < initial_size; ++i) {
       available_streams_.push(create_stream());
     }
   }
 
   ~StreamPool() {
-    
-    //there is no need to destroy these contexts
-    //since destroying the context destroys the streams
-    /*
-    std::lock_guard<std::mutex> lock(pool_mutex_);
-    while (!available_streams_.empty()) {
-      auto s = available_streams_.front();
-      available_streams_.pop();
-      cuStreamDestroy(s);
-    }*/
+    // No need to destroy streams explicitly since destroying context cleans up
   }
 
   /// Acquire a new stream from the pool. Expands if necessary.
@@ -54,13 +46,35 @@ public:
 
 private:
   CUstream create_stream() {
+    // Push context to the current thread
+    CUresult err = cuCtxPushCurrent(ctx_);
+    if (err != CUDA_SUCCESS) {
+      const char* err_str = nullptr;
+      cuGetErrorString(err, &err_str);
+      throw std::runtime_error(std::string("cuCtxPushCurrent failed: ") + (err_str ? err_str : "unknown error"));
+    }
+
     CUstream s;
-    if (auto err = cuStreamCreate(&s, CU_STREAM_DEFAULT)) {
-      throw std::runtime_error("cuStreamCreate failed: " + std::to_string(err));
+    err = cuStreamCreate(&s, CU_STREAM_DEFAULT);
+    
+    // Pop context right after creating stream
+    CUcontext popped_ctx;
+    CUresult pop_err = cuCtxPopCurrent(&popped_ctx);
+    if (pop_err != CUDA_SUCCESS) {
+      const char* err_str = nullptr;
+      cuGetErrorString(pop_err, &err_str);
+      throw std::runtime_error(std::string("cuCtxPopCurrent failed: ") + (err_str ? err_str : "unknown error"));
+    }
+
+    if (err != CUDA_SUCCESS) {
+      const char* err_str = nullptr;
+      cuGetErrorString(err, &err_str);
+      throw std::runtime_error(std::string("cuStreamCreate failed: ") + (err_str ? err_str : "unknown error"));
     }
     return s;
   }
 
+  CUcontext ctx_;
   std::queue<CUstream> available_streams_;
   std::mutex pool_mutex_;
 };
@@ -68,8 +82,8 @@ private:
 /// Per-device stream manager. Tracks assigned streams for actor IDs.
 class DeviceStreamTable {
 public:
-  explicit DeviceStreamTable(size_t pool_size = 32)
-      : pool_(pool_size) {}
+  explicit DeviceStreamTable(CUcontext ctx, size_t pool_size = 32)
+      : pool_(ctx, pool_size) {}
 
   CUstream get_stream(int actor_id) {
     {
