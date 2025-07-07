@@ -307,6 +307,11 @@ using Clock = std::chrono::high_resolution_clock;
 
 struct supervisor_state {
   caf::actor gpu_actor;
+  std::vector<int> h_a;
+  std::vector<int> h_b;
+  std::vector<int> h_c;
+  std::vector<int> h_n;
+
   std::vector<double> kernel_times;
   std::vector<double> full_times;
   int count = 0;
@@ -319,29 +324,31 @@ caf::behavior supervisor_fun(caf::stateful_actor<supervisor_state>* self, int id
   st.id = id;
   st.N = N;
 
+  // Generate matrices once
+  st.h_a.resize(st.N * st.N);
+  st.h_b.resize(st.N * st.N);
+  st.h_c.resize(st.N * st.N, 0);
+  st.h_n = {st.N};
+
+  std::generate(st.h_a.begin(), st.h_a.end(), [] { return rand() % 10; });
+  std::generate(st.h_b.begin(), st.h_b.end(), [] { return rand() % 10; });
+
   const int THREADS = 32;
   const int BLOCKS = (N + THREADS - 1) / THREADS;
-  caf::cuda::nd_range dims(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
+  caf::cuda::nd_range dims(BLOCKS, 1, 1, THREADS, 1, 1);
 
   st.gpu_actor = caf::cuda::manager::get().spawn(matrixMulKernel, "matrixMul", dims,
                                                  in<int>{}, in<int>{}, out<int>{}, in<int>{});
 
   auto run_iteration = [self]() {
     auto& st_ref = self->state();
+
     auto iteration_start = Clock::now();
 
-    std::vector<int> h_a(st_ref.N * st_ref.N);
-    std::vector<int> h_b(st_ref.N * st_ref.N);
-    std::vector<int> h_c(st_ref.N * st_ref.N, 0);
-    std::vector<int> h_n(1, st_ref.N);
-
-    std::generate(h_a.begin(), h_a.end(), [] { return rand() % 10; });
-    std::generate(h_b.begin(), h_b.end(), [] { return rand() % 10; });
-
-    auto arg1 = caf::cuda::create_in_arg(h_a);
-    auto arg2 = caf::cuda::create_in_arg(h_b);
-    auto arg3 = caf::cuda::create_out_arg(h_c);
-    auto arg4 = caf::cuda::create_in_arg(h_n);
+    auto arg1 = caf::cuda::create_in_arg(st_ref.h_a);
+    auto arg2 = caf::cuda::create_in_arg(st_ref.h_b);
+    auto arg3 = caf::cuda::create_out_arg(st_ref.h_c);
+    auto arg4 = caf::cuda::create_in_arg(st_ref.h_n);
 
     auto kernel_start = Clock::now();
 
@@ -414,6 +421,8 @@ inline void run_concurrent_mmul_test(caf::actor_system& sys,
 }
 
 
+
+
 void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
   //actor_facade_launch_kernel_test(sys);
@@ -421,5 +430,8 @@ void caf_main(caf::actor_system& sys) {
   //test_mmul_large(sys);
   run_concurrent_mmul_test(sys,1,5000);
 }
+
+
+
 
 CAF_MAIN()
