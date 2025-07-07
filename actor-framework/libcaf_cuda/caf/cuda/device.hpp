@@ -31,7 +31,7 @@ public:
       context_(context),
       id_(id),
       name_(name),
-      stream_table_(stream_pool_size) {
+      stream_table_(context,stream_pool_size) {
     // No default stream creation here, streams managed per actor
   }
 
