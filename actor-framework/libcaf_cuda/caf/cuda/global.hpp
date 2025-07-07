@@ -151,6 +151,34 @@ bool inspect(Inspector& f, output_buffer& x) {
   return f.object(x).fields(f.field("data", x.data));
 }
 
+
+
+// For vector<T> (if not already handled)
+template <class Inspector, typename T>
+bool inspect(Inspector& f, std::vector<T>& x) {
+  return f.object(x).fields(f.field("data", x));
+}
+
+// For shared_ptr<vector<T>>
+template <class Inspector, typename T>
+bool inspect(Inspector& f, std::shared_ptr<std::vector<T>>& x) {
+  // Ensure pointer is valid for inspection (non-null)
+  if (!x) {
+    if constexpr (caf::is_deserializer_v<Inspector>) {
+      // When deserializing, allocate vector if missing
+      x = std::make_shared<std::vector<T>>();
+    } else {
+      // When serializing, null ptr is an error or serialize empty vector
+      // You can serialize empty vector or handle as you want
+      std::vector<T> empty_vec;
+      return f.object(empty_vec).fields(f.field("data", empty_vec));
+    }
+  }
+  return f.object(*x).fields(f.field("data", *x));
+}
+
+
+
 // Check CUDA errors macro
 #define CHECK_CUDA(call) \
     do { CUresult err = call; if (err != CUDA_SUCCESS) { \
