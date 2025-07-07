@@ -4,8 +4,6 @@
 #include "caf/cuda/types.hpp"
 #include "caf/cuda/manager.hpp"
 
-
-
 /*
  * Most of these functions are just helper functions for 
  * requesting a resource or operation from the manager
@@ -18,83 +16,39 @@ inline CUcontext getContextById(int device_id, int context_id) {
   return mgr.get_context_by_id(device_id, context_id);
 }
 
-
-
-/*
-//helper function to launch a kernel for the command class 
-template <typename ... Ts>
-inline void launch_kernel(program_ptr program,
-                   const caf::cuda::nd_range& range,
-                   std::tuple<mem_ptr<Ts> ...> args,
-		   int stream_id) {
-
-	
-	int device_id = program -> get_device_id();
-	int context_id = program -> get_context_id();
-	CUfunction kernel = program -> get_kernel();
-	auto& mgr = manager::get();
-	device_ptr dev =  mgr.find_device(device_id);
-	dev -> launch_kernel(kernel,range,args,stream_id,context_id);
-
-}
-*/
-
-
 template< typename T>
 inline mem_ptr<T> makeArg(int device_id,int context_id,in<T> arg) {
-
-	auto& mgr = manager::get();
-	device_ptr dev =  mgr.find_device(device_id);
-
-	return dev -> make_arg(arg);
-}	
-
-
+  auto& mgr = manager::get();
+  device_ptr dev =  mgr.find_device(device_id);
+  return dev->make_arg(arg);
+}
 
 template< typename T>
 inline mem_ptr<T> makeArg(int device_id,int context_id,in_out<T> arg) {
-
-	auto& mgr = manager::get();
-	device_ptr dev =  mgr.find_device(device_id);
-
-	return dev -> make_arg(arg);
-}	
-
-
-template <typename T>
-inline mem_ptr <T> makeArg(int device_id,int context_id,out<T> arg) {
-
-	auto& mgr = manager::get();
-	device_ptr dev =  mgr.find_device(device_id);
-
-	return dev -> make_arg(arg);
-}	
-
-template <typename T>
-inline in<T> create_in_arg(std::vector<T> buffer) {
-
-	in<T> arg;
-	arg.buffer = buffer;
-	return arg;
+  auto& mgr = manager::get();
+  device_ptr dev =  mgr.find_device(device_id);
+  return dev->make_arg(arg);
 }
 
 template <typename T>
-inline in_out<T> create_in_out_arg(std::vector<T> buffer) {
-
-	in_out<T> arg;
-	arg.buffer = buffer;
-	return arg;
+inline mem_ptr<T> makeArg(int device_id,int context_id,out<T> arg) {
+  auto& mgr = manager::get();
+  device_ptr dev =  mgr.find_device(device_id);
+  return dev->make_arg(arg);
+}
+template <typename T>
+inline in<T> create_in_arg(const std::vector<T>& buffer) {
+  return in<T>(std::make_shared<std::vector<T>>(buffer)); // copy constructor
 }
 
 template <typename T>
-inline out<T> create_out_arg(std::vector<T> buffer) {
-
-	out<T> arg;
-	arg.buffer = buffer;
-	return arg;
+inline in_out<T> create_in_out_arg(const std::vector<T>& buffer) {
+  return in_out<T>(std::make_shared<std::vector<T>>(buffer)); // copy constructor
 }
 
-
+template <typename T>
+inline out<T> create_out_arg(const std::vector<T>& buffer) {
+  return out<T>(std::make_shared<std::vector<T>>(buffer)); // copy constructor
+}
 
 } // namespace caf::cuda
-
