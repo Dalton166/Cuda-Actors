@@ -121,6 +121,7 @@ void inline check(CUresult result, const char* msg) {
 
 
 
+/*
 template <class Inspector, typename T>
 bool inspect(Inspector& f, in<T>& x) {
   return f.object(x).fields(f.field("buffer", x.buffer));
@@ -135,7 +136,7 @@ template <class Inspector, typename T>
 bool inspect(Inspector& f, in_out<T>& x) {
   return f.object(x).fields(f.field("buffer", x.buffer));
 }
-
+*/
 using buffer_variant = std::variant<std::vector<char>, std::vector<int>, std::vector<float>, std::vector<double>>;
 
 struct output_buffer {
@@ -144,11 +145,12 @@ struct output_buffer {
 };
 
 
+/*
 template <class Inspector>
 bool inspect(Inspector& f, output_buffer& x) {
   return f.object(x).fields(f.field("data", x.data));
 }
-
+*/
 
 // Check CUDA errors macro
 #define CHECK_CUDA(call) \
