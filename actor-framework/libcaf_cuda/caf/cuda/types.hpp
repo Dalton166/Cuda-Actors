@@ -39,3 +39,79 @@ class actor_facade;
 
 } // namespace caf::cuda
 
+
+using buffer_variant = std::variant<std::vector<char>, std::vector<int>, std::vector<float>, std::vector<double>>;
+
+struct output_buffer {
+  buffer_variant data;
+};
+
+
+//struct wrappers to hold store buffers to declare them as in or out 
+template <typename T>
+struct in {
+  std::vector<T> buffer;
+
+  in() = default;
+
+  // Construct from a single raw value by pushing it into buffer
+  in(T val) {
+    buffer.push_back(val);
+  }
+};
+
+template <typename T>
+struct out {
+  std::vector<T> buffer;
+
+  out() = default;
+
+  out(T val) {
+    buffer.push_back(val);
+  }
+};
+
+
+
+template <typename T>
+struct in_out {
+    using value_type = T;
+    std::vector<T> buffer;
+
+    in_out() = default;
+
+    in_out(T val) {
+      buffer.push_back(val);
+    }
+};
+
+
+// Helper to get raw type inside wrapper
+template <typename T>
+struct raw_type {
+  using type = T;
+};
+
+// specialization for your wrapper types
+template <typename T>
+struct raw_type<in<T>> {
+  using type = T;
+};
+
+template <typename T>
+struct raw_type<out<T>> {
+  using type = T;
+};
+
+template <typename T>
+struct raw_type<in_out<T>> {
+  using type = T;
+};
+
+template <typename T>
+using raw_t = typename raw_type<T>::type;
+
+
+
+
+
