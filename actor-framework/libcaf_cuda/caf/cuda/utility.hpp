@@ -3,6 +3,8 @@
 #include <cuda.h>
 #include "caf/cuda/types.hpp"
 #include "caf/cuda/manager.hpp"
+#include <type_traits>
+
 
 
 
@@ -70,65 +72,57 @@ inline mem_ptr <T> makeArg(int device_id,int context_id,out<T> arg) {
 	return dev -> make_arg(arg);
 }	
 
-// ====================
-// in<T> factory helpers
-// ====================
 
-// Construct in<T> from a scalar (e.g. int, float)
-template <typename T>
-inline in<T> create_in_arg(T scalar_val) {
-  static_assert(is_scalar_v<T>, "create_in_arg(T) expects a scalar type.");
-  return in<T>{scalar_val}; // Will resolve to in_impl<T, true>
 }
 
-// Construct in<T> from a vector (only for non-scalar T)
+// in<T>
 template <typename T>
-inline in<T> create_in_arg(const std::vector<T>& buffer) {
-  static_assert(!is_scalar_v<T>, "create_in_arg(std::vector<T>) is not allowed for scalar types.");
-  in<T> arg;                 // Will resolve to in_impl<T, false>
-  arg.buffer = buffer;
+in<T> create_in_arg(const std::vector<T>& buffer) {
+  in<T> arg;
+  if constexpr (!is_scalar_v<T>) {
+    arg.buffer = buffer;
+  }
   return arg;
 }
 
-// ======================
-// out<T> factory helpers
-// ======================
-
-// Construct out<T> from a scalar
 template <typename T>
-inline out<T> create_out_arg(T scalar_val) {
-  static_assert(is_scalar_v<T>, "create_out_arg(T) expects a scalar type.");
-  return out<T>{scalar_val};
+in<T> create_in_arg(T val) {
+  static_assert(is_scalar_v<T>, "create_in_arg(T) is only allowed for scalar types.");
+  return in<T>{val};
 }
 
-// Construct out<T> from a vector (only for non-scalar T)
+// out<T>
 template <typename T>
-inline out<T> create_out_arg(const std::vector<T>& buffer) {
-  static_assert(!is_scalar_v<T>, "create_out_arg(std::vector<T>) is not allowed for scalar types.");
+out<T> create_out_arg(const std::vector<T>& buffer) {
   out<T> arg;
-  arg.buffer = buffer;
+  if constexpr (!is_scalar_v<T>) {
+    arg.buffer = buffer;
+  }
   return arg;
 }
 
-// ==========================
-// in_out<T> factory helpers
-// ==========================
-
-// Construct in_out<T> from a scalar
 template <typename T>
-inline in_out<T> create_in_out_arg(T scalar_val) {
-  static_assert(is_scalar_v<T>, "create_in_out_arg(T) expects a scalar type.");
-  return in_out<T>{scalar_val};
+out<T> create_out_arg(T val) {
+  static_assert(is_scalar_v<T>, "create_out_arg(T) is only allowed for scalar types.");
+  return out<T>{val};
 }
 
-// Construct in_out<T> from a vector (only for non-scalar T)
+// in_out<T>
 template <typename T>
-inline in_out<T> create_in_out_arg(const std::vector<T>& buffer) {
-  static_assert(!is_scalar_v<T>, "create_in_out_arg(std::vector<T>) is not allowed for scalar types.");
+in_out<T> create_in_out_arg(const std::vector<T>& buffer) {
   in_out<T> arg;
-  arg.buffer = buffer;
+  if constexpr (!is_scalar_v<T>) {
+    arg.buffer = buffer;
+  }
   return arg;
 }
 
-} // namespace caf::cuda
+template <typename T>
+in_out<T> create_in_out_arg(T val) {
+  static_assert(is_scalar_v<T>, "create_in_out_arg(T) is only allowed for scalar types.");
+  return in_out<T>{val};
+}
+
+
+
 
