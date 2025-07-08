@@ -73,7 +73,6 @@ inline mem_ptr <T> makeArg(int device_id,int context_id,out<T> arg) {
 }	
 
 
-}
 
 // in<T>
 template <typename T>
@@ -124,5 +123,5 @@ in_out<T> create_in_out_arg(T val) {
 }
 
 
-
+}
 
