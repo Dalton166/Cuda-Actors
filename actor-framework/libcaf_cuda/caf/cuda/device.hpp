@@ -159,7 +159,7 @@ private:
 
   template <typename T>
   mem_ptr<T> global_argument(const in<T>& arg, int actor_id, int access) {
-    size_t size = arg.buffer.size();
+    size_t size = arg.size();
     CUdeviceptr device_buffer = 0;
     size_t bytes = size * sizeof(T);
 
@@ -178,7 +178,7 @@ private:
 
   template <typename T>
   mem_ptr<T> global_argument(const in_out<T>& arg, int actor_id, int access) {
-    size_t size = arg.buffer.size();
+    size_t size = arg.size();
     CUdeviceptr device_buffer = 0;
     size_t bytes = size * sizeof(T);
 
@@ -199,7 +199,7 @@ private:
 
   template <typename T>
   mem_ptr<T> scratch_argument(const out<T>& arg, int actor_id, int access) {
-    size_t size = arg.buffer.size();
+    size_t size = arg.size();
     CUdeviceptr device_buffer = 0;
     size_t bytes = size * sizeof(T);
 
