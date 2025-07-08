@@ -168,7 +168,7 @@ private:
 
     CHECK_CUDA(cuMemAlloc(&device_buffer, bytes));
     CUstream stream = get_stream_for_actor(actor_id);
-    CHECK_CUDA(cuMemcpyHtoDAsync(device_buffer, arg.buffer.data(), bytes, stream));
+    CHECK_CUDA(cuMemcpyHtoDAsync(device_buffer, arg.data(), bytes, stream));
 
     CHECK_CUDA(cuCtxPopCurrent(nullptr));
 
@@ -187,7 +187,7 @@ private:
 
     CHECK_CUDA(cuMemAlloc(&device_buffer, bytes));
     CUstream stream = get_stream_for_actor(actor_id);
-    CHECK_CUDA(cuMemcpyHtoDAsync(device_buffer, arg.buffer.data(), bytes, stream));
+    CHECK_CUDA(cuMemcpyHtoDAsync(device_buffer, arg.data(), bytes, stream));
 
     CHECK_CUDA(cuCtxPopCurrent(nullptr));
 
