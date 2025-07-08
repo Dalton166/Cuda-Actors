@@ -46,44 +46,135 @@ struct output_buffer {
   buffer_variant data;
 };
 
+#include <vector>
+#include <type_traits>
+
+// helper to detect scalar types
+template <typename T>
+constexpr bool is_scalar_v = std::is_arithmetic_v<T> || std::is_enum_v<T>;
 
 //struct wrappers to hold store buffers to declare them as in or out 
+
+// in<T>
+template <typename T, bool IsScalar = is_scalar_v<T>>
+struct in_impl;
+
+// scalar specialization
 template <typename T>
-struct in {
+struct in_impl<T, true> {
+  using value_type = T;
+  T value;
+
+  in_impl() = default;
+
+  // Construct from a single raw value
+  in_impl(T val) : value(val) {}
+
+  T* data() { return &value; }
+
+  std::size_t size() const { return 1; }
+};
+
+// vector specialization
+template <typename T>
+struct in_impl<T, false> {
+  using value_type = T;
   std::vector<T> buffer;
 
-  in() = default;
+  in_impl() = default;
 
   // Construct from a single raw value by pushing it into buffer
-  in(T val) {
+  in_impl(T val) {
     buffer.push_back(val);
   }
+
+  T* data() { return buffer.data(); }
+
+  std::size_t size() const { return buffer.size(); }
 };
 
 template <typename T>
-struct out {
+using in = in_impl<T>;
+
+
+// out<T>
+template <typename T, bool IsScalar = is_scalar_v<T>>
+struct out_impl;
+
+// scalar specialization
+template <typename T>
+struct out_impl<T, true> {
+  using value_type = T;
+  T value;
+
+  out_impl() = default;
+
+  out_impl(T val) : value(val) {}
+
+  T* data() { return &value; }
+
+  std::size_t size() const { return 1; }
+};
+
+// vector specialization
+template <typename T>
+struct out_impl<T, false> {
+  using value_type = T;
   std::vector<T> buffer;
 
-  out() = default;
+  out_impl() = default;
 
-  out(T val) {
+  out_impl(T val) {
     buffer.push_back(val);
   }
+
+  T* data() { return buffer.data(); }
+
+  std::size_t size() const { return buffer.size(); }
 };
-
-
 
 template <typename T>
-struct in_out {
-    using value_type = T;
-    std::vector<T> buffer;
+using out = out_impl<T>;
 
-    in_out() = default;
 
-    in_out(T val) {
-      buffer.push_back(val);
-    }
+// in_out<T>
+template <typename T, bool IsScalar = is_scalar_v<T>>
+struct in_out_impl;
+
+// scalar specialization
+template <typename T>
+struct in_out_impl<T, true> {
+  using value_type = T;
+  T value;
+
+  in_out_impl() = default;
+
+  in_out_impl(T val) : value(val) {}
+
+  T* data() { return &value; }
+
+  std::size_t size() const { return 1; }
 };
+
+// vector specialization
+template <typename T>
+struct in_out_impl<T, false> {
+  using value_type = T;
+  std::vector<T> buffer;
+
+  in_out_impl() = default;
+
+  in_out_impl(T val) {
+    buffer.push_back(val);
+  }
+
+  T* data() { return buffer.data(); }
+
+  std::size_t size() const { return buffer.size(); }
+};
+
+template <typename T>
+using in_out = in_out_impl<T>;
 
 
 // Helper to get raw type inside wrapper
