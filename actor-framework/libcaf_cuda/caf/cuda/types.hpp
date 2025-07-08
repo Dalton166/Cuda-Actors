@@ -71,6 +71,7 @@ struct in_impl<T, true> {
   in_impl(T val) : value(val) {}
 
   T* data() { return &value; }
+ const T* data() { return &value; }
 
   std::size_t size() const { return 1; }
 };
@@ -89,6 +90,7 @@ struct in_impl<T, false> {
   }
 
   T* data() { return buffer.data(); }
+  const T* data() { return buffer.data(); }
 
   std::size_t size() const { return buffer.size(); }
 };
@@ -112,6 +114,7 @@ struct out_impl<T, true> {
   out_impl(T val) : value(val) {}
 
   T* data() { return &value; }
+  const T* data() { return &value; }
 
   std::size_t size() const { return 1; }
 };
@@ -129,6 +132,7 @@ struct out_impl<T, false> {
   }
 
   T* data() { return buffer.data(); }
+  const T* data() { return buffer.data(); }
 
   std::size_t size() const { return buffer.size(); }
 };
@@ -152,6 +156,7 @@ struct in_out_impl<T, true> {
   in_out_impl(T val) : value(val) {}
 
   T* data() { return &value; }
+  const T* data() { return &value; }
 
   std::size_t size() const { return 1; }
 };
@@ -169,6 +174,7 @@ struct in_out_impl<T, false> {
   }
 
   T* data() { return buffer.data(); }
+  const T* data() { return buffer.data(); }
 
   std::size_t size() const { return buffer.size(); }
 };
