@@ -70,77 +70,65 @@ inline mem_ptr <T> makeArg(int device_id,int context_id,out<T> arg) {
 	return dev -> make_arg(arg);
 }	
 
-// create_in_arg overloads
+// ====================
+// in<T> factory helpers
+// ====================
+
+// Construct in<T> from a scalar (e.g. int, float)
 template <typename T>
-inline typename std::enable_if<is_scalar_v<T>, in<T>>::type
-create_in_arg(T scalar_val) {
-    return in<T>{scalar_val}; // in<T> resolves to in_impl<T, true>
+inline in<T> create_in_arg(T scalar_val) {
+  static_assert(is_scalar_v<T>, "create_in_arg(T) expects a scalar type.");
+  return in<T>{scalar_val}; // Will resolve to in_impl<T, true>
 }
 
+// Construct in<T> from a vector (only for non-scalar T)
 template <typename T>
-inline typename std::enable_if<is_scalar_v<T>, in<T>>::type
-create_in_arg(const std::vector<T>& vec) {
-    in_impl<T, false> arg;
-    arg.buffer = vec;
-    return arg; // in<T> resolves to in_impl<T, true>, but we return vector version
+inline in<T> create_in_arg(const std::vector<T>& buffer) {
+  static_assert(!is_scalar_v<T>, "create_in_arg(std::vector<T>) is not allowed for scalar types.");
+  in<T> arg;                 // Will resolve to in_impl<T, false>
+  arg.buffer = buffer;
+  return arg;
 }
 
+// ======================
+// out<T> factory helpers
+// ======================
+
+// Construct out<T> from a scalar
 template <typename T>
-inline typename std::enable_if<!is_scalar_v<T>, in<T>>::type
-create_in_arg(const std::vector<T>& vec) {
-    in<T> arg;
-    arg.buffer = vec;
-    return arg; // in<T> resolves to in_impl<T, false>
+inline out<T> create_out_arg(T scalar_val) {
+  static_assert(is_scalar_v<T>, "create_out_arg(T) expects a scalar type.");
+  return out<T>{scalar_val};
 }
 
-
-// create_in_out_arg overloads
+// Construct out<T> from a vector (only for non-scalar T)
 template <typename T>
-inline typename std::enable_if<is_scalar_v<T>, in_out<T>>::type
-create_in_out_arg(T scalar_val) {
-    return in_out<T>{scalar_val};
+inline out<T> create_out_arg(const std::vector<T>& buffer) {
+  static_assert(!is_scalar_v<T>, "create_out_arg(std::vector<T>) is not allowed for scalar types.");
+  out<T> arg;
+  arg.buffer = buffer;
+  return arg;
 }
 
+// ==========================
+// in_out<T> factory helpers
+// ==========================
+
+// Construct in_out<T> from a scalar
 template <typename T>
-inline typename std::enable_if<is_scalar_v<T>, in_out<T>>::type
-create_in_out_arg(const std::vector<T>& vec) {
-    in_out_impl<T, false> arg;
-    arg.buffer = vec;
-    return arg;
+inline in_out<T> create_in_out_arg(T scalar_val) {
+  static_assert(is_scalar_v<T>, "create_in_out_arg(T) expects a scalar type.");
+  return in_out<T>{scalar_val};
 }
 
+// Construct in_out<T> from a vector (only for non-scalar T)
 template <typename T>
-inline typename std::enable_if<!is_scalar_v<T>, in_out<T>>::type
-create_in_out_arg(const std::vector<T>& vec) {
-    in_out<T> arg;
-    arg.buffer = vec;
-    return arg;
+inline in_out<T> create_in_out_arg(const std::vector<T>& buffer) {
+  static_assert(!is_scalar_v<T>, "create_in_out_arg(std::vector<T>) is not allowed for scalar types.");
+  in_out<T> arg;
+  arg.buffer = buffer;
+  return arg;
 }
-
-
-// create_out_arg overloads
-template <typename T>
-inline typename std::enable_if<is_scalar_v<T>, out<T>>::type
-create_out_arg(T scalar_val) {
-    return out<T>{scalar_val};
-}
-
-template <typename T>
-inline typename std::enable_if<is_scalar_v<T>, out<T>>::type
-create_out_arg(const std::vector<T>& vec) {
-    out_impl<T, false> arg;
-    arg.buffer = vec;
-    return arg;
-}
-
-template <typename T>
-inline typename std::enable_if<!is_scalar_v<T>, out<T>>::type
-create_out_arg(const std::vector<T>& vec) {
-    out<T> arg;
-    arg.buffer = vec;
-    return arg;
-}
-
 
 } // namespace caf::cuda
 
