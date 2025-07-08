@@ -70,30 +70,76 @@ inline mem_ptr <T> makeArg(int device_id,int context_id,out<T> arg) {
 	return dev -> make_arg(arg);
 }	
 
+// create_in_arg overloads
 template <typename T>
-inline in<T> create_in_arg(std::vector<T> buffer) {
-
-	in<T> arg;
-	arg.buffer = buffer;
-	return arg;
+inline typename std::enable_if<is_scalar_v<T>, in<T>>::type
+create_in_arg(T scalar_val) {
+    return in<T>{scalar_val}; // in<T> resolves to in_impl<T, true>
 }
 
 template <typename T>
-inline in_out<T> create_in_out_arg(std::vector<T> buffer) {
-
-	in_out<T> arg;
-	arg.buffer = buffer;
-	return arg;
+inline typename std::enable_if<is_scalar_v<T>, in<T>>::type
+create_in_arg(const std::vector<T>& vec) {
+    in_impl<T, false> arg;
+    arg.buffer = vec;
+    return arg; // in<T> resolves to in_impl<T, true>, but we return vector version
 }
 
 template <typename T>
-inline out<T> create_out_arg(std::vector<T> buffer) {
-
-	out<T> arg;
-	arg.buffer = buffer;
-	return arg;
+inline typename std::enable_if<!is_scalar_v<T>, in<T>>::type
+create_in_arg(const std::vector<T>& vec) {
+    in<T> arg;
+    arg.buffer = vec;
+    return arg; // in<T> resolves to in_impl<T, false>
 }
 
+
+// create_in_out_arg overloads
+template <typename T>
+inline typename std::enable_if<is_scalar_v<T>, in_out<T>>::type
+create_in_out_arg(T scalar_val) {
+    return in_out<T>{scalar_val};
+}
+
+template <typename T>
+inline typename std::enable_if<is_scalar_v<T>, in_out<T>>::type
+create_in_out_arg(const std::vector<T>& vec) {
+    in_out_impl<T, false> arg;
+    arg.buffer = vec;
+    return arg;
+}
+
+template <typename T>
+inline typename std::enable_if<!is_scalar_v<T>, in_out<T>>::type
+create_in_out_arg(const std::vector<T>& vec) {
+    in_out<T> arg;
+    arg.buffer = vec;
+    return arg;
+}
+
+
+// create_out_arg overloads
+template <typename T>
+inline typename std::enable_if<is_scalar_v<T>, out<T>>::type
+create_out_arg(T scalar_val) {
+    return out<T>{scalar_val};
+}
+
+template <typename T>
+inline typename std::enable_if<is_scalar_v<T>, out<T>>::type
+create_out_arg(const std::vector<T>& vec) {
+    out_impl<T, false> arg;
+    arg.buffer = vec;
+    return arg;
+}
+
+template <typename T>
+inline typename std::enable_if<!is_scalar_v<T>, out<T>>::type
+create_out_arg(const std::vector<T>& vec) {
+    out<T> arg;
+    arg.buffer = vec;
+    return arg;
+}
 
 
 } // namespace caf::cuda
