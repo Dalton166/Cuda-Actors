@@ -444,9 +444,10 @@ inline void run_concurrent_mmul_test(caf::actor_system& sys,
 
 
 void caf_main(caf::actor_system& sys) {
-  caf::cuda::manager::init(sys);
+  //caf::cuda::manager::init(sys);
+  test_main(sys);
   //actor_facade_launch_kernel_test(sys);
- test_mmul(sys,1024);
+  //test_mmul(sys,1024);
   //test_mmul_large(sys);
   //run_concurrent_mmul_test(sys,200,1024);
 }
