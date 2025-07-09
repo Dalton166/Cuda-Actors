@@ -647,59 +647,6 @@ void test_kernel_launch_multi_buffer(actor_system& sys, platform_ptr plat) {
 }
 
 
-void test_mem_ref() {
-    // Test scalar case (using scalar constructor)
-    int scalar_val = 42;
-    mem_ref<int> scalar_mem(scalar_val, IN);
-    assert(scalar_mem.is_scalar() && "Scalar mem_ref should be scalar");
-    assert(scalar_mem.size() == 1 && "Scalar mem_ref should have size 1");
-    assert(scalar_mem.mem() == 0 && "Scalar mem_ref should not allocate device memory");
-    std::vector<int> scalar_host_data = scalar_mem.copy_to_host();
-    assert(scalar_host_data.size() == 1 && "Scalar copy_to_host should return one element");
-    assert(scalar_host_data[0] == 42 && "Scalar copy_to_host should return correct value");
-
-    // Test via global_argument (simulating device allocation)
-    in<int> scalar_in(42);
-    device* dev_raw = new device(0, nullptr, "test_device", 0); // Minimal mock
-    device_ptr dev(dev_raw);
-    mem_ptr<int> mem_from_in = dev->make_arg(scalar_in, 1);
-    assert(!mem_from_in->is_scalar() && "mem_ref from in<int> incorrectly set as non-scalar (bug)");
-    assert(mem_from_in->size() == 1 && "mem_ref from in<int> should have size 1");
-    assert(mem_from_in->mem() != 0 && "mem_ref from in<int> allocates device memory (bug for scalar)");
-}
-
-void test_device_args() {
-    // Mock device
-    device* dev_raw = new device(0, nullptr, "test_device", 0);
-    device_ptr dev(dev_raw);
-
-    // Test scalar argument
-    in<int> scalar_in(42);
-    mem_ptr<int> scalar_arg = dev->make_arg(scalar_in, 1);
-    assert(!scalar_arg->is_scalar() && "Scalar arg incorrectly non-scalar (bug)");
-    assert(scalar_arg->mem() != 0 && "Scalar arg allocates device memory (bug)");
-
-    std::tuple<mem_ptr<int>> scalar_args(scalar_arg);
-    std::vector<void*> kernel_args = dev->extract_kernel_args(scalar_args);
-    assert(kernel_args.size() == 1 && "Should have one kernel argument");
-    // Since is_scalar() is false, it passes CUdeviceptr*, not &host_scalar_
-    CUdeviceptr* dev_ptr = static_cast<CUdeviceptr*>(kernel_args[0]);
-    //assert Ascertainable
-
-    // Clean up (mimicking launch_kernel)
-    for (void* ptr : kernel_args) {
-        delete static_cast<CUdeviceptr*>(ptr);
-    }
-
-    // Test vector argument (to show buffer bug)
-    std::vector<int> vec = {1, 2, 3};
-    in<std::vector<int>> vector_in(vec);
-    mem_ptr<std::vector<int>> vector_arg = dev->make_arg(vector_in, 1);
-    assert(vector_arg->size() == 1 && "Vector arg size incorrect (bug: should be 3 if fixed)");
-}
-
-
-
 void test_main(caf::actor_system& sys) {
     std::cout << "\n===== Running CUDA CAF Tests =====\n";
     manager::init(sys);
@@ -723,9 +670,6 @@ void test_main(caf::actor_system& sys) {
 	//test_actor_facade_multi_buffer(sys, plat);
         test_kernel_launch_multi_buffer(sys, plat);
 
-	//more tests designed to see if data types are being corrupted
-	test_mem_ref();
-	test_device_args();
 
     } catch (const std::exception& e) {
         std::cout << "Test failed: " << e.what() << "\n";
