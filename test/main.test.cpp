@@ -39,6 +39,26 @@ void matrixMul(const int* a, const int* b, int* c, int *N_val) {
 }
 )";
 
+
+const char* matrixMulKernel2 = R"(
+extern "C" __global__
+void matrixMul(const int* a, const int* b, int* c, int N) {
+    printf("%d\n",N);
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    if (row < N && col < N) {
+        int temp = 0;
+        for (int k = 0; k < N; ++k) {
+            temp += a[row * N + k] * b[k * N + col];
+        }
+        c[row * N + col] = temp;
+    }
+}
+)";
+
+
+
+
 void actor_facade_launch_kernel_test(actor_system& sys) {
   std::cout << "[TEST] Starting actor_facade_launch_kernel_test\n";
 
@@ -136,7 +156,7 @@ void test_mmul(caf::actor_system& sys,int N) {
 
   caf::cuda::nd_range dim(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
 
-  auto gpuActor = mgr.spawn(matrixMulKernel, "matrixMul", dim,
+  auto gpuActor = mgr.spawn(matrixMulKernel2, "matrixMul", dim,
                             in<int>{}, in<int>{}, out<int>{}, in<int>{});
 
   std::vector<int> h_a(N * N);
@@ -148,12 +168,12 @@ void test_mmul(caf::actor_system& sys,int N) {
   std::generate(h_a.begin(), h_a.end(), []() { return rand() % 10; });
   std::generate(h_b.begin(), h_b.end(), []() { return rand() % 10; });
 
-  //serial_matrix_multiply(h_a, h_b, h_ref, N);
+  serial_matrix_multiply(h_a, h_b, h_ref, N);
 
   auto arg1 = caf::cuda::create_in_arg(h_a);
   auto arg2 = caf::cuda::create_in_arg(h_b);
   auto arg3 = caf::cuda::create_out_arg(h_c);
-  auto arg4 = caf::cuda::create_in_arg(h_n);
+  auto arg4 = caf::cuda::create_in_arg(N);
 
   sys.spawn([=](event_based_actor* self_actor) {
     auto start = std::chrono::high_resolution_clock::now();
@@ -173,7 +193,7 @@ void test_mmul(caf::actor_system& sys,int N) {
 
           bool match = result == h_ref ;
           std::cout << "[INFO] Kernel round-trip time: " << elapsed.count() << " seconds\n";
-         // std::cout << (match ? "[PASS] GPU result matches reference\n" : "[FAIL] Mismatch in GPU result\n");
+          std::cout << (match ? "[PASS] GPU result matches reference\n" : "[FAIL] Mismatch in GPU result\n");
           self_actor->send_exit(gpuActor, exit_reason::user_shutdown);
           self_actor->quit();
         });
@@ -426,9 +446,9 @@ inline void run_concurrent_mmul_test(caf::actor_system& sys,
 void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
   //actor_facade_launch_kernel_test(sys);
- //test_mmul(sys);
+ test_mmul(sys,1024);
   //test_mmul_large(sys);
-  run_concurrent_mmul_test(sys,200,1024);
+  //run_concurrent_mmul_test(sys,200,1024);
 }
 
 
