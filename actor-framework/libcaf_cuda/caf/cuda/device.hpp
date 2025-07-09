@@ -165,21 +165,21 @@ mem_ptr<T> global_argument(const in<T>& arg, int actor_id, int access) {
   CUcontext ctx = getContext();
   CHECK_CUDA(cuCtxPushCurrent(ctx));
 
-  CHECK_CUDA(cuMemAlloc(&device_buffer, bytes));
-  CUstream stream = get_stream_for_actor(actor_id);
+  CUstream stream = get_stream_for_actor(actor_id); // get actor's stream first
+
+  CHECK_CUDA(cuMemAlloc(&device_buffer, bytes));   // allocation (no stream param)
 
   if (arg.is_scalar()) {
-    auto val = arg.getscalar();  // store scalar in local variable
-    CHECK_CUDA(cuMemcpyHtoDAsync(device_buffer, &val, bytes, stream));
+    auto val = arg.getscalar();
+    CHECK_CUDA(cuMemcpyHtoDAsync(device_buffer, &val, bytes, stream)); // async copy on actor stream
   } else {
-    CHECK_CUDA(cuMemcpyHtoDAsync(device_buffer, arg.data(), bytes, stream));
+    CHECK_CUDA(cuMemcpyHtoDAsync(device_buffer, arg.data(), bytes, stream)); // async copy on actor stream
   }
 
   CHECK_CUDA(cuCtxPopCurrent(nullptr));
 
   return caf::intrusive_ptr<mem_ref<T>>(new mem_ref<T>(size, device_buffer, access, id_, 0, stream));
 }
-
 
 template <typename T>
 mem_ptr<T> global_argument(const in_out<T>& arg, int actor_id, int access) {
@@ -190,8 +190,9 @@ mem_ptr<T> global_argument(const in_out<T>& arg, int actor_id, int access) {
   CUcontext ctx = getContext();
   CHECK_CUDA(cuCtxPushCurrent(ctx));
 
-  CHECK_CUDA(cuMemAlloc(&device_buffer, bytes));
   CUstream stream = get_stream_for_actor(actor_id);
+
+  CHECK_CUDA(cuMemAlloc(&device_buffer, bytes));
 
   if (arg.is_scalar()) {
     auto val = arg.getscalar();
@@ -205,7 +206,6 @@ mem_ptr<T> global_argument(const in_out<T>& arg, int actor_id, int access) {
   return caf::intrusive_ptr<mem_ref<T>>(new mem_ref<T>(size, device_buffer, access, id_, 0, stream));
 }
 
-
 template <typename T>
 mem_ptr<T> scratch_argument(const out<T>& arg, int actor_id, int access) {
   size_t size = arg.is_scalar() ? 1 : arg.size();
@@ -215,14 +215,17 @@ mem_ptr<T> scratch_argument(const out<T>& arg, int actor_id, int access) {
   CUcontext ctx = getContext();
   CHECK_CUDA(cuCtxPushCurrent(ctx));
 
+  CUstream stream = get_stream_for_actor(actor_id);
+
   CHECK_CUDA(cuMemAlloc(&device_buffer, bytes));
   // no copy needed for output buffers
 
   CHECK_CUDA(cuCtxPopCurrent(nullptr));
 
-  CUstream stream = get_stream_for_actor(actor_id);
   return caf::intrusive_ptr<mem_ref<T>>(new mem_ref<T>(size, device_buffer, access, id_, 0, stream));
 }
+
+
 
 
 
