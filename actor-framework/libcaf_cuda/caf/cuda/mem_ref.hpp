@@ -90,6 +90,10 @@ public:
   }
 
   std::vector<T> copy_to_host() const {
+    if (access == IN)
+    {
+	    throw std::runtime_error("Cannt copy a read only buffer back to device\n");
+    } 
     if (is_scalar_) {
       return std::vector<T>{host_scalar_};
     }
