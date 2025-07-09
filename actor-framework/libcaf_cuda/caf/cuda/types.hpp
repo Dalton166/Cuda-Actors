@@ -1,8 +1,10 @@
 #pragma once
 
 #include <caf/intrusive_ptr.hpp>
+#include <variant>
+#include <vector>
+#include <stdexcept>
 
-// Export macro for shared library visibility
 #if defined(_MSC_VER)
   #define CAF_CUDA_EXPORT __declspec(dllexport)
 #else
@@ -24,6 +26,7 @@ using program_ptr = caf::intrusive_ptr<program>;
 
 template <class T>
 class mem_ref;
+
 template <class T>
 using mem_ptr = caf::intrusive_ptr<mem_ref<T>>;
 
@@ -40,183 +43,143 @@ class actor_facade;
 } // namespace caf::cuda
 
 
+// === buffer_variant and output_buffer outside namespace or inside as needed ===
+
 using buffer_variant = std::variant<std::vector<char>, std::vector<int>, std::vector<float>, std::vector<double>>;
 
 struct output_buffer {
   buffer_variant data;
 };
 
-#include <vector>
-#include <type_traits>
 
-// helper to detect scalar types
+// === Wrapper types for in/out/in_out with default ctor, union safely used ===
+
 template <typename T>
-constexpr bool is_scalar_v = std::is_arithmetic_v<T> || std::is_enum_v<T>;
+class in_impl {
+private:
+  std::variant<T, std::vector<T>> data_;
 
-//struct wrappers to hold store buffers to declare them as in or out 
-// in<T>
-template <typename T, bool IsScalar = is_scalar_v<T>>
-struct in_impl;
-
-// scalar specialization
-template <typename T>
-struct in_impl<T, true> {
+public:
   using value_type = T;
-  T value;
 
-  in_impl() = default;
-  in_impl(T val) : value(val) {}
+  // Default constructor - scalar default initialized
+  in_impl() : data_(T{}) {}
 
-  T* data() { return &value; }
-  const T* data() const { return &value; }
+  // Scalar constructor
+  explicit in_impl(const T& val) : data_(val) {}
 
-  std::size_t size() const { return 1; }
+  // Vector constructor
+  explicit in_impl(const std::vector<T>& buf) : data_(buf) {}
 
-  bool is_scalar() const { return true; }
+  bool is_scalar() const {
+    return std::holds_alternative<T>(data_);
+  }
 
-  T getscalar() const {
-    return value;
+  const T& getscalar() const {
+    if (!is_scalar())
+      throw std::runtime_error("in_impl does not hold scalar");
+    return std::get<T>(data_);
+  }
+
+  const std::vector<T>& get_buffer() const {
+    if (is_scalar())
+      throw std::runtime_error("in_impl does not hold buffer");
+    return std::get<std::vector<T>>(data_);
+  }
+
+  const T* data() const {
+    return is_scalar() ? &std::get<T>(data_) : std::get<std::vector<T>>(data_).data();
+  }
+
+  std::size_t size() const {
+    return is_scalar() ? 1 : std::get<std::vector<T>>(data_).size();
   }
 };
 
-// vector specialization
 template <typename T>
-struct in_impl<T, false> {
+class out_impl {
+private:
+  std::variant<T, std::vector<T>> data_;
+
+public:
   using value_type = T;
-  std::vector<T> buffer;
 
-  in_impl() = default;
+  out_impl() : data_(T{}) {}
 
-  in_impl(T val) {
-    buffer.push_back(val);
+  explicit out_impl(const T& val) : data_(val) {}
+
+  explicit out_impl(const std::vector<T>& buf) : data_(buf) {}
+
+  bool is_scalar() const {
+    return std::holds_alternative<T>(data_);
   }
 
-  T* data() { return buffer.data(); }
-  const T* data() const { return buffer.data(); }
+  const T& getscalar() const {
+    if (!is_scalar())
+      throw std::runtime_error("out_impl does not hold scalar");
+    return std::get<T>(data_);
+  }
 
-  std::size_t size() const { return buffer.size(); }
+  const std::vector<T>& get_buffer() const {
+    if (is_scalar())
+      throw std::runtime_error("out_impl does not hold buffer");
+    return std::get<std::vector<T>>(data_);
+  }
 
-  bool is_scalar() const { return false; }
+  const T* data() const {
+    return is_scalar() ? &std::get<T>(data_) : std::get<std::vector<T>>(data_).data();
+  }
 
-  T getscalar() const {
-    if (buffer.empty()) {
-      throw std::runtime_error("buffer is empty, cannot get scalar");
-    }
-    return buffer[0];
+  std::size_t size() const {
+    return is_scalar() ? 1 : std::get<std::vector<T>>(data_).size();
   }
 };
 
+template <typename T>
+class in_out_impl {
+private:
+  std::variant<T, std::vector<T>> data_;
+
+public:
+  using value_type = T;
+
+  in_out_impl() : data_(T{}) {}
+
+  explicit in_out_impl(const T& val) : data_(val) {}
+
+  explicit in_out_impl(const std::vector<T>& buf) : data_(buf) {}
+
+  bool is_scalar() const {
+    return std::holds_alternative<T>(data_);
+  }
+
+  const T& getscalar() const {
+    if (!is_scalar())
+      throw std::runtime_error("in_out_impl does not hold scalar");
+    return std::get<T>(data_);
+  }
+
+  const std::vector<T>& get_buffer() const {
+    if (is_scalar())
+      throw std::runtime_error("in_out_impl does not hold buffer");
+    return std::get<std::vector<T>>(data_);
+  }
+
+  const T* data() const {
+    return is_scalar() ? &std::get<T>(data_) : std::get<std::vector<T>>(data_).data();
+  }
+
+  std::size_t size() const {
+    return is_scalar() ? 1 : std::get<std::vector<T>>(data_).size();
+  }
+};
+
+// Aliases
 template <typename T>
 using in = in_impl<T>;
 
-
-// out<T>
-template <typename T, bool IsScalar = is_scalar_v<T>>
-struct out_impl;
-
-// scalar specialization
-template <typename T>
-struct out_impl<T, true> {
-  using value_type = T;
-  T value;
-
-  out_impl() = default;
-  out_impl(T val) : value(val) {}
-
-  T* data() { return &value; }
-  const T* data() const { return &value; }
-
-  std::size_t size() const { return 1; }
-
-  bool is_scalar() const { return true; }
-
-  T getscalar() const {
-    return value;
-  }
-};
-
-// vector specialization
-template <typename T>
-struct out_impl<T, false> {
-  using value_type = T;
-  std::vector<T> buffer;
-
-  out_impl() = default;
-
-  out_impl(T val) {
-    buffer.push_back(val);
-  }
-
-  T* data() { return buffer.data(); }
-  const T* data() const { return buffer.data(); }
-
-  std::size_t size() const { return buffer.size(); }
-
-  bool is_scalar() const { return false; }
-
-  T getscalar() const {
-    if (buffer.empty()) {
-      throw std::runtime_error("buffer is empty, cannot get scalar");
-    }
-    return buffer[0];
-  }
-};
-
 template <typename T>
 using out = out_impl<T>;
-
-
-// in_out<T>
-template <typename T, bool IsScalar = is_scalar_v<T>>
-struct in_out_impl;
-
-// scalar specialization
-template <typename T>
-struct in_out_impl<T, true> {
-  using value_type = T;
-  T value;
-
-  in_out_impl() = default;
-  in_out_impl(T val) : value(val) {}
-
-  T* data() { return &value; }
-  const T* data() const { return &value; }
-
-  std::size_t size() const { return 1; }
-
-  bool is_scalar() const { return true; }
-
-  T getscalar() const {
-    return value;
-  }
-};
-
-// vector specialization
-template <typename T>
-struct in_out_impl<T, false> {
-  using value_type = T;
-  std::vector<T> buffer;
-
-  in_out_impl() = default;
-
-  in_out_impl(T val) {
-    buffer.push_back(val);
-  }
-
-  T* data() { return buffer.data(); }
-  const T* data() const { return buffer.data(); }
-
-  std::size_t size() const { return buffer.size(); }
-
-  bool is_scalar() const { return false; }
-
-  T getscalar() const {
-    if (buffer.empty()) {
-      throw std::runtime_error("buffer is empty, cannot get scalar");
-    }
-    return buffer[0];
-  }
-};
 
 template <typename T>
 using in_out = in_out_impl<T>;
@@ -227,7 +190,6 @@ struct raw_type {
   using type = T;
 };
 
-// specialization for your wrapper types
 template <typename T>
 struct raw_type<in<T>> {
   using type = T;
@@ -245,8 +207,5 @@ struct raw_type<in_out<T>> {
 
 template <typename T>
 using raw_t = typename raw_type<T>::type;
-
-
-
 
 
