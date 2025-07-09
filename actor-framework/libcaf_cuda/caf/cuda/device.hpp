@@ -229,16 +229,27 @@ mem_ptr<T> scratch_argument(const out<T>& arg, int actor_id, int access) {
 
 
 
-  template <typename Tuple, std::size_t... Is>
-  std::vector<void*> extract_kernel_args_impl(const Tuple& t, std::index_sequence<Is...>) {
-    std::vector<void*> args(sizeof...(Is));
-    CUdeviceptr* device_ptrs[] = { new CUdeviceptr(std::get<Is>(t)->mem())... };
-    for (size_t i = 0; i < sizeof...(Is); ++i) {
-      args[i] = device_ptrs[i];
-    }
-    return args;
-  }
-
+  // inside device.hpp
+template <typename Tuple, std::size_t... Is>
+std::vector<void*> extract_kernel_args_impl(const Tuple& t,
+                                            std::index_sequence<Is...>) {
+  std::vector<void*> args(sizeof...(Is));
+  size_t i = 0;
+  (([&] {
+     auto ptr = std::get<Is>(t);         // mem_ptr<T>
+     if (ptr->is_scalar()) {
+       // pass address of the host‐side scalar
+       args[i++] = const_cast<void*>(
+         static_cast<const void*>(ptr->host_scalar_ptr())
+       );
+     } else {
+       // copy device pointer into its own CUdeviceptr slot
+       CUdeviceptr* slot = new CUdeviceptr(ptr->mem());
+       args[i++] = slot;
+     }
+   }()), ...);
+  return args;
+}
   template <typename... Ts>
   std::vector<void*> extract_kernel_args(const std::tuple<Ts...>& t) {
     return extract_kernel_args_impl(t, std::index_sequence_for<Ts...>{});
