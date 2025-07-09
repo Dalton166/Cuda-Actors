@@ -90,7 +90,7 @@ public:
   }
 
   std::vector<T> copy_to_host() const {
-    if (access == IN)
+    if (access_ == IN)
     {
 	    throw std::runtime_error("Cannt copy a read only buffer back to device\n");
     } 
