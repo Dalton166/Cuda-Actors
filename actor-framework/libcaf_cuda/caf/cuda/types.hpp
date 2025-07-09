@@ -54,7 +54,6 @@ template <typename T>
 constexpr bool is_scalar_v = std::is_arithmetic_v<T> || std::is_enum_v<T>;
 
 //struct wrappers to hold store buffers to declare them as in or out 
-
 // in<T>
 template <typename T, bool IsScalar = is_scalar_v<T>>
 struct in_impl;
@@ -66,14 +65,18 @@ struct in_impl<T, true> {
   T value;
 
   in_impl() = default;
-
-  // Construct from a single raw value
   in_impl(T val) : value(val) {}
 
   T* data() { return &value; }
   const T* data() const { return &value; }
 
   std::size_t size() const { return 1; }
+
+  bool is_scalar() const { return true; }
+
+  T getscalar() const {
+    return value;
+  }
 };
 
 // vector specialization
@@ -84,7 +87,6 @@ struct in_impl<T, false> {
 
   in_impl() = default;
 
-  // Construct from a single raw value by pushing it into buffer
   in_impl(T val) {
     buffer.push_back(val);
   }
@@ -93,6 +95,15 @@ struct in_impl<T, false> {
   const T* data() const { return buffer.data(); }
 
   std::size_t size() const { return buffer.size(); }
+
+  bool is_scalar() const { return false; }
+
+  T getscalar() const {
+    if (buffer.empty()) {
+      throw std::runtime_error("buffer is empty, cannot get scalar");
+    }
+    return buffer[0];
+  }
 };
 
 template <typename T>
@@ -110,13 +121,18 @@ struct out_impl<T, true> {
   T value;
 
   out_impl() = default;
-
   out_impl(T val) : value(val) {}
 
   T* data() { return &value; }
   const T* data() const { return &value; }
 
   std::size_t size() const { return 1; }
+
+  bool is_scalar() const { return true; }
+
+  T getscalar() const {
+    return value;
+  }
 };
 
 // vector specialization
@@ -135,6 +151,15 @@ struct out_impl<T, false> {
   const T* data() const { return buffer.data(); }
 
   std::size_t size() const { return buffer.size(); }
+
+  bool is_scalar() const { return false; }
+
+  T getscalar() const {
+    if (buffer.empty()) {
+      throw std::runtime_error("buffer is empty, cannot get scalar");
+    }
+    return buffer[0];
+  }
 };
 
 template <typename T>
@@ -152,13 +177,18 @@ struct in_out_impl<T, true> {
   T value;
 
   in_out_impl() = default;
-
   in_out_impl(T val) : value(val) {}
 
   T* data() { return &value; }
   const T* data() const { return &value; }
 
   std::size_t size() const { return 1; }
+
+  bool is_scalar() const { return true; }
+
+  T getscalar() const {
+    return value;
+  }
 };
 
 // vector specialization
@@ -177,6 +207,15 @@ struct in_out_impl<T, false> {
   const T* data() const { return buffer.data(); }
 
   std::size_t size() const { return buffer.size(); }
+
+  bool is_scalar() const { return false; }
+
+  T getscalar() const {
+    if (buffer.empty()) {
+      throw std::runtime_error("buffer is empty, cannot get scalar");
+    }
+    return buffer[0];
+  }
 };
 
 template <typename T>
