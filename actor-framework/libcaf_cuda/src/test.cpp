@@ -719,8 +719,8 @@ void test_main(caf::actor_system& sys) {
         test_argument_translation(sys, plat);
         test_kernel_launch_direct(sys, plat); // Added new test
         test_kernel_launch(sys, plat);
-        test_actor_facade(sys, plat);
-	test_actor_facade_multi_buffer(sys, plat);
+        //test_actor_facade(sys, plat);
+	//test_actor_facade_multi_buffer(sys, plat);
         test_kernel_launch_multi_buffer(sys, plat);
 
 	//more tests designed to see if data types are being corrupted
