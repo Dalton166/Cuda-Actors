@@ -856,7 +856,68 @@ void test_scalar_kernel_launch_runtime_api()  {
 }
 
 
+void test_add_scalar_to_buffer() {
+  std::cout << "\n=== test_add_scalar_to_buffer ===\n";
+  manager& mgr = manager::get();
+  auto dev = mgr.find_device(0);
+  assert(dev);
 
+  // CUDA kernel code
+  const char* kernel_code = R"(
+    extern "C" __global__ void add_scalar_kernel(int* data, int scalar) {
+      int idx = threadIdx.x + blockIdx.x * blockDim.x;
+      if (idx < 5)
+        data[idx] += scalar;
+    })";
+
+  program_ptr prog = mgr.create_program(kernel_code, "add_scalar_kernel", dev);
+  CUfunction kernel = prog->get_kernel();
+
+  constexpr size_t n = 5;
+  std::vector<int> buffer_host = {1, 2, 3, 4, 5};
+  int scalar_value = 10;
+
+  // Wrap args
+  in_out<int> buffer_arg = create_in_out_arg(buffer_host); // writable buffer
+  in<int> scalar_arg(scalar_value); // scalar is read-only
+
+  mem_ptr<int> buffer_mem = dev->make_arg(buffer_arg, 0);
+  mem_ptr<int> scalar_mem = dev->make_arg(scalar_arg, 0);
+
+  // Configure kernel launch
+  nd_range dims{/*grid=*/1,1,1, /*block=*/n,1,1};
+
+  // Launch
+  try {
+    std::cout << "  -> Launching kernel with scalar=" << scalar_value << "\n";
+    dev->launch_kernel(kernel, dims, std::make_tuple(buffer_mem, scalar_mem), 0);
+    std::cout << "  -> Kernel launched\n";
+
+    std::vector<int> result = buffer_mem->copy_to_host();
+    std::cout << "  -> Result copied to host: ";
+    for (int x : result) std::cout << x << " ";
+    std::cout << "\n";
+
+    bool success = true;
+    for (size_t i = 0; i < n; ++i) {
+      int expected = buffer_host[i] + scalar_value;
+      if (result[i] != expected) {
+        std::cout << "  ❌ Mismatch at " << i << ": got " << result[i]
+                  << ", expected " << expected << "\n";
+        success = false;
+      }
+    }
+
+    if (success)
+      std::cout << "✔ Buffer correctly updated by scalar kernel\n";
+    else
+      std::cout << "❌ Buffer update test failed\n";
+
+  } catch (const std::exception& e) {
+    std::cerr << "❌ Exception during kernel launch: " << e.what() << "\n";
+    throw;
+  }
+}
 
 
 void test_main(caf::actor_system& sys) {
@@ -893,6 +954,7 @@ void test_main(caf::actor_system& sys) {
   	test_scalar_kernel_launch_wrapper_api();
   	test_scalar_kernel_launch_runtime_api();
 
+	test_add_scalar_to_buffer();
 
     } catch (const std::exception& e) {
         std::cout << "Test failed: " << e.what() << "\n";
