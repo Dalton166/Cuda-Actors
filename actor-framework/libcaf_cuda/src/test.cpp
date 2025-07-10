@@ -737,10 +737,9 @@ void test_extract_kernel_args_scalar() {
   auto vec = dev->extract_kernel_args(std::make_tuple(mem));
   // Should have allocated one CUdeviceptr slot
   assert(vec.size() == 1);
-  CUdeviceptr* slot = reinterpret_cast<CUdeviceptr*>(vec[0]);
-  assert(slot && *slot == mem->mem());
-  delete slot; // clean up
-
+  double* val_ptr = static_cast<double*>(vec[0]);
+  assert(val_ptr != nullptr);
+  assert(*val_ptr == 3.14);
   std::cout << "✔ extract_kernel_args_scalar returns device‐buffer pointer\n";
 }
 
@@ -750,15 +749,20 @@ void test_device_make_arg_scalar() {
   auto dev = mgr.find_device(0);
   assert(dev);
 
-  // Wrap raw scalar
+  // Wrap raw scalar with in_out (or in) wrapper
   in_out<int> in_arg(77);
   auto mem = dev->make_arg(in_arg, /*actor_id=*/0);
   assert(mem->size() == 1);
-  assert(mem->mem() != 0 && "device buffer should be allocated");
 
+  // Since this is a scalar, no device buffer should be allocated
+  assert(mem->is_scalar() && "Expected scalar mem_ref for scalar argument");
+  assert(mem->mem() == 0 && "No device memory should be allocated for scalar");
+
+  // Copy back to host (should just return the scalar)
   auto vec = mem->copy_to_host();
   assert(vec.size() == 1 && vec[0] == 77);
-  std::cout << "✔ device::make_arg(in<int> scalar) round‐trip correct\n";
+
+  std::cout << "✔ device::make_arg(in_out<int> scalar) round-trip correct\n";
 }
 
 void test_scalar_kernel_launch_wrapper_api() {
