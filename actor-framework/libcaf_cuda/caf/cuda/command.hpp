@@ -66,7 +66,8 @@ public:
         mem->reset();
     });
 
-    anon_send(self_, kernel_done_atom_v);
+    //anon_send(self_, kernel_done_atom_v);
+    anon_mail(self_).send(kernel_done_atom_v);
   }
 
   template <class A, class... S>
