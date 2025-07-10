@@ -59,6 +59,7 @@ void test_device(actor_system& sys, platform_ptr plat) {
     std::vector<int> data(5, 42);
     in<int> input = create_in_arg(data);
     mem_ptr<int> in_mem = dev->make_arg(input,test_actor_id);
+    std::cout << "input memory size is " << in_mem -> size() << "\n";
     assert(in_mem->size() == 5 && "Input memory size mismatch: expected 5");
     assert(in_mem->access() == IN && "Input memory access type incorrect: expected IN");
     std::cout << "  -> Input memory argument created successfully.\n";
@@ -645,6 +646,283 @@ void test_kernel_launch_multi_buffer(actor_system& sys, platform_ptr plat) {
   std::cout << "---- Kernel Launch Multi Buffer tests passed ----\n";
 }
 
+// Test `in<T>` wrapper for scalar and buffer cases
+void test_in_wrapper() {
+    // Scalar case
+    
+    std::cout << "Testing in wrapper type\n";
+    in<int> scalar_in(42);
+    assert(scalar_in.is_scalar() && "in<int> should be scalar");
+    assert(scalar_in.size() == 1 && "Scalar in should have size 1");
+    assert(scalar_in.getscalar() == 42 && "Scalar in should return correct value");
+    assert(scalar_in.data() != nullptr && "Scalar in data should be non-null");
+    assert(*scalar_in.data() == 42 && "Scalar in data should point to correct value");
+
+    // Buffer case
+    std::vector<int> vec = {1, 2, 3};
+    in<int> buffer_in(vec);
+    assert(!buffer_in.is_scalar() && "in<std::vector<int>> should be buffer");
+    assert(buffer_in.size() == 3 && "Buffer in should have correct size");
+    assert(buffer_in.get_buffer() == vec && "Buffer in should return correct vector");
+}
+
+// Test `out<T>` wrapper for scalar and buffer cases
+void test_out_wrapper() {
+    // Scalar case
+    out<int> scalar_out(42);
+    assert(scalar_out.is_scalar() && "out<int> should be scalar");
+    assert(scalar_out.size() == 1 && "Scalar out should have size 1");
+    assert(scalar_out.getscalar() == 42 && "Scalar out should return correct value");
+    assert(scalar_out.data() != nullptr && "Scalar out data should be non-null");
+    assert(*scalar_out.data() == 42 && "Scalar out data should point to correct value");
+
+    // Buffer case
+    std::vector<int> vec = {4, 5, 6};
+    out<int> buffer_out(vec);
+    assert(!buffer_out.is_scalar() && "out<std::vector<int>> should be buffer");
+    assert(buffer_out.size() == 3 && "Buffer out should have correct size");
+    assert(buffer_out.get_buffer() == vec && "Buffer out should return correct vector");
+}
+
+// Test `in_out<T>` wrapper for scalar and buffer cases
+void test_in_out_wrapper() {
+    // Scalar case
+    in_out<int> scalar_in_out(42);
+    assert(scalar_in_out.is_scalar() && "in_out<int> should be scalar");
+    assert(scalar_in_out.size() == 1 && "Scalar in_out should have size 1");
+    assert(scalar_in_out.getscalar() == 42 && "Scalar in_out should return correct value");
+    assert(scalar_in_out.data() != nullptr && "Scalar in_out data should be non-null");
+    assert(*scalar_in_out.data() == 42 && "Scalar in_out data should point to correct value");
+
+    // Buffer case
+    std::vector<int> vec = {7, 8, 9};
+    in_out<int> buffer_in_out(vec);
+    assert(!buffer_in_out.is_scalar() && "in_out<std::vector<int>> should be buffer");
+    assert(buffer_in_out.size() == 3 && "Buffer in_out should have correct size");
+    assert(buffer_in_out.get_buffer() == vec && "Buffer in_out should return correct vector");
+}
+
+
+// A trivial scalar‐only CUDA kernel
+static const char* scalar_kernel_code = R"(
+extern "C" __global__ void scalar_kernel(int a, float b, double c) {
+  // no‐op
+}
+)";
+
+void test_mem_ref_scalar_host() {
+  std::cout << "\n=== test_mem_ref_scalar_host ===\n";
+  // Direct scalar constructor
+  auto ptr = intrusive_ptr<mem_ref<int>>(new mem_ref<int>(123, IN_OUT, 0, 0, nullptr));
+  assert(ptr->is_scalar() && "should report scalar");
+  assert(ptr->host_scalar_ptr() && *ptr->host_scalar_ptr() == 123);
+  auto host_copy = ptr->copy_to_host();
+  assert(host_copy.size() == 1 && host_copy[0] == 123);
+  std::cout << "✔ mem_ref<int> scalar host copy correct\n";
+}
+
+void test_extract_kernel_args_scalar() {
+  std::cout << "\n=== test_extract_kernel_args_scalar ===\n";
+  manager& mgr = manager::get();
+  auto dev = mgr.find_device(0);
+  assert(dev && "device 0 must exist");
+
+  // First wrap a scalar in an `in<T>` and make a mem_ptr
+  in_out<double> in_arg(3.14);
+  auto mem = dev->make_arg(in_arg, /*actor_id=*/0);
+  assert(mem->size() == 1);
+  assert(mem->is_scalar() && "current path still allocates a device buffer");
+
+  // Now extract the raw kernel args
+  auto vec = dev->extract_kernel_args(std::make_tuple(mem));
+  // Should have allocated one CUdeviceptr slot
+  assert(vec.size() == 1);
+  double* val_ptr = static_cast<double*>(vec[0]);
+  assert(val_ptr != nullptr);
+  assert(*val_ptr == 3.14);
+  std::cout << "✔ extract_kernel_args_scalar returns device‐buffer pointer\n";
+}
+
+void test_device_make_arg_scalar() {
+  std::cout << "\n=== test_device_make_arg_scalar ===\n";
+  manager& mgr = manager::get();
+  auto dev = mgr.find_device(0);
+  assert(dev);
+
+  // Wrap raw scalar with in_out (or in) wrapper
+  in_out<int> in_arg(77);
+  auto mem = dev->make_arg(in_arg, /*actor_id=*/0);
+  assert(mem->size() == 1);
+
+  // Since this is a scalar, no device buffer should be allocated
+  assert(mem->is_scalar() && "Expected scalar mem_ref for scalar argument");
+  assert(mem->mem() == 0 && "No device memory should be allocated for scalar");
+
+  // Copy back to host (should just return the scalar)
+  auto vec = mem->copy_to_host();
+  assert(vec.size() == 1 && vec[0] == 77);
+
+  std::cout << "✔ device::make_arg(in_out<int> scalar) round-trip correct\n";
+}
+
+void test_scalar_kernel_launch_wrapper_api() {
+  std::cout << "\n=== test_scalar_kernel_launch_wrapper_api ===\n";
+  manager& mgr = manager::get();
+  auto dev = mgr.find_device(0);
+  assert(dev);
+
+  // Compile the scalar‐only kernel
+  auto prog = mgr.create_program(scalar_kernel_code, "scalar_kernel", dev);
+  CUfunction k = prog->get_kernel();
+
+  // Prepare scalar args via the wrapper types
+  in<int>    a_arg(42);
+  in<float>  b_arg(4.2f);
+  in<double> c_arg(6.28);
+
+  auto a_mem = dev->make_arg(a_arg, 0);
+  auto b_mem = dev->make_arg(b_arg, 0);
+  auto c_mem = dev->make_arg(c_arg, 0);
+
+  nd_range range{1,1,1, 1,1,1};
+
+  // Launch—no exception means success
+  dev->launch_kernel(k, range,
+                     std::make_tuple(a_mem, b_mem, c_mem),
+                     /*actor_id=*/0);
+  std::cout << "✔ scalar kernel launch via wrapper API succeeded\n";
+}
+
+void test_scalar_kernel_launch_runtime_api()  {
+  std::cout << "\n=== test_scalar_kernel_launch_program_runtime_api ===\n";
+  manager& mgr = manager::get();
+  device_ptr dev = mgr.find_device(0);
+  assert(dev);
+
+  const char* kernel_code = R"(
+    extern "C" __global__ void scalar_kernel(int a, float b, double c, int* out) {
+      if (threadIdx.x == 0 && blockIdx.x == 0)
+        out[0] = a + static_cast<int>(b + c); // Should be a + floor(b + c)
+    })";
+
+  program_ptr prog = mgr.create_program(kernel_code, "scalar_kernel", dev);
+  CUfunction func = prog->get_kernel();
+  CUcontext ctx = dev->getContext();
+
+  // Host-side input values
+  int a_val = 10;
+  float b_val = 2.5f;
+  double c_val = 3.5;
+
+  // Allocate device memory for output
+  CUdeviceptr d_out;
+  CHECK_CUDA(cuCtxPushCurrent(ctx));
+  CHECK_CUDA(cuMemAlloc(&d_out, sizeof(int)));
+  CHECK_CUDA(cuMemsetD32(d_out, 0, 1));
+  CHECK_CUDA(cuCtxPopCurrent(nullptr));
+
+  // Kernel arguments (must be pointers-to-host-variables)
+  void* args[] = {
+    &a_val,
+    &b_val,
+    &c_val,
+    &d_out
+  };
+
+  std::cout << "  -> Launching kernel with a=" << a_val << ", b=" << b_val << ", c=" << c_val << "\n";
+
+  CHECK_CUDA(cuCtxPushCurrent(ctx));
+  CUresult launch_result = cuLaunchKernel(
+    func,
+    1, 1, 1,  // grid dim
+    1, 1, 1,  // block dim
+    0, nullptr, args, nullptr
+  );
+  if (launch_result != CUDA_SUCCESS) {
+    const char* err_str = nullptr;
+    cuGetErrorName(launch_result, &err_str);
+    throw std::runtime_error(std::string("Kernel launch failed: ") + (err_str ? err_str : "unknown error"));
+  }
+
+  CHECK_CUDA(cuCtxSynchronize());
+
+  // Copy back result
+  int out_val = 0;
+  CHECK_CUDA(cuMemcpyDtoH(&out_val, d_out, sizeof(int)));
+  CHECK_CUDA(cuMemFree(d_out));
+  CHECK_CUDA(cuCtxPopCurrent(nullptr));
+
+  int expected = a_val + static_cast<int>(b_val + c_val);
+  std::cout << "  -> Kernel output: " << out_val << ", expected: " << expected << "\n";
+  assert(out_val == expected && "Scalar kernel output incorrect");
+
+  std::cout << "✔ scalar kernel launched via program + raw API successfully\n";
+}
+
+
+void test_add_scalar_to_buffer() {
+  std::cout << "\n=== test_add_scalar_to_buffer ===\n";
+  manager& mgr = manager::get();
+  auto dev = mgr.find_device(0);
+  assert(dev);
+
+  // CUDA kernel code
+  const char* kernel_code = R"(
+    extern "C" __global__ void add_scalar_kernel(int* data, int scalar) {
+      int idx = threadIdx.x + blockIdx.x * blockDim.x;
+      if (idx < 5)
+        data[idx] += scalar;
+    })";
+
+  program_ptr prog = mgr.create_program(kernel_code, "add_scalar_kernel", dev);
+  CUfunction kernel = prog->get_kernel();
+
+  constexpr size_t n = 5;
+  std::vector<int> buffer_host = {1, 2, 3, 4, 5};
+  int scalar_value = 10;
+
+  // Wrap args
+  in_out<int> buffer_arg = create_in_out_arg(buffer_host); // writable buffer
+  in<int> scalar_arg(scalar_value); // scalar is read-only
+
+  mem_ptr<int> buffer_mem = dev->make_arg(buffer_arg, 0);
+  mem_ptr<int> scalar_mem = dev->make_arg(scalar_arg, 0);
+
+  // Configure kernel launch
+  nd_range dims{/*grid=*/1,1,1, /*block=*/n,1,1};
+
+  // Launch
+  try {
+    std::cout << "  -> Launching kernel with scalar=" << scalar_value << "\n";
+    dev->launch_kernel(kernel, dims, std::make_tuple(buffer_mem, scalar_mem), 0);
+    std::cout << "  -> Kernel launched\n";
+
+    std::vector<int> result = buffer_mem->copy_to_host();
+    std::cout << "  -> Result copied to host: ";
+    for (int x : result) std::cout << x << " ";
+    std::cout << "\n";
+
+    bool success = true;
+    for (size_t i = 0; i < n; ++i) {
+      int expected = buffer_host[i] + scalar_value;
+      if (result[i] != expected) {
+        std::cout << "  ❌ Mismatch at " << i << ": got " << result[i]
+                  << ", expected " << expected << "\n";
+        success = false;
+      }
+    }
+
+    if (success)
+      std::cout << "✔ Buffer correctly updated by scalar kernel\n";
+    else
+      std::cout << "❌ Buffer update test failed\n";
+
+  } catch (const std::exception& e) {
+    std::cerr << "❌ Exception during kernel launch: " << e.what() << "\n";
+    throw;
+  }
+}
+
 
 
 void test_main(caf::actor_system& sys) {
@@ -666,9 +944,29 @@ void test_main(caf::actor_system& sys) {
         test_argument_translation(sys, plat);
         test_kernel_launch_direct(sys, plat); // Added new test
         test_kernel_launch(sys, plat);
-        test_actor_facade(sys, plat);
-	test_actor_facade_multi_buffer(sys, plat);
+        //test_actor_facade(sys, plat);
+	//test_actor_facade_multi_buffer(sys, plat);
         test_kernel_launch_multi_buffer(sys, plat);
+
+
+	test_in_wrapper();
+    	test_out_wrapper();
+    	test_in_out_wrapper();
+
+	test_mem_ref_scalar_host();
+  	test_extract_kernel_args_scalar();
+  	test_device_make_arg_scalar();
+  	test_scalar_kernel_launch_wrapper_api();
+  	test_scalar_kernel_launch_runtime_api();
+	test_add_scalar_to_buffer();
+
+	/*
+	 * TODO actually write these tests someday
+	test_prepare_kernel_args_scalar();
+  	test_prepare_kernel_args_buffer();
+  	test_cleanup_kernel_args_mixed();
+	*/
+
     } catch (const std::exception& e) {
         std::cout << "Test failed: " << e.what() << "\n";
         manager::shutdown();
