@@ -23,7 +23,7 @@ void compare_strings(const char* a, const char* b, int* result, int * length) {
 }
 )";
 
-const char* matrixMulKernel = R"(
+const char* matrixMulKernel2 = R"(
 extern "C" __global__
 void matrixMul(const int* a, const int* b, int* c, int *N_val) {
     int N = *N_val;
@@ -40,10 +40,10 @@ void matrixMul(const int* a, const int* b, int* c, int *N_val) {
 )";
 
 
-const char* matrixMulKernel2 = R"(
+const char* matrixMulKernel = R"(
 extern "C" __global__
 void matrixMul(const int* a, const int* b, int* c, int N) {
-    printf("%d\n",N);
+    //printf("%d\n",N);
     int row = blockIdx.y * blockDim.y + threadIdx.y;
     int col = blockIdx.x * blockDim.x + threadIdx.x;
     if (row < N && col < N) {
@@ -214,7 +214,7 @@ void test_mmul_plain(caf::actor_system& sys,int N) {
 
   caf::cuda::nd_range dim(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
 
-  auto gpuActor = mgr.spawn(matrixMulKernel, "matrixMul", dim,
+  auto gpuActor = mgr.spawn(matrixMulKernel2, "matrixMul", dim,
                             in<int>{}, in<int>{}, out<int>{}, in<int>{});
 
   std::vector<int> h_a(N * N);
@@ -230,7 +230,7 @@ void test_mmul_plain(caf::actor_system& sys,int N) {
   auto arg1 = caf::cuda::create_in_arg(h_a);
   auto arg2 = caf::cuda::create_in_arg(h_b);
   auto arg3 = caf::cuda::create_out_arg(h_c);
-  auto arg4 = caf::cuda::create_in_arg(N);
+  auto arg4 = caf::cuda::create_in_arg(h_n);
 
   sys.spawn([=](event_based_actor* self_actor) {
     auto start = std::chrono::high_resolution_clock::now();
@@ -503,8 +503,8 @@ void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
   //test_main(sys);
   //actor_facade_launch_kernel_test(sys);
-  //test_mmul(sys,1024);
-  test_mmul_plain(sys,1024);
+   test_mmul(sys,1024);
+   test_mmul_plain(sys,1024);
   //test_mmul_large(sys);
   //run_concurrent_mmul_test(sys,200,1024);
 }
