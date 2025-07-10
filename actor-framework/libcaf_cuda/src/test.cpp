@@ -646,6 +646,60 @@ void test_kernel_launch_multi_buffer(actor_system& sys, platform_ptr plat) {
   std::cout << "---- Kernel Launch Multi Buffer tests passed ----\n";
 }
 
+// Test `in<T>` wrapper for scalar and buffer cases
+void test_in_wrapper() {
+    // Scalar case
+    in<int> scalar_in(42);
+    assert(scalar_in.is_scalar() && "in<int> should be scalar");
+    assert(scalar_in.size() == 1 && "Scalar in should have size 1");
+    assert(scalar_in.getscalar() == 42 && "Scalar in should return correct value");
+    assert(scalar_in.data() != nullptr && "Scalar in data should be non-null");
+    assert(*scalar_in.data() == 42 && "Scalar in data should point to correct value");
+
+    // Buffer case
+    std::vector<int> vec = {1, 2, 3};
+    in<int> buffer_in(vec);
+    assert(!buffer_in.is_scalar() && "in<std::vector<int>> should be buffer");
+    assert(buffer_in.size() == 3 && "Buffer in should have correct size");
+    assert(buffer_in.get_buffer() == vec && "Buffer in should return correct vector");
+}
+
+// Test `out<T>` wrapper for scalar and buffer cases
+void test_out_wrapper() {
+    // Scalar case
+    out<int> scalar_out(42);
+    assert(scalar_out.is_scalar() && "out<int> should be scalar");
+    assert(scalar_out.size() == 1 && "Scalar out should have size 1");
+    assert(scalar_out.getscalar() == 42 && "Scalar out should return correct value");
+    assert(scalar_out.data() != nullptr && "Scalar out data should be non-null");
+    assert(*scalar_out.data() == 42 && "Scalar out data should point to correct value");
+
+    // Buffer case
+    std::vector<int> vec = {4, 5, 6};
+    out<int> buffer_out(vec);
+    assert(!buffer_out.is_scalar() && "out<std::vector<int>> should be buffer");
+    assert(buffer_out.size() == 3 && "Buffer out should have correct size");
+    assert(buffer_out.get_buffer() == vec && "Buffer out should return correct vector");
+}
+
+// Test `in_out<T>` wrapper for scalar and buffer cases
+void test_in_out_wrapper() {
+    // Scalar case
+    in_out<int> scalar_in_out(42);
+    assert(scalar_in_out.is_scalar() && "in_out<int> should be scalar");
+    assert(scalar_in_out.size() == 1 && "Scalar in_out should have size 1");
+    assert(scalar_in_out.getscalar() == 42 && "Scalar in_out should return correct value");
+    assert(scalar_in_out.data() != nullptr && "Scalar in_out data should be non-null");
+    assert(*scalar_in_out.data() == 42 && "Scalar in_out data should point to correct value");
+
+    // Buffer case
+    std::vector<int> vec = {7, 8, 9};
+    in_out<int> buffer_in_out(vec);
+    assert(!buffer_in_out.is_scalar() && "in_out<std::vector<int>> should be buffer");
+    assert(buffer_in_out.size() == 3 && "Buffer in_out should have correct size");
+    assert(buffer_in_out.get_buffer() == vec && "Buffer in_out should return correct vector");
+}
+
 
 void test_main(caf::actor_system& sys) {
     std::cout << "\n===== Running CUDA CAF Tests =====\n";
@@ -670,6 +724,10 @@ void test_main(caf::actor_system& sys) {
 	//test_actor_facade_multi_buffer(sys, plat);
         test_kernel_launch_multi_buffer(sys, plat);
 
+
+	test_in_wrapper();
+    	test_out_wrapper();
+    	test_in_out_wrapper();
 
     } catch (const std::exception& e) {
         std::cout << "Test failed: " << e.what() << "\n";
