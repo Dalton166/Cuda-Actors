@@ -147,6 +147,11 @@ std::vector<output_buffer> launch_kernel(CUfunction kernel,
   return outputs;
 }
 
+template <typename... Ts>
+  std::vector<void*> extract_kernel_args(const std::tuple<Ts...>& t) {
+    return extract_kernel_args_impl(t, std::index_sequence_for<Ts...>{});
+  }
+
 private:
   CUdevice device_;
   CUcontext context_;
@@ -158,52 +163,47 @@ private:
   std::mutex stream_mutex_;
 template <typename T>
 mem_ptr<T> global_argument(const in<T>& arg, int actor_id, int access) {
-  size_t size = arg.is_scalar() ? 1 : arg.size();
-  CUdeviceptr device_buffer = 0;
-  size_t bytes = size * sizeof(T);
-
-  CUcontext ctx = getContext();
-  CHECK_CUDA(cuCtxPushCurrent(ctx));
-
-  CUstream stream = get_stream_for_actor(actor_id); // get actor's stream first
-
-  CHECK_CUDA(cuMemAlloc(&device_buffer, bytes));   // allocation (no stream param)
-
+  CUstream stream = get_stream_for_actor(actor_id);
   if (arg.is_scalar()) {
-    auto val = arg.getscalar();
-    CHECK_CUDA(cuMemcpyHtoDAsync(device_buffer, &val, bytes, stream)); // async copy on actor stream
+    return caf::intrusive_ptr<mem_ref<T>>(new mem_ref<T>(arg.getscalar(), access, id_, 0, stream));
   } else {
-    CHECK_CUDA(cuMemcpyHtoDAsync(device_buffer, arg.data(), bytes, stream)); // async copy on actor stream
+    size_t size = arg.size();
+    CUdeviceptr device_buffer = 0;
+    size_t bytes = size * sizeof(T);
+
+    CUcontext ctx = getContext();
+    CHECK_CUDA(cuCtxPushCurrent(ctx));
+
+    CHECK_CUDA(cuMemAlloc(&device_buffer, bytes));
+    CHECK_CUDA(cuMemcpyHtoDAsync(device_buffer, arg.data(), bytes, stream));
+
+    CHECK_CUDA(cuCtxPopCurrent(nullptr));
+
+    return caf::intrusive_ptr<mem_ref<T>>(new mem_ref<T>(size, device_buffer, access, id_, 0, stream));
   }
-
-  CHECK_CUDA(cuCtxPopCurrent(nullptr));
-
-  return caf::intrusive_ptr<mem_ref<T>>(new mem_ref<T>(size, device_buffer, access, id_, 0, stream));
 }
+
 
 template <typename T>
 mem_ptr<T> global_argument(const in_out<T>& arg, int actor_id, int access) {
-  size_t size = arg.is_scalar() ? 1 : arg.size();
-  CUdeviceptr device_buffer = 0;
-  size_t bytes = size * sizeof(T);
-
-  CUcontext ctx = getContext();
-  CHECK_CUDA(cuCtxPushCurrent(ctx));
-
   CUstream stream = get_stream_for_actor(actor_id);
-
-  CHECK_CUDA(cuMemAlloc(&device_buffer, bytes));
-
   if (arg.is_scalar()) {
-    auto val = arg.getscalar();
-    CHECK_CUDA(cuMemcpyHtoDAsync(device_buffer, &val, bytes, stream));
+    return caf::intrusive_ptr<mem_ref<T>>(new mem_ref<T>(arg.getscalar(), access, id_, 0, stream));
   } else {
+    size_t size = arg.size();
+    CUdeviceptr device_buffer = 0;
+    size_t bytes = size * sizeof(T);
+
+    CUcontext ctx = getContext();
+    CHECK_CUDA(cuCtxPushCurrent(ctx));
+
+    CHECK_CUDA(cuMemAlloc(&device_buffer, bytes));
     CHECK_CUDA(cuMemcpyHtoDAsync(device_buffer, arg.data(), bytes, stream));
+
+    CHECK_CUDA(cuCtxPopCurrent(nullptr));
+
+    return caf::intrusive_ptr<mem_ref<T>>(new mem_ref<T>(size, device_buffer, access, id_, 0, stream));
   }
-
-  CHECK_CUDA(cuCtxPopCurrent(nullptr));
-
-  return caf::intrusive_ptr<mem_ref<T>>(new mem_ref<T>(size, device_buffer, access, id_, 0, stream));
 }
 
 template <typename T>
@@ -250,10 +250,7 @@ std::vector<void*> extract_kernel_args_impl(const Tuple& t,
    }()), ...);
   return args;
 }
-  template <typename... Ts>
-  std::vector<void*> extract_kernel_args(const std::tuple<Ts...>& t) {
-    return extract_kernel_args_impl(t, std::index_sequence_for<Ts...>{});
-  }
+  
 };
 
 } // namespace caf::cuda
