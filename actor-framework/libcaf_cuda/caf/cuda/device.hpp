@@ -164,46 +164,57 @@ private:
 template <typename T>
 mem_ptr<T> global_argument(const in<T>& arg, int actor_id, int access) {
   CUstream stream = get_stream_for_actor(actor_id);
+
   if (arg.is_scalar()) {
-    return caf::intrusive_ptr<mem_ref<T>>(new mem_ref<T>(arg.getscalar(), access, id_, 0, stream));
-  } else {
-    size_t size = arg.size();
-    CUdeviceptr device_buffer = 0;
-    size_t bytes = size * sizeof(T);
-
-    CUcontext ctx = getContext();
-    CHECK_CUDA(cuCtxPushCurrent(ctx));
-
-    CHECK_CUDA(cuMemAlloc(&device_buffer, bytes));
-    CHECK_CUDA(cuMemcpyHtoDAsync(device_buffer, arg.data(), bytes, stream));
-
-    CHECK_CUDA(cuCtxPopCurrent(nullptr));
-
-    return caf::intrusive_ptr<mem_ref<T>>(new mem_ref<T>(size, device_buffer, access, id_, 0, stream));
+    // ✅ Correct: scalar constructor
+    return caf::intrusive_ptr<mem_ref<T>>(
+      new mem_ref<T>(arg.getscalar(), access, id_, 0, stream)
+    );
   }
+
+  // Buffer path
+  size_t size = arg.size();
+  CUdeviceptr device_buffer = 0;
+  size_t bytes = size * sizeof(T);
+
+  CUcontext ctx = getContext();
+  CHECK_CUDA(cuCtxPushCurrent(ctx));
+  CHECK_CUDA(cuMemAlloc(&device_buffer, bytes));
+  CHECK_CUDA(cuMemcpyHtoDAsync(device_buffer, arg.data(), bytes, stream));
+  CHECK_CUDA(cuCtxPopCurrent(nullptr));
+
+  return caf::intrusive_ptr<mem_ref<T>>(
+    new mem_ref<T>(size, device_buffer, access, id_, 0, stream)
+  );
 }
+
 
 
 template <typename T>
 mem_ptr<T> global_argument(const in_out<T>& arg, int actor_id, int access) {
   CUstream stream = get_stream_for_actor(actor_id);
+
   if (arg.is_scalar()) {
-    return caf::intrusive_ptr<mem_ref<T>>(new mem_ref<T>(arg.getscalar(), access, id_, 0, stream));
-  } else {
-    size_t size = arg.size();
-    CUdeviceptr device_buffer = 0;
-    size_t bytes = size * sizeof(T);
-
-    CUcontext ctx = getContext();
-    CHECK_CUDA(cuCtxPushCurrent(ctx));
-
-    CHECK_CUDA(cuMemAlloc(&device_buffer, bytes));
-    CHECK_CUDA(cuMemcpyHtoDAsync(device_buffer, arg.data(), bytes, stream));
-
-    CHECK_CUDA(cuCtxPopCurrent(nullptr));
-
-    return caf::intrusive_ptr<mem_ref<T>>(new mem_ref<T>(size, device_buffer, access, id_, 0, stream));
+    // ✅ Correct: scalar constructor
+    return caf::intrusive_ptr<mem_ref<T>>(
+      new mem_ref<T>(arg.getscalar(), access, id_, 0, stream)
+    );
   }
+
+  // Buffer path
+  size_t size = arg.size();
+  CUdeviceptr device_buffer = 0;
+  size_t bytes = size * sizeof(T);
+
+  CUcontext ctx = getContext();
+  CHECK_CUDA(cuCtxPushCurrent(ctx));
+  CHECK_CUDA(cuMemAlloc(&device_buffer, bytes));
+  CHECK_CUDA(cuMemcpyHtoDAsync(device_buffer, arg.data(), bytes, stream));
+  CHECK_CUDA(cuCtxPopCurrent(nullptr));
+
+  return caf::intrusive_ptr<mem_ref<T>>(
+    new mem_ref<T>(size, device_buffer, access, id_, 0, stream)
+  );
 }
 
 template <typename T>
