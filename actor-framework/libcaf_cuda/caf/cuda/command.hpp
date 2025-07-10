@@ -67,7 +67,7 @@ public:
     });
 
     //anon_send(self_, kernel_done_atom_v);
-    anon_mail(self_).send(kernel_done_atom_v);
+    anon_mail(kernel_done_atom_v).send(self_);
   }
 
   template <class A, class... S>
