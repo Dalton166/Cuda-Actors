@@ -731,7 +731,7 @@ void test_extract_kernel_args_scalar() {
   in_out<double> in_arg(3.14);
   auto mem = dev->make_arg(in_arg, /*actor_id=*/0);
   assert(mem->size() == 1);
-  assert(!mem->is_scalar() && "current path still allocates a device buffer");
+  assert(mem->is_scalar() && "current path still allocates a device buffer");
 
   // Now extract the raw kernel args
   auto vec = dev->extract_kernel_args(std::make_tuple(mem));
