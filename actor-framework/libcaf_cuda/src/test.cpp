@@ -649,6 +649,8 @@ void test_kernel_launch_multi_buffer(actor_system& sys, platform_ptr plat) {
 // Test `in<T>` wrapper for scalar and buffer cases
 void test_in_wrapper() {
     // Scalar case
+    
+    std::cout << "Testing in wrapper type\n";
     in<int> scalar_in(42);
     assert(scalar_in.is_scalar() && "in<int> should be scalar");
     assert(scalar_in.size() == 1 && "Scalar in should have size 1");
@@ -701,6 +703,120 @@ void test_in_out_wrapper() {
 }
 
 
+// A trivial scalar‐only CUDA kernel
+static const char* scalar_kernel_code = R"(
+extern "C" __global__ void scalar_kernel(int a, float b, double c) {
+  // no‐op
+}
+)";
+
+void test_mem_ref_scalar_host() {
+  std::cout << "\n=== test_mem_ref_scalar_host ===\n";
+  // Direct scalar constructor
+  auto ptr = intrusive_ptr<mem_ref<int>>(new mem_ref<int>(123, IN_OUT, 0, 0, nullptr));
+  assert(ptr->is_scalar() && "should report scalar");
+  assert(ptr->host_scalar_ptr() && *ptr->host_scalar_ptr() == 123);
+  auto host_copy = ptr->copy_to_host();
+  assert(host_copy.size() == 1 && host_copy[0] == 123);
+  std::cout << "✔ mem_ref<int> scalar host copy correct\n";
+}
+
+void test_extract_kernel_args_scalar() {
+  std::cout << "\n=== test_extract_kernel_args_scalar ===\n";
+  manager& mgr = manager::get();
+  auto dev = mgr.find_device(0);
+  assert(dev && "device 0 must exist");
+
+  // First wrap a scalar in an `in<T>` and make a mem_ptr
+  in<double> in_arg(3.14);
+  auto mem = dev->make_arg(in_arg, /*actor_id=*/0);
+  assert(mem->size() == 1);
+  assert(!mem->is_scalar() && "current path still allocates a device buffer");
+
+  // Now extract the raw kernel args
+  auto vec = dev->extract_kernel_args(std::make_tuple(mem));
+  // Should have allocated one CUdeviceptr slot
+  assert(vec.size() == 1);
+  CUdeviceptr* slot = reinterpret_cast<CUdeviceptr*>(vec[0]);
+  assert(slot && *slot == mem->mem());
+  delete slot; // clean up
+
+  std::cout << "✔ extract_kernel_args_scalar returns device‐buffer pointer\n";
+}
+
+void test_device_make_arg_scalar() {
+  std::cout << "\n=== test_device_make_arg_scalar ===\n";
+  manager& mgr = manager::get();
+  auto dev = mgr.find_device(0);
+  assert(dev);
+
+  // Wrap raw scalar
+  in<int> in_arg(77);
+  auto mem = dev->make_arg(in_arg, /*actor_id=*/0);
+  assert(mem->size() == 1);
+  assert(mem->mem() != 0 && "device buffer should be allocated");
+
+  auto vec = mem->copy_to_host();
+  assert(vec.size() == 1 && vec[0] == 77);
+  std::cout << "✔ device::make_arg(in<int> scalar) round‐trip correct\n";
+}
+
+void test_scalar_kernel_launch_wrapper_api() {
+  std::cout << "\n=== test_scalar_kernel_launch_wrapper_api ===\n";
+  manager& mgr = manager::get();
+  auto dev = mgr.find_device(0);
+  assert(dev);
+
+  // Compile the scalar‐only kernel
+  auto prog = mgr.create_program(scalar_kernel_code, "scalar_kernel", dev);
+  CUfunction k = prog->get_kernel();
+
+  // Prepare scalar args via the wrapper types
+  in<int>    a_arg(42);
+  in<float>  b_arg(4.2f);
+  in<double> c_arg(6.28);
+
+  auto a_mem = dev->make_arg(a_arg, 0);
+  auto b_mem = dev->make_arg(b_arg, 0);
+  auto c_mem = dev->make_arg(c_arg, 0);
+
+  nd_range range{1,1,1, 1,1,1};
+
+  // Launch—no exception means success
+  dev->launch_kernel(k, range,
+                     std::make_tuple(a_mem, b_mem, c_mem),
+                     /*actor_id=*/0);
+  std::cout << "✔ scalar kernel launch via wrapper API succeeded\n";
+}
+
+void test_scalar_kernel_launch_runtime_api() {
+  std::cout << "\n=== test_scalar_kernel_launch_runtime_api ===\n";
+  // Load module via driver API (runtime‐API doesn't expose module loading easily)
+  CUmodule module = nullptr;
+  CHECK_CUDA(cuModuleLoadDataEx(&module, scalar_kernel_code, 0, nullptr, nullptr));
+  CUfunction func = nullptr;
+  CHECK_CUDA(cuModuleGetFunction(&func, module, "scalar_kernel"));
+
+  // Prepare raw scalar pointers
+  int    ai = 99;
+  float  bf = 1.23f;
+  double cd = 4.56;
+  void* args[] = { &ai, &bf, &cd };
+
+  CHECK_CUDA(cuLaunchKernel(func,
+                            1,1,1,
+                            1,1,1,
+                            0, nullptr,
+                            args, nullptr));
+  CHECK_CUDA(cuCtxSynchronize());
+  std::cout << "✔ scalar kernel launch via raw driver API succeeded\n";
+
+  CHECK_CUDA(cuModuleUnload(module));
+}
+
+
+
+
 void test_main(caf::actor_system& sys) {
     std::cout << "\n===== Running CUDA CAF Tests =====\n";
     manager::init(sys);
@@ -728,6 +844,13 @@ void test_main(caf::actor_system& sys) {
 	test_in_wrapper();
     	test_out_wrapper();
     	test_in_out_wrapper();
+
+	test_mem_ref_scalar_host();
+  	test_extract_kernel_args_scalar();
+  	test_device_make_arg_scalar();
+  	test_scalar_kernel_launch_wrapper_api();
+  	test_scalar_kernel_launch_runtime_api();
+
 
     } catch (const std::exception& e) {
         std::cout << "Test failed: " << e.what() << "\n";
