@@ -789,30 +789,72 @@ void test_scalar_kernel_launch_wrapper_api() {
   std::cout << "✔ scalar kernel launch via wrapper API succeeded\n";
 }
 
-void test_scalar_kernel_launch_runtime_api() {
-  std::cout << "\n=== test_scalar_kernel_launch_runtime_api ===\n";
-  // Load module via driver API (runtime‐API doesn't expose module loading easily)
-  CUmodule module = nullptr;
-  CHECK_CUDA(cuModuleLoadDataEx(&module, scalar_kernel_code, 0, nullptr, nullptr));
-  CUfunction func = nullptr;
-  CHECK_CUDA(cuModuleGetFunction(&func, module, "scalar_kernel"));
+void test_scalar_kernel_launch_runtime_api()  {
+  std::cout << "\n=== test_scalar_kernel_launch_program_runtime_api ===\n";
+  manager& mgr = manager::get();
+  device_ptr dev = mgr.find_device(0);
+  assert(dev);
 
-  // Prepare raw scalar pointers
-  int    ai = 99;
-  float  bf = 1.23f;
-  double cd = 4.56;
-  void* args[] = { &ai, &bf, &cd };
+  const char* kernel_code = R"(
+    extern "C" __global__ void scalar_kernel(int a, float b, double c, int* out) {
+      if (threadIdx.x == 0 && blockIdx.x == 0)
+        out[0] = a + static_cast<int>(b + c); // Should be a + floor(b + c)
+    })";
 
-  CHECK_CUDA(cuLaunchKernel(func,
-                            1,1,1,
-                            1,1,1,
-                            0, nullptr,
-                            args, nullptr));
+  program_ptr prog = mgr.create_program(kernel_code, "scalar_kernel", dev);
+  CUfunction func = prog->get_kernel();
+  CUcontext ctx = dev->getContext();
+
+  // Host-side input values
+  int a_val = 10;
+  float b_val = 2.5f;
+  double c_val = 3.5;
+
+  // Allocate device memory for output
+  CUdeviceptr d_out;
+  CHECK_CUDA(cuCtxPushCurrent(ctx));
+  CHECK_CUDA(cuMemAlloc(&d_out, sizeof(int)));
+  CHECK_CUDA(cuMemsetD32(d_out, 0, 1));
+  CHECK_CUDA(cuCtxPopCurrent(nullptr));
+
+  // Kernel arguments (must be pointers-to-host-variables)
+  void* args[] = {
+    &a_val,
+    &b_val,
+    &c_val,
+    &d_out
+  };
+
+  std::cout << "  -> Launching kernel with a=" << a_val << ", b=" << b_val << ", c=" << c_val << "\n";
+
+  CHECK_CUDA(cuCtxPushCurrent(ctx));
+  CUresult launch_result = cuLaunchKernel(
+    func,
+    1, 1, 1,  // grid dim
+    1, 1, 1,  // block dim
+    0, nullptr, args, nullptr
+  );
+  if (launch_result != CUDA_SUCCESS) {
+    const char* err_str = nullptr;
+    cuGetErrorName(launch_result, &err_str);
+    throw std::runtime_error(std::string("Kernel launch failed: ") + (err_str ? err_str : "unknown error"));
+  }
+
   CHECK_CUDA(cuCtxSynchronize());
-  std::cout << "✔ scalar kernel launch via raw driver API succeeded\n";
 
-  CHECK_CUDA(cuModuleUnload(module));
+  // Copy back result
+  int out_val = 0;
+  CHECK_CUDA(cuMemcpyDtoH(&out_val, d_out, sizeof(int)));
+  CHECK_CUDA(cuMemFree(d_out));
+  CHECK_CUDA(cuCtxPopCurrent(nullptr));
+
+  int expected = a_val + static_cast<int>(b_val + c_val);
+  std::cout << "  -> Kernel output: " << out_val << ", expected: " << expected << "\n";
+  assert(out_val == expected && "Scalar kernel output incorrect");
+
+  std::cout << "✔ scalar kernel launched via program + raw API successfully\n";
 }
+
 
 
 
