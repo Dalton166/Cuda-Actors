@@ -924,6 +924,7 @@ void test_add_scalar_to_buffer() {
 }
 
 
+
 void test_main(caf::actor_system& sys) {
     std::cout << "\n===== Running CUDA CAF Tests =====\n";
     manager::init(sys);
@@ -957,8 +958,14 @@ void test_main(caf::actor_system& sys) {
   	test_device_make_arg_scalar();
   	test_scalar_kernel_launch_wrapper_api();
   	test_scalar_kernel_launch_runtime_api();
-
 	test_add_scalar_to_buffer();
+
+	/*
+	 * TODO actually write these tests someday
+	test_prepare_kernel_args_scalar();
+  	test_prepare_kernel_args_buffer();
+  	test_cleanup_kernel_args_mixed();
+	*/
 
     } catch (const std::exception& e) {
         std::cout << "Test failed: " << e.what() << "\n";
