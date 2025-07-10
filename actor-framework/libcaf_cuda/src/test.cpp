@@ -728,7 +728,7 @@ void test_extract_kernel_args_scalar() {
   assert(dev && "device 0 must exist");
 
   // First wrap a scalar in an `in<T>` and make a mem_ptr
-  in<double> in_arg(3.14);
+  in_out<double> in_arg(3.14);
   auto mem = dev->make_arg(in_arg, /*actor_id=*/0);
   assert(mem->size() == 1);
   assert(!mem->is_scalar() && "current path still allocates a device buffer");
@@ -751,7 +751,7 @@ void test_device_make_arg_scalar() {
   assert(dev);
 
   // Wrap raw scalar
-  in<int> in_arg(77);
+  in_out<int> in_arg(77);
   auto mem = dev->make_arg(in_arg, /*actor_id=*/0);
   assert(mem->size() == 1);
   assert(mem->mem() != 0 && "device buffer should be allocated");
