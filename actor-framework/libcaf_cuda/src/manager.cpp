@@ -38,6 +38,28 @@ program_ptr manager::create_program(const char * kernel,
 	return prog;
 }
 
+program_ptr manager::create_program_from_ptx(const std::string& filename,
+                                             const char* kernel_name,
+                                             device_ptr device) {
+  // Read PTX or CUBIN file into memory
+  std::ifstream in(filename, std::ios::binary);
+  if (!in) {
+    throw std::runtime_error("Failed to open PTX file: " + filename);
+  }
+
+  std::vector<char> ptx((std::istreambuf_iterator<char>(in)),
+                         std::istreambuf_iterator<char>());
+
+  int d_id = device->getId();
+  int c_id = device->getContextId();
+  int s_id = device->getStreamId();
+
+  return make_counted<program>(kernel_name, device, d_id, c_id, s_id, std::move(ptx));
+}
+
+
+
+
 program_ptr manager::create_program_from_file(const std::string&,
                                               const char*,
                                               device_ptr) {
