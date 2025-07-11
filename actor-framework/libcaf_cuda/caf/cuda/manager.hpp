@@ -118,6 +118,24 @@ public:
     return f(&system_, std::move(cfg), std::move(prog),dims,std::forward<Ts>(xs)...);
   }
 
+ 
+  template <class... Ts>
+  caf::actor spawnFromPTX(
+                   const std::string& fileName,
+		   const char * kernelName,
+		   nd_range dims,
+                   Ts&&... xs) {
+    caf::detail::cuda_spawn_helper<false, Ts...> f;
+    caf::actor_config cfg;
+
+    device_ptr device = find_device(0);
+    program_ptr prog = create_program_from_ptx(fileName, kernelName, device);
+
+    return f(&system_, std::move(cfg), std::move(prog),dims,std::forward<Ts>(xs)...);
+  }
+
+
+
   caf::actor_system& system() { return system_; }
 
   CUcontext get_context_by_id(int device_id, int context_id);
