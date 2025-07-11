@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <stdexcept>
 #include <mutex>
+#include <fstream>
 
 #include <caf/actor_system.hpp>
 #include <caf/actor.hpp>
