@@ -335,10 +335,13 @@ void test_mmul_from_ptx(caf::actor_system& sys, int N) {
   std::generate(h_a.begin(), h_a.end(), []() { return rand() % 10; });
   std::generate(h_b.begin(), h_b.end(), []() { return rand() % 10; });
 
+
+  serial_matrix_multiply(h_a, h_b, h_ref, N);
+
   auto arg1 = caf::cuda::create_in_arg(h_a);
   auto arg2 = caf::cuda::create_in_arg(h_b);
   auto arg3 = caf::cuda::create_out_arg(h_c);
-  auto arg4 = caf::cuda::create_in_arg(h_n);
+  auto arg4 = caf::cuda::create_in_arg(N);
 
   // Spawn actor from precompiled PTX file
   auto gpuActor = mgr.spawnFromPTX("../mmul.ptx", "matrixMul", dim,
@@ -366,7 +369,7 @@ void test_mmul_from_ptx(caf::actor_system& sys, int N) {
         // Compare result with reference
         bool match = (result == h_ref);
         std::cout << "[INFO] Kernel round-trip time: " << elapsed.count() << " seconds\n";
-        // std::cout << (match ? "[PASS] GPU result matches reference\n" : "[FAIL] Mismatch in GPU result\n");
+        std::cout << (match ? "[PASS] GPU result matches reference\n" : "[FAIL] Mismatch in GPU result\n");
 
         self_actor->send_exit(gpuActor, caf::exit_reason::user_shutdown);
         self_actor->quit();
