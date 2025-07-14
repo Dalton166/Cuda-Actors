@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <mutex>
 #include <fstream>
+#include <map>
 
 #include <caf/actor_system.hpp>
 #include <caf/actor.hpp>
@@ -97,6 +98,9 @@ public:
                                     const char* kernel_name,
                                     device_ptr device);
 
+  program_ptr create_program_from_cubin(const std::string& filename,
+                                               const char* kernel_name,
+                                               device_ptr device);
 
   template <bool PassConfig, class Result, class... Ts>
   caf::actor spawn(const char*,
@@ -135,6 +139,23 @@ public:
     return f(&system_, std::move(cfg), std::move(prog),dims,std::forward<Ts>(xs)...);
   }
 
+
+
+ 
+  template <class... Ts>
+  caf::actor spawnFromCUBIN(
+                   const std::string& fileName,
+		   const char * kernelName,
+		   nd_range dims,
+                   Ts&&... xs) {
+    caf::detail::cuda_spawn_helper<false, Ts...> f;
+    caf::actor_config cfg;
+
+    device_ptr device = find_device(0);
+    program_ptr prog = create_program_from_cubin(fileName, kernelName, device);
+
+    return f(&system_, std::move(cfg), std::move(prog),dims,std::forward<Ts>(xs)...);
+  }
 
 
   caf::actor_system& system() { return system_; }
