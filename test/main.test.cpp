@@ -865,8 +865,23 @@ inline void run_concurrent_serial_mmul_test_global_with_worker(caf::actor_system
 
 
 
+void run_all_concurrent_tests(caf::actor_system& sys) {
+  std::vector<int> matrix_sizes = {1024, 2048, 4096};
+  std::vector<int> actor_counts = {1, 50, 200};
 
+  for (auto N : matrix_sizes) {
+    for (auto num_actors : actor_counts) {
+      std::cout << "\n=== Running tests for N = " << N
+                << ", num_actors = " << num_actors << " ===\n";
 
+      std::cout << "[RUN] GPU concurrent test (global matrices)...\n";
+      run_concurrent_mmul_test_global(sys, num_actors, N);
+
+      std::cout << "[RUN] CPU concurrent test with worker (global matrices)...\n";
+      run_concurrent_serial_mmul_test_global_with_worker(sys, num_actors, N);
+    }
+  }
+}
 
 
 void caf_main(caf::actor_system& sys) {
@@ -880,7 +895,9 @@ void caf_main(caf::actor_system& sys) {
   //test_mmul_large(sys);
   //run_concurrent_mmul_test(sys,200,1024);
   //run_concurrent_mmul_test_global(sys,500,1024);
- run_concurrent_serial_mmul_test_global_with_worker(sys,2,1024);
+ //run_concurrent_serial_mmul_test_global_with_worker(sys,2,1024);
+  run_all_concurrent_tests(sys);
+
 }
 
 
