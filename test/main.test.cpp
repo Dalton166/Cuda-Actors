@@ -560,6 +560,124 @@ inline void run_concurrent_mmul_test(caf::actor_system& sys,
 
 
 
+// === Global matrices for shared use ===
+std::vector<int> global_a;
+std::vector<int> global_b;
+std::vector<std::vector<int>> global_cs;
+
+// === New Supervisor (uses global matrix data) ===
+caf::behavior supervisor_global_fun(caf::stateful_actor<supervisor_state>* self, int id, int N) {
+  auto& st = self->state();
+  st.id = id;
+  st.N = N;
+  st.h_c = &global_cs[id]; // Each supervisor gets its own output buffer
+
+  const int THREADS = 32;
+  const int BLOCKS = (N + THREADS - 1) / THREADS;
+  caf::cuda::nd_range dims(BLOCKS, 1, 1, THREADS, 1, 1);
+
+  st.gpu_actor = caf::cuda::manager::get().spawn(matrixMulKernel, "matrixMul", dims,
+                                                 in<int>{}, in<int>{}, out<int>{}, in<int>{});
+
+  auto run_iteration = [self]() {
+    auto& st_ref = self->state();
+    int N_val = st_ref.N;
+
+    auto iteration_start = Clock::now();
+
+    auto arg1 = caf::cuda::create_in_arg(global_a);
+    auto arg2 = caf::cuda::create_in_arg(global_b);
+    auto arg3 = caf::cuda::create_out_arg(*st_ref.h_c);
+    auto arg4 = caf::cuda::create_in_arg(N_val); // local N
+
+    auto kernel_start = Clock::now();
+
+    self->mail(st_ref.gpu_actor, arg1, arg2, arg3, arg4)
+      .request(st_ref.gpu_actor, std::chrono::seconds(1000))
+      .then(
+        [self, iteration_start, kernel_start](const std::vector<output_buffer>&) {
+          auto& st_ref = self->state();
+          auto kernel_end = Clock::now();
+          auto iteration_end = Clock::now();
+
+          double kernel_time = std::chrono::duration<double>(kernel_end - kernel_start).count();
+          double full_time = std::chrono::duration<double>(iteration_end - iteration_start).count();
+
+          std::cout << "[INFO] [GLOBAL] Supervisor " << st_ref.id
+                    << " Iteration " << st_ref.count
+                    << " Kernel round-trip: " << kernel_time << " s, "
+                    << "Full iteration time: " << full_time << " s\n";
+
+          st_ref.kernel_times.push_back(kernel_time);
+          st_ref.full_times.push_back(full_time);
+          ++st_ref.count;
+
+          if (st_ref.count < 20) {
+            self->delayed_send(self, std::chrono::milliseconds(0), std::string("start"));
+          } else {
+            double kernel_avg = std::accumulate(st_ref.kernel_times.begin(), st_ref.kernel_times.end(), 0.0) / st_ref.kernel_times.size();
+            double full_avg = std::accumulate(st_ref.full_times.begin(), st_ref.full_times.end(), 0.0) / st_ref.full_times.size();
+
+            std::cout << "[INFO] [GLOBAL] Supervisor " << st_ref.id
+                      << " Kernel average: " << kernel_avg << " s, "
+                      << "Full iteration average: " << full_avg << " s\n";
+
+            self->send_exit(st_ref.gpu_actor, caf::exit_reason::user_shutdown);
+            self->quit();
+          }
+        },
+        [self](caf::error& err) {
+          std::cerr << "[ERROR] [GLOBAL] Kernel execution failed: " << caf::to_string(err) << std::endl;
+          self->quit(err);
+        });
+  };
+
+  return {
+    [=](const std::string& msg) {
+      if (msg == "start") {
+        run_iteration();
+      }
+    }
+  };
+}
+
+// === New Test Function ===
+inline void run_concurrent_mmul_test_global(caf::actor_system& sys,
+                                            int num_supervisors,
+                                            int matrix_size) {
+  auto start = Clock::now();
+
+  int N = matrix_size;
+  size_t matrix_elements = static_cast<size_t>(N) * N;
+
+  // Global inputs
+  global_a.assign(matrix_elements, 0);
+  global_b.assign(matrix_elements, 0);
+  global_cs.resize(num_supervisors);
+  for (int i = 0; i < num_supervisors; ++i)
+    global_cs[i].assign(matrix_elements, 0);
+
+  // Optional: Populate input with actual data
+  //std::generate(global_a.begin(), global_a.end(), [] { return rand() % 10; });
+  //std::generate(global_b.begin(), global_b.end(), [] { return rand() % 10; });
+
+  // Spawn supervisors
+  for (int i = 0; i < num_supervisors; ++i) {
+    auto sup = sys.spawn(supervisor_global_fun, i, N);
+    caf::anon_send(sup, std::string("start"));
+  }
+
+  sys.await_all_actors_done();
+
+  auto end = Clock::now();
+  std::chrono::duration<double> duration = end - start;
+  std::cout << "[TIMER] run_concurrent_mmul_test_global took: "
+            << duration.count() << " seconds\n";
+}
+
+
+
+
 
 void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
