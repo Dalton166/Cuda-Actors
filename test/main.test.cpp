@@ -578,7 +578,7 @@ caf::behavior supervisor_global_fun(caf::stateful_actor<supervisor_state>* self,
   const int BLOCKS = (N + THREADS - 1) / THREADS;
   caf::cuda::nd_range dims(BLOCKS, 1, 1, THREADS, 1, 1);
 
-  st.gpu_actor = caf::cuda::manager::get().spawn(matrixMulKernel, "matrixMul", dims,
+  st.gpu_actor = caf::cuda::manager::get().spawnFromPTX("../mmul.ptx", "matrixMul", dims,
                                                  in<int>{}, in<int>{}, out<int>{}, in<int>{});
 
   auto run_iteration = [self]() {
@@ -655,6 +655,7 @@ inline void run_concurrent_mmul_test_global(caf::actor_system& sys,
   // Global inputs
   global_a.assign(matrix_elements, 0);
   global_b.assign(matrix_elements, 0);
+  global_c.assign(matrix_elements,0);
   //global_cs.resize(num_supervisors);
   for (int i = 0; i < num_supervisors; ++i)
     //global_cs[i].assign(matrix_elements, 0);
@@ -686,10 +687,11 @@ void caf_main(caf::actor_system& sys) {
   //test_main(sys);
   //actor_facade_launch_kernel_test(sys);
    //test_mmul(sys,1024);
-   test_mmul_from_ptx(sys,1024);
+   //test_mmul_from_ptx(sys,1024);
    //test_mmul_plain(sys,1024);
   //test_mmul_large(sys);
   //run_concurrent_mmul_test(sys,200,1024);
+  run_concurrent_mmul_test_global(sys,1,1024);
 }
 
 
