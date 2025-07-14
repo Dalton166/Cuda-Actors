@@ -672,7 +672,7 @@ caf::behavior supervisor_global_fun(caf::stateful_actor<supervisor_state>* self,
           double kernel_time = std::chrono::duration<double>(kernel_end - kernel_start).count();
           double full_time = std::chrono::duration<double>(iteration_end - iteration_start).count();
 
-          std::cout << "[INFO] [GLOBAL] Supervisor " << st_ref.id
+          std::cout << "[INFO] [GPU GLOBAL] Supervisor " << st_ref.id
                     << " Iteration " << st_ref.count
                     << " Kernel round-trip: " << kernel_time << " s, "
                     << "Full iteration time: " << full_time << " s\n";
@@ -687,7 +687,7 @@ caf::behavior supervisor_global_fun(caf::stateful_actor<supervisor_state>* self,
             double kernel_avg = std::accumulate(st_ref.kernel_times.begin(), st_ref.kernel_times.end(), 0.0) / st_ref.kernel_times.size();
             double full_avg = std::accumulate(st_ref.full_times.begin(), st_ref.full_times.end(), 0.0) / st_ref.full_times.size();
 
-            std::cout << "[INFO] [GLOBAL] Supervisor " << st_ref.id
+            std::cout << "[INFO] [GPU GLOBAL] Supervisor " << st_ref.id
                       << " Kernel average: " << kernel_avg << " s, "
                       << "Full iteration average: " << full_avg << " s\n";
 
@@ -696,7 +696,7 @@ caf::behavior supervisor_global_fun(caf::stateful_actor<supervisor_state>* self,
           }
         },
         [self](caf::error& err) {
-          std::cerr << "[ERROR] [GLOBAL] Kernel execution failed: " << caf::to_string(err) << std::endl;
+          std::cerr << "[ERROR] [GPU GLOBAL] Kernel execution failed: " << caf::to_string(err) << std::endl;
           self->quit(err);
         });
   };
@@ -746,6 +746,126 @@ inline void run_concurrent_mmul_test_global(caf::actor_system& sys,
 }
 
 
+// === Global matrices for CPU serial multiply ===
+std::vector<int> cpu_global_a;
+std::vector<int> cpu_global_b;
+std::vector<int> cpu_global_c; // Shared output buffer
+
+// === Messages ===
+using matrix_msg = caf::message; // We'll send references via vector<int> const&
+
+// === Worker Actor: Does the serial multiply on request ===
+caf::behavior cpu_worker_fun(caf::event_based_actor* self) {
+  return {
+    [=](const std::vector<int>& a, const std::vector<int>& b, std::vector<int>& c, int N) {
+      serial_matrix_multiply(a, b, c, N);
+      // Reply with empty message or some confirmation (could send duration, etc.)
+      //self->send(self->current_sender());
+    }
+  };
+}
+
+// === Supervisor State ===
+struct cpu_supervisor_state {
+  caf::actor worker;
+  int id = 0;
+  int N = 0;
+  int count = 0;
+  std::vector<double> run_times;
+};
+
+// === Supervisor Actor ===
+caf::behavior cpu_supervisor_global_fun(caf::stateful_actor<cpu_supervisor_state>* self, int id, int N) {
+  auto& st = self->state();
+  st.id = id;
+  st.N = N;
+  st.count = 0;
+
+  // Spawn worker actor once
+  st.worker = self->spawn(cpu_worker_fun);
+
+  auto run_iteration = [self]() {
+    auto& st_ref = self->state();
+    auto start = Clock::now();
+
+    // Send global buffers to worker actor for multiplication
+    self->request(st_ref.worker, std::chrono::seconds(1000),
+                  cpu_global_a, cpu_global_b, cpu_global_c, st_ref.N)
+      .then(
+        [self, start]() {
+          auto end = Clock::now();
+          double duration = std::chrono::duration<double>(end - start).count();
+
+          auto& st_ref = self->state();
+          std::cout << "[INFO] [CPU GLOBAL] Supervisor " << st_ref.id
+                    << " Iteration " << st_ref.count
+                    << " Serial multiply time: " << duration << " s\n";
+
+          st_ref.run_times.push_back(duration);
+          ++st_ref.count;
+
+          if (st_ref.count < 20) {
+            self->delayed_send(self, std::chrono::milliseconds(0), std::string("start"));
+          } else {
+            double avg = std::accumulate(st_ref.run_times.begin(), st_ref.run_times.end(), 0.0) / st_ref.run_times.size();
+            std::cout << "[INFO] [CPU GLOBAL] Supervisor " << st_ref.id
+                      << " Average serial multiply time: " << avg << " s\n";
+
+            self->send_exit(st_ref.worker, caf::exit_reason::user_shutdown);
+            self->quit();
+          }
+        },
+        [self](caf::error& err) {
+          std::cerr << "[ERROR] [CPU GLOBAL] Worker call failed: " << caf::to_string(err) << std::endl;
+          self->quit(err);
+        });
+  };
+
+  return {
+    [=](const std::string& msg) {
+      if (msg == "start") {
+        run_iteration();
+      }
+    }
+  };
+}
+
+// === CPU Global Matrix Test Function with Worker ===
+inline void run_concurrent_serial_mmul_test_global_with_worker(caf::actor_system& sys,
+                                                               int num_supervisors,
+                                                               int matrix_size) {
+  auto start = Clock::now();
+
+  int N = matrix_size;
+  size_t matrix_elements = static_cast<size_t>(N) * N;
+
+  // Initialize global matrices once
+  cpu_global_a.assign(matrix_elements, 0);
+  cpu_global_b.assign(matrix_elements, 0);
+  cpu_global_c.assign(matrix_elements, 0);
+
+  // Optional: fill inputs with some data
+  std::generate(cpu_global_a.begin(), cpu_global_a.end(), [] { return rand() % 10; });
+  std::generate(cpu_global_b.begin(), cpu_global_b.end(), [] { return rand() % 10; });
+
+  // Spawn supervisors (which spawn workers internally)
+  for (int i = 0; i < num_supervisors; ++i) {
+    auto sup = sys.spawn(cpu_supervisor_global_fun, i, N);
+    caf::anon_send(sup, std::string("start"));
+  }
+
+  sys.await_all_actors_done();
+
+  auto end = Clock::now();
+  std::chrono::duration<double> duration = end - start;
+  std::cout << "[TIMER] run_concurrent_serial_mmul_test_global_with_worker took: "
+            << duration.count() << " seconds\n";
+}
+
+
+
+
+
 
 
 
@@ -755,11 +875,12 @@ void caf_main(caf::actor_system& sys) {
   //actor_facade_launch_kernel_test(sys);
    //test_mmul(sys,1024);
    //test_mmul_from_ptx(sys,1024);
-   test_mmul_from_cubin(sys,1024);
+   //test_mmul_from_cubin(sys,1024);
    //test_mmul_plain(sys,1024);
   //test_mmul_large(sys);
   //run_concurrent_mmul_test(sys,200,1024);
   //run_concurrent_mmul_test_global(sys,500,1024);
+ run_concurrent_serial_mmul_test_global_with_worker(sys,2,1024);
 }
 
 
