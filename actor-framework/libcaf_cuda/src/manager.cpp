@@ -38,23 +38,67 @@ program_ptr manager::create_program(const char * kernel,
 	return prog;
 }
 
+#include <mutex>
+#include <map>
+
 program_ptr manager::create_program_from_ptx(const std::string& filename,
                                              const char* kernel_name,
                                              device_ptr device) {
-  // Read PTX or CUBIN file into memory
-  std::ifstream in(filename, std::ios::binary);
-  if (!in) {
-    throw std::runtime_error("Failed to open PTX file: " + filename);
+  static std::mutex global_ptx_mutex_map_guard;
+  static std::map<std::string, std::shared_ptr<std::mutex>> ptx_mutex_map;
+
+  // Get per-file mutex
+  std::shared_ptr<std::mutex> file_mutex;
+  {
+    std::lock_guard<std::mutex> lock(global_ptx_mutex_map_guard);
+    auto& mtx = ptx_mutex_map[filename];
+    if (!mtx)
+      mtx = std::make_shared<std::mutex>();
+    file_mutex = mtx;
   }
 
-  std::vector<char> ptx((std::istreambuf_iterator<char>(in)),
-                         std::istreambuf_iterator<char>());
+  std::vector<char> ptx;
+  {
+    std::lock_guard<std::mutex> guard(*file_mutex);
+
+    std::ifstream in(filename, std::ios::binary);
+    if (!in) {
+      throw std::runtime_error("Failed to open PTX file: " + filename);
+    }
+
+    ptx.assign(std::istreambuf_iterator<char>(in),
+               std::istreambuf_iterator<char>());
+  }
 
   int d_id = device->getId();
   int c_id = device->getContextId();
   int s_id = device->getStreamId();
 
+  // 🔒 Guard the actual JIT as well — this is the critical part!
+  std::lock_guard<std::mutex> guard(*file_mutex);
   return make_counted<program>(kernel_name, device, d_id, c_id, s_id, std::move(ptx));
+}
+
+
+
+program_ptr manager::create_program_from_cubin(const std::string& filename,
+                                               const char* kernel_name,
+                                               device_ptr device) {
+  // Open the cubin file in binary mode
+  std::ifstream in(filename, std::ios::binary);
+  if (!in)
+    throw std::runtime_error("Failed to open CUBIN file: " + filename);
+
+  // Read file contents into memory
+  std::vector<char> cubin((std::istreambuf_iterator<char>(in)),
+                          std::istreambuf_iterator<char>());
+
+  int d_id = device->getId();
+  int c_id = device->getContextId();
+  int s_id = device->getStreamId();
+
+  // Reuse the same constructor as PTX (program class doesn't care)
+  return make_counted<program>(kernel_name, device, d_id, c_id, s_id, std::move(cubin));
 }
 
 
