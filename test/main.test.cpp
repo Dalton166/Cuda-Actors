@@ -564,13 +564,15 @@ inline void run_concurrent_mmul_test(caf::actor_system& sys,
 std::vector<int> global_a;
 std::vector<int> global_b;
 std::vector<std::vector<int>> global_cs;
+std::vector<int> global_c; //yes each actor gets the same output buffer
+			   //this shouldnt matter anyways due to just performance testing
+			   //and gpu actors dont share state
 
 // === New Supervisor (uses global matrix data) ===
 caf::behavior supervisor_global_fun(caf::stateful_actor<supervisor_state>* self, int id, int N) {
   auto& st = self->state();
   st.id = id;
   st.N = N;
-  st.h_c = &global_cs[id]; // Each supervisor gets its own output buffer
 
   const int THREADS = 32;
   const int BLOCKS = (N + THREADS - 1) / THREADS;
@@ -587,7 +589,7 @@ caf::behavior supervisor_global_fun(caf::stateful_actor<supervisor_state>* self,
 
     auto arg1 = caf::cuda::create_in_arg(global_a);
     auto arg2 = caf::cuda::create_in_arg(global_b);
-    auto arg3 = caf::cuda::create_out_arg(*st_ref.h_c);
+    auto arg3 = caf::cuda::create_out_arg(global_c);
     auto arg4 = caf::cuda::create_in_arg(N_val); // local N
 
     auto kernel_start = Clock::now();
@@ -653,9 +655,9 @@ inline void run_concurrent_mmul_test_global(caf::actor_system& sys,
   // Global inputs
   global_a.assign(matrix_elements, 0);
   global_b.assign(matrix_elements, 0);
-  global_cs.resize(num_supervisors);
+  //global_cs.resize(num_supervisors);
   for (int i = 0; i < num_supervisors; ++i)
-    global_cs[i].assign(matrix_elements, 0);
+    //global_cs[i].assign(matrix_elements, 0);
 
   // Optional: Populate input with actual data
   //std::generate(global_a.begin(), global_a.end(), [] { return rand() % 10; });
