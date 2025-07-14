@@ -657,7 +657,7 @@ inline void run_concurrent_mmul_test_global(caf::actor_system& sys,
   global_b.assign(matrix_elements, 0);
   global_c.assign(matrix_elements,0);
   //global_cs.resize(num_supervisors);
-  for (int i = 0; i < num_supervisors; ++i)
+  //for (int i = 0; i < num_supervisors; ++i)
     //global_cs[i].assign(matrix_elements, 0);
 
   // Optional: Populate input with actual data
@@ -691,7 +691,7 @@ void caf_main(caf::actor_system& sys) {
    //test_mmul_plain(sys,1024);
   //test_mmul_large(sys);
   //run_concurrent_mmul_test(sys,200,1024);
-  run_concurrent_mmul_test_global(sys,1,1024);
+  run_concurrent_mmul_test_global(sys,10,1024);
 }
 
 
