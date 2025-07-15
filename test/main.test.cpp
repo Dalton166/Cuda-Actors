@@ -540,7 +540,7 @@ caf::behavior supervisor_fun(caf::stateful_actor<supervisor_state>* self, int id
 
   const int THREADS = 32;
   const int BLOCKS = (N + THREADS - 1) / THREADS;
-  caf::cuda::nd_range dims(BLOCKS, 1, 1, THREADS, 1, 1);
+  caf::cuda::nd_range dims(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
 
   st.gpu_actor = caf::cuda::manager::get().spawn(matrixMulKernel, "matrixMul", dims,
                                                  in<int>{}, in<int>{}, out<int>{}, in<int>{});
@@ -783,7 +783,7 @@ caf::behavior supervisor_global_fun(caf::stateful_actor<supervisor_state>* self,
 
   const int THREADS = 32;
   const int BLOCKS = (N + THREADS - 1) / THREADS;
-  caf::cuda::nd_range dims(BLOCKS, 1, 1, THREADS, 1, 1);
+  caf::cuda::nd_range dims(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
 
   st.gpu_actor = caf::cuda::manager::get().spawnFromCUBIN("../mmul.cubin", "matrixMul", dims,
                                                  in<int>{}, in<int>{}, out<int>{}, in<int>{});
