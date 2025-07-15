@@ -78,6 +78,7 @@ public:
   CUdeviceptr mem()   const noexcept { return memory_; }
   int access()  const noexcept { return access_; }
   CUstream stream() const noexcept { return stream_; }
+  int deviceID() const noexcept { return device_id;}
 
   void reset() {
     if (!is_scalar_ && memory_) {
