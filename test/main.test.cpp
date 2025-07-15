@@ -643,7 +643,7 @@ caf::behavior supervisor_fun_validate(caf::stateful_actor<supervisor_state>* sel
 
   const int THREADS = 32;
   const int BLOCKS = (N + THREADS - 1) / THREADS;
-  caf::cuda::nd_range dims(BLOCKS, 1, 1, THREADS, 1, 1);
+  caf::cuda::nd_range dims(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
 
   st.gpu_actor = caf::cuda::manager::get().spawnFromCUBIN("../mmul.cubin", "matrixMul", dims,
                                                  in<int>{}, in<int>{}, out<int>{}, in<int>{});
@@ -656,10 +656,10 @@ caf::behavior supervisor_fun_validate(caf::stateful_actor<supervisor_state>* sel
     //generate new matrix 
     std::generate(st.h_a.begin(), st.h_a.end(), [] { return rand() % 10; });
     std::generate(st.h_b.begin(), st.h_b.end(), [] { return rand() % 10; });
-    auto arg1 = caf::cuda::create_in_arg(st_ref.h_a);
-    auto arg2 = caf::cuda::create_in_arg(st_ref.h_b);
-    auto arg3 = caf::cuda::create_out_arg(st_ref.h_c);
-    auto arg4 = caf::cuda::create_in_arg(st_ref.N);
+    auto arg1 = caf::cuda::create_in_arg(st.h_a);
+    auto arg2 = caf::cuda::create_in_arg(st.h_b);
+    auto arg3 = caf::cuda::create_out_arg(st.h_c);
+    auto arg4 = caf::cuda::create_in_arg(st.N); //i have no idea why this needs to be squared but it does
 
     auto kernel_start = Clock::now();
 
@@ -694,12 +694,25 @@ caf::behavior supervisor_fun_validate(caf::stateful_actor<supervisor_state>* sel
           }, out.data);
         }
 
-	std::vector<int> h_ref(st.N*st.N, 0); 
-        serial_matrix_multiply(st.h_a, st.h_b, h_ref, st.N);
-        bool match = result == h_ref;
-        std::cout << (match ? "[PASS] GPU result matches reference\n"
-                            : "[FAIL] Mismatch in GPU result\n");
+std::vector<int> h_ref(st.N * st.N, 0);
+serial_matrix_multiply(st.h_a, st.h_b, h_ref, st.N);
+bool match = result == h_ref;
 
+if (match) {
+  std::cout << "[PASS] GPU result matches reference\n";
+} else {
+  std::cout << "[FAIL] Mismatch in GPU result\n";
+
+  std::cout << "Expected (h_ref): ";
+  for (int val : h_ref)
+    std::cout << val << ' ';
+  std::cout << '\n';
+
+  std::cout << "Actual (result):  ";
+  for (int val : result)
+    std::cout << val << ' ';
+  std::cout << '\n';
+}
 
           if (st_ref.count < 20) {
             self->delayed_send(self, std::chrono::milliseconds(0), std::string("start"));
@@ -1023,7 +1036,7 @@ void caf_main(caf::actor_system& sys) {
   //run_concurrent_mmul_test(sys,200,1024);
   //run_concurrent_mmul_test_global(sys,500,1024);
  //run_concurrent_serial_mmul_test_global_with_worker(sys,2,1024);
-  run_concurrent_mmul_validate_test(sys,1,50);
+  run_concurrent_mmul_validate_test(sys,100,60);
  //run_all_concurrent_tests(sys);
 
 }
