@@ -1034,9 +1034,9 @@ void caf_main(caf::actor_system& sys) {
    //test_mmul_plain(sys,1024);
   //test_mmul_large(sys);
   //run_concurrent_mmul_test(sys,200,1024);
-  //run_concurrent_mmul_test_global(sys,500,1024);
+  //run_concurrent_mmul_test_global(sys,1,1024);
  //run_concurrent_serial_mmul_test_global_with_worker(sys,2,1024);
-  run_concurrent_mmul_validate_test(sys,100,60);
+  //run_concurrent_mmul_validate_test(sys,100,60);
  //run_all_concurrent_tests(sys);
 
 }
