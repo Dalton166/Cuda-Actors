@@ -659,7 +659,7 @@ caf::behavior supervisor_fun_validate(caf::stateful_actor<supervisor_state>* sel
     auto arg1 = caf::cuda::create_in_arg(st_ref.h_a);
     auto arg2 = caf::cuda::create_in_arg(st_ref.h_b);
     auto arg3 = caf::cuda::create_out_arg(st_ref.h_c);
-    auto arg4 = caf::cuda::create_in_arg(st_ref.h_n);
+    auto arg4 = caf::cuda::create_in_arg(st_ref.N);
 
     auto kernel_start = Clock::now();
 
@@ -1023,7 +1023,7 @@ void caf_main(caf::actor_system& sys) {
   //run_concurrent_mmul_test(sys,200,1024);
   //run_concurrent_mmul_test_global(sys,500,1024);
  //run_concurrent_serial_mmul_test_global_with_worker(sys,2,1024);
-  run_concurrent_mmul_validate_test(sys,50,50);
+  run_concurrent_mmul_validate_test(sys,1,50);
  //run_all_concurrent_tests(sys);
 
 }
