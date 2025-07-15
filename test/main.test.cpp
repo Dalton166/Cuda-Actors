@@ -645,7 +645,7 @@ caf::behavior supervisor_fun_validate(caf::stateful_actor<supervisor_state>* sel
   const int BLOCKS = (N + THREADS - 1) / THREADS;
   caf::cuda::nd_range dims(BLOCKS, 1, 1, THREADS, 1, 1);
 
-  st.gpu_actor = caf::cuda::manager::get().spawn(matrixMulKernel, "matrixMul", dims,
+  st.gpu_actor = caf::cuda::manager::get().spawnFromCUBIN("../mmul.cubin", "matrixMul", dims,
                                                  in<int>{}, in<int>{}, out<int>{}, in<int>{});
 
   auto run_iteration = [&,self]() {
