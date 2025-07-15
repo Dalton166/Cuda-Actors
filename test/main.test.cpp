@@ -606,6 +606,7 @@ caf::behavior supervisor_fun(caf::stateful_actor<supervisor_state>* self, int id
   };
 }
 
+
 // Driver function
 inline void run_concurrent_mmul_test(caf::actor_system& sys,
                                      int num_supervisors,
@@ -614,6 +615,132 @@ inline void run_concurrent_mmul_test(caf::actor_system& sys,
 
   for (int i = 0; i < num_supervisors; ++i) {
     auto sup = sys.spawn(supervisor_fun, i, matrix_size);
+    caf::anon_send(sup, std::string("start"));
+  }
+
+  sys.await_all_actors_done();
+
+  auto end = Clock::now();
+  std::chrono::duration<double> duration = end - start;
+  std::cout << "[TIMER] run_concurrent_mmul_test took: "
+            << duration.count() << " seconds\n";
+}
+
+
+
+
+
+caf::behavior supervisor_fun_validate(caf::stateful_actor<supervisor_state>* self, int id, int N) {
+  auto& st = self->state();
+  st.id = id;
+  st.N = N;
+
+  st.h_a.resize(st.N * st.N);
+  st.h_b.resize(st.N * st.N);
+  st.h_c.resize(st.N * st.N, 0);
+  st.h_n = {st.N};
+
+
+  const int THREADS = 32;
+  const int BLOCKS = (N + THREADS - 1) / THREADS;
+  caf::cuda::nd_range dims(BLOCKS, 1, 1, THREADS, 1, 1);
+
+  st.gpu_actor = caf::cuda::manager::get().spawn(matrixMulKernel, "matrixMul", dims,
+                                                 in<int>{}, in<int>{}, out<int>{}, in<int>{});
+
+  auto run_iteration = [self]() {
+    auto& st_ref = self->state();
+
+    auto iteration_start = Clock::now();
+
+    //generate new matrix 
+    std::generate(st.h_a.begin(), st.h_a.end(), [] { return rand() % 10; });
+    std::generate(st.h_b.begin(), st.h_b.end(), [] { return rand() % 10; });
+    auto arg1 = caf::cuda::create_in_arg(st_ref.h_a);
+    auto arg2 = caf::cuda::create_in_arg(st_ref.h_b);
+    auto arg3 = caf::cuda::create_out_arg(st_ref.h_c);
+    auto arg4 = caf::cuda::create_in_arg(st_ref.h_n);
+
+    auto kernel_start = Clock::now();
+
+    self->mail(st_ref.gpu_actor, arg1, arg2, arg3, arg4)
+      .request(st_ref.gpu_actor, std::chrono::seconds(100))
+      .then(
+        [self, iteration_start, kernel_start](const std::vector<output_buffer>&) {
+          auto& st_ref = self->state();
+          auto kernel_end = Clock::now();
+          auto iteration_end = Clock::now();
+
+          double kernel_time = std::chrono::duration<double>(kernel_end - kernel_start).count();
+          double full_time = std::chrono::duration<double>(iteration_end - iteration_start).count();
+
+          std::cout << "[INFO] Supervisor " << st_ref.id
+                    << " Iteration " << st_ref.count
+                    << " Kernel round-trip: " << kernel_time << " s, "
+                    << "Full iteration time: " << full_time << " s\n";
+
+          st_ref.kernel_times.push_back(kernel_time);
+          st_ref.full_times.push_back(full_time);
+          ++st_ref.count;
+        
+	  std::vector<int> result;
+        
+	  for (const auto& out : outputs) {
+          std::visit([&](const auto& vec) {
+            using T = std::decay_t<decltype(vec)>;
+            if constexpr (std::is_same_v<T, std::vector<int>>) {
+              result = vec;
+            }
+          }, out.data);
+        }
+
+	std::vector<int> h_ref(N*N, 0); 
+        serial_matrix_multiply(st.h_a, st.h_b, h_ref, st.N);
+        bool match = result == h_ref;
+        std::cout << (match ? "[PASS] GPU result matches reference\n"
+                            : "[FAIL] Mismatch in GPU result\n");
+
+
+          if (st_ref.count < 20) {
+            self->delayed_send(self, std::chrono::milliseconds(0), std::string("start"));
+          } else {
+            double kernel_avg = std::accumulate(st_ref.kernel_times.begin(), st_ref.kernel_times.end(), 0.0) / st_ref.kernel_times.size();
+            double full_avg = std::accumulate(st_ref.full_times.begin(), st_ref.full_times.end(), 0.0) / st_ref.full_times.size();
+
+            std::cout << "[INFO] Supervisor " << st_ref.id
+                      << " Kernel average: " << kernel_avg << " s, "
+                      << "Full iteration average: " << full_avg << " s\n";
+
+            self->send_exit(st_ref.gpu_actor, caf::exit_reason::user_shutdown);
+            self->quit();
+          }
+        },
+        [self](caf::error& err) {
+          std::cerr << "[ERROR] Kernel execution failed: " << caf::to_string(err) << std::endl;
+          self->quit(err);
+        });
+  };
+
+  return {
+    [=](const std::string& msg) {
+      if (msg == "start") {
+        run_iteration();
+      }
+    }
+  };
+}
+
+
+
+
+// Driver function
+inline void run_concurrent_mmul_validate_test(caf::actor_system& sys,
+                                     int num_supervisors,
+                                     int matrix_size) {
+  auto start = Clock::now();
+
+  for (int i = 0; i < num_supervisors; ++i) {
+    auto sup = sys.spawn(supervisor_fun_validate, i, matrix_size);
     caf::anon_send(sup, std::string("start"));
   }
 
@@ -896,7 +1023,8 @@ void caf_main(caf::actor_system& sys) {
   //run_concurrent_mmul_test(sys,200,1024);
   //run_concurrent_mmul_test_global(sys,500,1024);
  //run_concurrent_serial_mmul_test_global_with_worker(sys,2,1024);
-  run_all_concurrent_tests(sys);
+  run_concurrent_mmul_validate_test(caf::actor_system& sys,50,50);
+ //run_all_concurrent_tests(sys);
 
 }
 
