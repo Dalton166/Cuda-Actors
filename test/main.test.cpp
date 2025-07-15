@@ -648,7 +648,7 @@ caf::behavior supervisor_fun_validate(caf::stateful_actor<supervisor_state>* sel
   st.gpu_actor = caf::cuda::manager::get().spawn(matrixMulKernel, "matrixMul", dims,
                                                  in<int>{}, in<int>{}, out<int>{}, in<int>{});
 
-  auto run_iteration = [self]() {
+  auto run_iteration = [&,self]() {
     auto& st_ref = self->state();
 
     auto iteration_start = Clock::now();
@@ -666,7 +666,7 @@ caf::behavior supervisor_fun_validate(caf::stateful_actor<supervisor_state>* sel
     self->mail(st_ref.gpu_actor, arg1, arg2, arg3, arg4)
       .request(st_ref.gpu_actor, std::chrono::seconds(100))
       .then(
-        [self, iteration_start, kernel_start](const std::vector<output_buffer>&) {
+        [&,self, iteration_start, kernel_start](const std::vector<output_buffer>& outputs) {
           auto& st_ref = self->state();
           auto kernel_end = Clock::now();
           auto iteration_end = Clock::now();
@@ -694,7 +694,7 @@ caf::behavior supervisor_fun_validate(caf::stateful_actor<supervisor_state>* sel
           }, out.data);
         }
 
-	std::vector<int> h_ref(N*N, 0); 
+	std::vector<int> h_ref(st.N*st.N, 0); 
         serial_matrix_multiply(st.h_a, st.h_b, h_ref, st.N);
         bool match = result == h_ref;
         std::cout << (match ? "[PASS] GPU result matches reference\n"
@@ -1023,7 +1023,7 @@ void caf_main(caf::actor_system& sys) {
   //run_concurrent_mmul_test(sys,200,1024);
   //run_concurrent_mmul_test_global(sys,500,1024);
  //run_concurrent_serial_mmul_test_global_with_worker(sys,2,1024);
-  run_concurrent_mmul_validate_test(caf::actor_system& sys,50,50);
+  run_concurrent_mmul_validate_test(sys,50,50);
  //run_all_concurrent_tests(sys);
 
 }
