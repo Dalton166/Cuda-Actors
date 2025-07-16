@@ -184,12 +184,15 @@ private:
       if (!msg || !msg->content())
         continue;
 
+      std::cout << "Actor with id : " << actor_id << " Is resuming\n";
       current_mailbox_element(msg.get());
 
       if (msg->content().match_elements<kernel_done_atom>()) {
 	      //std::cout << "Asynchronous kernel has finished\n";
 	if (--pending_promises_ == 0 && shutdown_requested_) {
-          quit(exit_reason::user_shutdown);
+          
+      	  std::cout << "Actor with id : " << actor_id << " Is begging to shutdown\n";
+	  quit(exit_reason::user_shutdown);
           return resumable::done;
         }
         current_mailbox_element(nullptr);
@@ -225,6 +228,7 @@ private:
     if (!what)
       return false;
 
+    std::cout << "Actor with id : " << actor_id << " Is enqueuing\n";
     bool was_empty = mailbox_.empty();
     mailbox_.push(std::move(what));
     if (was_empty && sched) {
@@ -246,7 +250,8 @@ private:
   }
 
   void force_close_mailbox() override {
-    while (!mailbox_.empty()) {
+     std::cout << "Actor with id : " << actor_id  << " force mailbox called\n";
+     while (!mailbox_.empty()) {
       mailbox_.pop();
     }
   }
