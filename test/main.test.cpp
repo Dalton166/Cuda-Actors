@@ -1108,8 +1108,9 @@ caf::behavior supervisor_shared_fun(caf::stateful_actor<supervisor_state_shared>
   st.id = id;
   st.N = N;
   st.gpu_actor = shared_gpu_actor;
+  st.count = 0;
 
-  self->attach_functor([=](const caf::error& reason) {
+  self->attach_functor([&st](const caf::error& reason) {
     std::cout << "[EXIT] [Shared Supervisor] " << st.id
               << " exited, reason: " << caf::to_string(reason)
               << ", iterations: " << st.count << "\n";
@@ -1120,12 +1121,19 @@ caf::behavior supervisor_shared_fun(caf::stateful_actor<supervisor_state_shared>
     int N_val = st_ref.N;
     auto iteration_start = Clock::now();
 
+    std::cout << "[DEBUG] Preparing kernel arguments...\n";
     auto arg1 = caf::cuda::create_in_arg(global_a);
     auto arg2 = caf::cuda::create_in_arg(global_b);
-    auto arg3 = caf::cuda::create_out_arg(global_c); // Same shared output
+    auto arg3 = caf::cuda::create_out_arg(global_c); // shared output
     auto arg4 = caf::cuda::create_in_arg(N_val);
 
+    std::cout << "[DEBUG] Arguments prepared: A(" << global_a.size()
+              << "), B(" << global_b.size() << "), C(" << global_c.size()
+              << "), N(" << N_val << ")\n";
+
     auto kernel_start = Clock::now();
+
+    std::cout << "[DEBUG] Sending message via mail and requesting response...\n";
 
     self->mail(st_ref.gpu_actor, arg1, arg2, arg3, arg4)
       .request(st_ref.gpu_actor, std::chrono::seconds(1000))
@@ -1148,12 +1156,13 @@ caf::behavior supervisor_shared_fun(caf::stateful_actor<supervisor_state_shared>
           ++st_ref.count;
 
           if (st_ref.count < 20) {
+            std::cout << "[DEBUG] Scheduling next iteration...\n";
             self->delayed_send(self, std::chrono::milliseconds(0), std::string("start"));
           } else {
             double kernel_avg = std::accumulate(st_ref.kernel_times.begin(), st_ref.kernel_times.end(), 0.0) / st_ref.kernel_times.size();
             double full_avg = std::accumulate(st_ref.full_times.begin(), st_ref.full_times.end(), 0.0) / st_ref.full_times.size();
 
-            std::cout << "[INFO] [GPU SHARED] Supervisor " << st_ref.id
+            std::cout << "[RESULT] [GPU SHARED] Supervisor " << st_ref.id
                       << " Kernel average: " << kernel_avg << " s, "
                       << "Full iteration average: " << full_avg << " s\n";
 
@@ -1167,14 +1176,25 @@ caf::behavior supervisor_shared_fun(caf::stateful_actor<supervisor_state_shared>
         });
   };
 
+  // Capture run_iteration so it can be called inside the returned lambda
   return {
-    [=](const std::string& msg) {
+    [self, run_iteration = std::move(run_iteration)](const std::string& msg) {
+      std::cout << "[DEBUG] Received message on supervisor " << self->state().id
+                << ": \"" << msg << "\"\n";
       if (msg == "start") {
+        std::cout << "[INFO] [GPU SHARED] Supervisor " << self->state().id << " starting iteration "
+                  << self->state().count << "\n";
         run_iteration();
+      } else {
+        std::cout << "[WARN] [GPU SHARED] Supervisor " << self->state().id << " received unknown message: "
+                  << msg << "\n";
       }
     }
   };
 }
+
+
+
 
 
 
@@ -1237,6 +1257,8 @@ void caf_main(caf::actor_system& sys) {
   //run_concurrent_serial_mmul_test_global_with_worker(sys,1,50);
   //run_concurrent_mmul_validate_test(sys,100,60);
  //run_all_concurrent_tests(sys);
+
+  run_concurrent_mmul_test_shared_gpu(sys,2,50);
 
 }
 
