@@ -9,6 +9,9 @@
 #include <thread>
 #include <algorithm>
 #include <numeric>
+#include "caf/actor_registry.hpp"
+
+
 
 using namespace caf;
 using namespace std::chrono_literals;
@@ -542,7 +545,7 @@ caf::behavior supervisor_fun(caf::stateful_actor<supervisor_state>* self, int id
   const int BLOCKS = (N + THREADS - 1) / THREADS;
   caf::cuda::nd_range dims(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
 
-  st.gpu_actor = caf::cuda::manager::get().spawn(matrixMulKernel, "matrixMul", dims,
+  st.gpu_actor = caf::cuda::manager::get().spawnFromCUBIN("../mmul.cubin", "matrixMul", dims,
                                                  in<int>{}, in<int>{}, out<int>{}, in<int>{});
 
   auto run_iteration = [self]() {
@@ -553,7 +556,7 @@ caf::behavior supervisor_fun(caf::stateful_actor<supervisor_state>* self, int id
     auto arg1 = caf::cuda::create_in_arg(st_ref.h_a);
     auto arg2 = caf::cuda::create_in_arg(st_ref.h_b);
     auto arg3 = caf::cuda::create_out_arg(st_ref.h_c);
-    auto arg4 = caf::cuda::create_in_arg(st_ref.h_n);
+    auto arg4 = caf::cuda::create_in_arg(st_ref.N);
 
     auto kernel_start = Clock::now();
 
@@ -775,7 +778,6 @@ std::vector<int> global_c; //yes each actor gets the same output buffer
 			   //this shouldnt matter anyways due to just performance testing
 			   //and gpu actors dont share state
 
-// === New Supervisor (uses global matrix data) ===
 caf::behavior supervisor_global_fun(caf::stateful_actor<supervisor_state>* self, int id, int N) {
   auto& st = self->state();
   st.id = id;
@@ -785,8 +787,55 @@ caf::behavior supervisor_global_fun(caf::stateful_actor<supervisor_state>* self,
   const int BLOCKS = (N + THREADS - 1) / THREADS;
   caf::cuda::nd_range dims(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
 
-  st.gpu_actor = caf::cuda::manager::get().spawnFromCUBIN("../mmul.cubin", "matrixMul", dims,
-                                                 in<int>{}, in<int>{}, out<int>{}, in<int>{});
+  st.gpu_actor = caf::cuda::manager::get().spawnFromCUBIN(
+    "../mmul.cubin", "matrixMul", dims,
+    in<int>{}, in<int>{}, out<int>{}, in<int>{}
+  );
+
+  // === Register lifecycle hooks only once ===
+
+  self->attach_functor([=](const caf::error& reason) {
+    std::cout << "[EXIT] Supervisor " << self->state().id
+              << " died with reason: " << caf::to_string(reason)
+              << ", after iteration: " << self->state().count << "\n";
+  });
+
+ self->set_exit_handler([=](const caf::exit_msg& msg) {
+  std::cout << "[EXIT HANDLER] Supervisor " << self->state().id
+            << " received exit from actor: " << to_string(msg.source)
+            << ", reason: " << caf::to_string(msg.reason) << "\n";
+
+  if (msg.source == st.gpu_actor) {
+    std::cerr << "[ERROR] GPU actor crashed or terminated unexpectedly!\n";
+  }
+});
+
+
+
+self->monitor(st.gpu_actor);  // detect if GPU actor dies unexpectedly
+
+auto gpu = st.gpu_actor;
+self->attach_functor([gpu](const caf::error& reason) {
+    std::cout << "[Supervisor] GPU actor exited with reason: " << caf::to_string(reason) << "\n";
+});
+
+
+// And handle the exit message from that GPU actor:
+self->set_exit_handler([gpu](const caf::exit_msg& msg) {
+    if (msg.source == gpu) {
+        std::cerr << "[Supervisor] GPU actor terminated! Reason: " << caf::to_string(msg.reason) << "\n";
+    }
+});
+
+
+
+self->system().registry().put(st.gpu_actor.id(), st.gpu_actor);
+self->attach_functor([=](const caf::error& reason) {
+  std::cout << "[GPU Actor Terminated] Reason: " << to_string(reason) << "\n";
+});
+
+
+
 
   auto run_iteration = [self]() {
     auto& st_ref = self->state();
@@ -797,7 +846,7 @@ caf::behavior supervisor_global_fun(caf::stateful_actor<supervisor_state>* self,
     auto arg1 = caf::cuda::create_in_arg(global_a);
     auto arg2 = caf::cuda::create_in_arg(global_b);
     auto arg3 = caf::cuda::create_out_arg(global_c);
-    auto arg4 = caf::cuda::create_in_arg(N_val); // local N
+    auto arg4 = caf::cuda::create_in_arg(N_val);
 
     auto kernel_start = Clock::now();
 
@@ -806,6 +855,7 @@ caf::behavior supervisor_global_fun(caf::stateful_actor<supervisor_state>* self,
       .then(
         [self, iteration_start, kernel_start](const std::vector<output_buffer>&) {
           auto& st_ref = self->state();
+
           auto kernel_end = Clock::now();
           auto iteration_end = Clock::now();
 
@@ -822,21 +872,33 @@ caf::behavior supervisor_global_fun(caf::stateful_actor<supervisor_state>* self,
           ++st_ref.count;
 
           if (st_ref.count < 20) {
-            self->delayed_send(self, std::chrono::milliseconds(0), std::string("start"));
-          } else {
-            double kernel_avg = std::accumulate(st_ref.kernel_times.begin(), st_ref.kernel_times.end(), 0.0) / st_ref.kernel_times.size();
-            double full_avg = std::accumulate(st_ref.full_times.begin(), st_ref.full_times.end(), 0.0) / st_ref.full_times.size();
+            std::cout << "[DEBUG] Supervisor " << st_ref.id
+                      << " scheduling iteration " << st_ref.count << "\n";
+          self->mail(std::string("start")).send(self);
+
+	  } else {
+            double kernel_avg = std::accumulate(
+              st_ref.kernel_times.begin(), st_ref.kernel_times.end(), 0.0
+            ) / st_ref.kernel_times.size();
+
+            double full_avg = std::accumulate(
+              st_ref.full_times.begin(), st_ref.full_times.end(), 0.0
+            ) / st_ref.full_times.size();
 
             std::cout << "[INFO] [GPU GLOBAL] Supervisor " << st_ref.id
                       << " Kernel average: " << kernel_avg << " s, "
                       << "Full iteration average: " << full_avg << " s\n";
+
+            std::cout << "[DEBUG] Supervisor " << st_ref.id
+                      << " quitting after iteration " << st_ref.count << "\n";
 
             self->send_exit(st_ref.gpu_actor, caf::exit_reason::user_shutdown);
             self->quit();
           }
         },
         [self](caf::error& err) {
-          std::cerr << "[ERROR] [GPU GLOBAL] Kernel execution failed: " << caf::to_string(err) << std::endl;
+          std::cerr << "[ERROR] [GPU GLOBAL] Kernel execution failed: "
+                    << caf::to_string(err) << "\n";
           self->quit(err);
         });
   };
@@ -849,6 +911,7 @@ caf::behavior supervisor_global_fun(caf::stateful_actor<supervisor_state>* self,
     }
   };
 }
+
 
 // === New Test Function ===
 inline void run_concurrent_mmul_test_global(caf::actor_system& sys,
@@ -1024,6 +1087,142 @@ void run_all_concurrent_tests(caf::actor_system& sys) {
 }
 
 
+
+struct supervisor_state_shared {
+  std::vector<int> h_a;
+  std::vector<int> h_b;
+  std::vector<int> h_c;
+  std::vector<int> h_n;
+
+  std::vector<double> kernel_times;
+  std::vector<double> full_times;
+  caf::actor gpu_actor;
+  int count = 0;
+  int id = 0;
+  int N = 0;
+};
+
+caf::behavior supervisor_shared_fun(caf::stateful_actor<supervisor_state_shared>* self,
+                                    int id, int N, caf::actor shared_gpu_actor) {
+  auto& st = self->state();
+  st.id = id;
+  st.N = N;
+  st.gpu_actor = shared_gpu_actor;
+
+  self->attach_functor([=](const caf::error& reason) {
+    std::cout << "[EXIT] [Shared Supervisor] " << st.id
+              << " exited, reason: " << caf::to_string(reason)
+              << ", iterations: " << st.count << "\n";
+  });
+
+  auto run_iteration = [self]() {
+    auto& st_ref = self->state();
+    int N_val = st_ref.N;
+    auto iteration_start = Clock::now();
+
+    auto arg1 = caf::cuda::create_in_arg(global_a);
+    auto arg2 = caf::cuda::create_in_arg(global_b);
+    auto arg3 = caf::cuda::create_out_arg(global_c); // Same shared output
+    auto arg4 = caf::cuda::create_in_arg(N_val);
+
+    auto kernel_start = Clock::now();
+
+    self->mail(st_ref.gpu_actor, arg1, arg2, arg3, arg4)
+      .request(st_ref.gpu_actor, std::chrono::seconds(1000))
+      .then(
+        [self, iteration_start, kernel_start](const std::vector<output_buffer>&) {
+          auto& st_ref = self->state();
+          auto kernel_end = Clock::now();
+          auto iteration_end = Clock::now();
+
+          double kernel_time = std::chrono::duration<double>(kernel_end - kernel_start).count();
+          double full_time = std::chrono::duration<double>(iteration_end - iteration_start).count();
+
+          std::cout << "[INFO] [GPU SHARED] Supervisor " << st_ref.id
+                    << " Iteration " << st_ref.count
+                    << " Kernel round-trip: " << kernel_time << " s, "
+                    << "Full iteration time: " << full_time << " s\n";
+
+          st_ref.kernel_times.push_back(kernel_time);
+          st_ref.full_times.push_back(full_time);
+          ++st_ref.count;
+
+          if (st_ref.count < 20) {
+            self->delayed_send(self, std::chrono::milliseconds(0), std::string("start"));
+          } else {
+            double kernel_avg = std::accumulate(st_ref.kernel_times.begin(), st_ref.kernel_times.end(), 0.0) / st_ref.kernel_times.size();
+            double full_avg = std::accumulate(st_ref.full_times.begin(), st_ref.full_times.end(), 0.0) / st_ref.full_times.size();
+
+            std::cout << "[INFO] [GPU SHARED] Supervisor " << st_ref.id
+                      << " Kernel average: " << kernel_avg << " s, "
+                      << "Full iteration average: " << full_avg << " s\n";
+
+            self->quit();
+          }
+        },
+        [self](caf::error& err) {
+          std::cerr << "[ERROR] [GPU SHARED] Kernel execution failed: "
+                    << caf::to_string(err) << "\n";
+          self->quit(err);
+        });
+  };
+
+  return {
+    [=](const std::string& msg) {
+      if (msg == "start") {
+        run_iteration();
+      }
+    }
+  };
+}
+
+
+
+
+inline void run_concurrent_mmul_test_shared_gpu(caf::actor_system& sys,
+                                                int num_supervisors,
+                                                int matrix_size) {
+  auto start = Clock::now();
+
+  int N = matrix_size;
+  size_t matrix_elements = static_cast<size_t>(N) * N;
+
+  // Global inputs
+  global_a.assign(matrix_elements, 1);
+  global_b.assign(matrix_elements, 2);
+  global_c.assign(matrix_elements, 0);
+
+  const int THREADS = 32;
+  const int BLOCKS = (N + THREADS - 1) / THREADS;
+  caf::cuda::nd_range dims(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
+
+  caf::actor shared_gpu_actor = caf::cuda::manager::get().spawnFromCUBIN(
+    "../mmul.cubin", "matrixMul", dims,
+    in<int>{}, in<int>{}, out<int>{}, in<int>{}
+  );
+
+  sys.registry().put(shared_gpu_actor.id(), shared_gpu_actor);
+
+  // Launch supervisors sharing the same GPU actor
+  for (int i = 0; i < num_supervisors; ++i) {
+    auto sup = sys.spawn(supervisor_shared_fun, i, N, shared_gpu_actor);
+    caf::anon_send(sup, std::string("start"));
+  }
+
+  sys.await_all_actors_done();
+
+  auto end = Clock::now();
+  std::chrono::duration<double> duration = end - start;
+  std::cout << "[TIMER] run_concurrent_mmul_test_shared_gpu took: "
+            << duration.count() << " seconds\n";
+
+  // Send exit to shared GPU actor after all supervisors finish
+  anon_send_exit(shared_gpu_actor, caf::exit_reason::user_shutdown);
+}
+
+
+
+
 void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
   //test_main(sys);
@@ -1033,9 +1232,9 @@ void caf_main(caf::actor_system& sys) {
    //test_mmul_from_cubin(sys,1024);
    //test_mmul_plain(sys,1024);
   //test_mmul_large(sys);
-  //run_concurrent_mmul_test(sys,200,1024);
-  //run_concurrent_mmul_test_global(sys,1,1024);
- //run_concurrent_serial_mmul_test_global_with_worker(sys,2,1024);
+  //run_concurrent_mmul_test(sys,1,50);
+   //run_concurrent_mmul_test_global(sys,1,50);
+  //run_concurrent_serial_mmul_test_global_with_worker(sys,1,50);
   //run_concurrent_mmul_validate_test(sys,100,60);
  //run_all_concurrent_tests(sys);
 
