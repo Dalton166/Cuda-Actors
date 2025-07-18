@@ -1348,7 +1348,7 @@ caf::behavior supervisor_global_sync_fun(caf::stateful_actor<supervisor_sync_sta
         run_iteration();
       }
     },
-    [=](const caf::actor&, const std::vector<output_buffer>&) {
+    [=](const std::vector<output_buffer>&) {
       auto& st_ref = self->state();
 
       auto kernel_end = Clock::now();
