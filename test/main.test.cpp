@@ -1458,7 +1458,7 @@ void caf_main(caf::actor_system& sys) {
   //run_concurrent_mmul_validate_test(sys,100,60);
  //run_all_concurrent_tests(sys);
 
-  run_concurrent_mmul_test_global_sync(sys.1,50);
+  run_concurrent_mmul_test_global_sync(sys,1,50);
   //run_concurrent_mmul_test_shared_gpu(sys,2,50);
 
 }
