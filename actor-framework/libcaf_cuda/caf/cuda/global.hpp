@@ -14,9 +14,6 @@
 #include <caf/type_id.hpp>
 #include <caf/anon_mail.hpp>
 
-
-
-
 //a strange fix required in order to get the .so files to become viewable for binaries
 //linking against them, if this is not defined with classes you want viewable then
 //the linker will complain
@@ -25,8 +22,6 @@
 #else
   #define CAF_CUDA_EXPORT __attribute__((visibility("default")))
 #endif
-
-
 
 //memory access flags, required for identifying which
 //gpu buffers are input and output buffers
@@ -45,31 +40,132 @@ void inline check(CUresult result, const char* msg) {
     }
 }
 
-
-
-/*
+// Serialization support for in<T>, out<T>, and in_out<T>
 template <class Inspector, typename T>
 bool inspect(Inspector& f, in<T>& x) {
-  return f.object(x).fields(f.field("buffer", x.buffer));
+  auto is_scalar = x.is_scalar();
+  if constexpr (Inspector::is_loading) {
+    if (is_scalar) {
+      T val;
+      if (!f.object(x).fields(f.field("is_scalar", is_scalar), f.field("value", val))) {
+        return false;
+      }
+      x = in<T>(val);
+    } else {
+      std::vector<T> buf;
+      if (!f.object(x).fields(f.field("is_scalar", is_scalar), f.field("buffer", buf))) {
+        return false;
+      }
+      x = in<T>(buf);
+    }
+  } else {
+    if (is_scalar) {
+      auto val = x.getscalar();
+      return f.object(x).fields(f.field("is_scalar", is_scalar), f.field("value", val));
+    } else {
+      auto buf = x.get_buffer();
+      return f.object(x).fields(f.field("is_scalar", is_scalar), f.field("buffer", buf));
+    }
+  }
+  return true;
 }
 
 template <class Inspector, typename T>
 bool inspect(Inspector& f, out<T>& x) {
-  return f.object(x).fields(f.field("buffer", x.buffer));
+  auto is_scalar = x.is_scalar();
+  if constexpr (Inspector::is_loading) {
+    if (is_scalar) {
+      T val;
+      if (!f.object(x).fields(f.field("is_scalar", is_scalar), f.field("value", val))) {
+        return false;
+      }
+      x = out<T>(val);
+    } else {
+      std::vector<T> buf;
+      if (!f.object(x).fields(f.field("is_scalar", is_scalar), f.field("buffer", buf))) {
+        return false;
+      }
+      x = out<T>(buf);
+    }
+  } else {
+    if (is_scalar) {
+      auto val = x.getscalar();
+      return f.object(x).fields(f.field("is_scalar", is_scalar), f.field("value", val));
+    } else {
+      auto buf = x.get_buffer();
+      return f.object(x).fields(f.field("is_scalar", is_scalar), f.field("buffer", buf));
+    }
+  }
+  return true;
 }
 
 template <class Inspector, typename T>
 bool inspect(Inspector& f, in_out<T>& x) {
-  return f.object(x).fields(f.field("buffer", x.buffer));
+  auto is_scalar = x.is_scalar();
+  if constexpr (Inspector::is_loading) {
+    if (is_scalar) {
+      T val;
+      if (!f.object(x).fields(f.field("is_scalar", is_scalar), f.field("value", val))) {
+        return false;
+      }
+      x = in_out<T>(val);
+    } else {
+      std::vector<T> buf;
+      if (!f.object(x).fields(f.field("is_scalar", is_scalar), f.field("buffer", buf))) {
+        return false;
+      }
+      x = in_out<T>(buf);
+    }
+  } else {
+    if (is_scalar) {
+      auto val = x.getscalar();
+      return f.object(x).fields(f.field("is_scalar", is_scalar), f.field("value", val));
+    } else {
+      auto buf = x.get_buffer();
+      return f.object(x).fields(f.field("is_scalar", is_scalar), f.field("buffer", buf));
+    }
+  }
+  return true;
 }
-*/
 
-/*
+// Serialization support for output_buffer (global namespace)
 template <class Inspector>
 bool inspect(Inspector& f, output_buffer& x) {
   return f.object(x).fields(f.field("data", x.data));
 }
-*/
+
+// Serialization support for std::vector<output_buffer> (global namespace)
+template <class Inspector>
+bool inspect(Inspector& f, std::vector<output_buffer>& x) {
+  return f.object(x).fields(f.field("elements", x));
+}
+
+// Serialization support for raw vector types
+template <class Inspector>
+bool inspect(Inspector& f, std::vector<char>& x) {
+  return f.object(x).fields(f.field("elements", x));
+}
+
+template <class Inspector>
+bool inspect(Inspector& f, std::vector<int>& x) {
+  return f.object(x).fields(f.field("elements", x));
+}
+
+template <class Inspector>
+bool inspect(Inspector& f, std::vector<float>& x) {
+  return f.object(x).fields(f.field("elements", x));
+}
+
+template <class Inspector>
+bool inspect(Inspector& f, std::vector<double>& x) {
+  return f.object(x).fields(f.field("elements", x));
+}
+
+// Serialization support for buffer_variant (global namespace)
+template <class Inspector>
+bool inspect(Inspector& f, buffer_variant& x) {
+  return f.apply(x);
+}
 
 // Check CUDA errors macro
 #define CHECK_CUDA(call) \
@@ -81,38 +177,6 @@ bool inspect(Inspector& f, output_buffer& x) {
 #define CHECK_NVRTC(call) \
     do { nvrtcResult res = call; if (res != NVRTC_SUCCESS) { \
         std::cerr << "NVRTC Error: " << nvrtcGetErrorString(res) << std::endl; exit(1); }} while(0)
-
-
-// Allow unsafe message passing for performance-critical non-serialized types
-
-// Raw vectors
-CAF_ALLOW_UNSAFE_MESSAGE_TYPE(std::vector<char>)
-CAF_ALLOW_UNSAFE_MESSAGE_TYPE(std::vector<int>)
-CAF_ALLOW_UNSAFE_MESSAGE_TYPE(std::vector<float>)
-CAF_ALLOW_UNSAFE_MESSAGE_TYPE(std::vector<double>)
-
-// Buffer wrappers
-CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in<char>)
-CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in<int>)
-CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in<float>)
-CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in<double>)
-
-CAF_ALLOW_UNSAFE_MESSAGE_TYPE(out<char>)
-CAF_ALLOW_UNSAFE_MESSAGE_TYPE(out<int>)
-CAF_ALLOW_UNSAFE_MESSAGE_TYPE(out<float>)
-CAF_ALLOW_UNSAFE_MESSAGE_TYPE(out<double>)
-
-CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in_out<char>)
-CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in_out<int>)
-CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in_out<float>)
-CAF_ALLOW_UNSAFE_MESSAGE_TYPE(in_out<double>)
-
-// output_buffer type that holds a variant of vectors
-CAF_ALLOW_UNSAFE_MESSAGE_TYPE(output_buffer)
-CAF_ALLOW_UNSAFE_MESSAGE_TYPE(std::vector<output_buffer>)
-
-
-
 
 // CAF type ID registration
 #include <caf/type_id.hpp>
@@ -129,17 +193,13 @@ CAF_BEGIN_TYPE_ID_BLOCK(cuda, caf::first_custom_type_id)
   CAF_ADD_TYPE_ID(cuda, (in_out<int>))
   CAF_ADD_TYPE_ID(cuda, (std::vector<float>))
   CAF_ADD_TYPE_ID(cuda, (std::vector<double>))
-
   CAF_ADD_TYPE_ID(cuda, (buffer_variant))
-
   CAF_ADD_TYPE_ID(cuda, (output_buffer))
   CAF_ADD_TYPE_ID(cuda, (std::vector<output_buffer>))
-
   // Your atoms — atoms count as types too!
   CAF_ADD_ATOM(cuda, kernel_done_atom)
 
 CAF_END_TYPE_ID_BLOCK(cuda)
-
 
 namespace caf::cuda {
 
