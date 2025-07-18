@@ -89,7 +89,8 @@ public:
 
   //again this relies on the knowledge that launch kernel is synchronous
   //it should not be, this should be deleted eventually but response promise is 
-  //causing too much bugs 
+  //causing too much bugs
+  //
   void run_kernel_synchronous(caf::actor sender, Ts&... xs) {
     pending_promises_++;
     using command_t = command<caf::actor, raw_t<Ts>...>;
