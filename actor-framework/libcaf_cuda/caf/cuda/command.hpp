@@ -26,6 +26,7 @@ namespace caf::cuda {
 template <class Actor, class... Ts>
 class command : public ref_counted {
 public:
+  // Original constructor with response_promise for backwards compatibility
   template <typename... Us>
   command(caf::response_promise promise,
           caf::actor self,
@@ -42,31 +43,44 @@ public:
     static_assert(sizeof...(Us) == sizeof...(Ts), "Argument count mismatch");
   }
 
-  //TODO, fix compiler errors
-  command(program_ptr program, int id)
-  : program_(std::move(program)),
-    actor_id(id) {
-  // Instruct device to release any per-actor stream resources
-  if (program_) {
-    if (auto dev = program_->get_device()) {
-      dev->release_stream_for_actor(actor_id);
-    }
+  // New synchronous constructor
+  // this is really only here since there may be an issue of
+  // response promise sliently failing 
+  // this should eventually be removed 
+  // since it relies on the knowledge that the implementation of 
+  // launch_kernel is synchronous, even though it is not supposed to be
+  template <typename... Us>
+  command(caf::actor sender,
+          caf::actor self,
+          program_ptr program,
+          nd_range dims,
+          int id,
+          Us&&... xs)
+    : sender_(std::move(sender)),
+      self_(std::move(self)),
+      program_(std::move(program)),
+      dims_(dims),
+      actor_id(id),
+      mem_refs(convert_data_to_args(std::forward<Us>(xs)...)) {
+    static_assert(sizeof...(Us) == sizeof...(Ts), "Argument count mismatch");
   }
-}
-
 
   ~command() = default;
 
   void enqueue() {
     auto outputs = launch_kernel(program_, dims_, mem_refs, actor_id);
-    rp.deliver(std::move(outputs));
+    // Check if sender_ is valid (non-null) to determine which messaging approach to use
+    if (sender_) {
+      self_->mail(std::move(outputs)).send(sender_);
+    } else {
+      rp.deliver(std::move(outputs));
+    }
 
     for_each_tuple(mem_refs, [](auto& mem) {
       if (mem)
         mem->reset();
     });
 
-    //anon_send(self_, kernel_done_atom_v);
     anon_mail(kernel_done_atom_v).send(self_);
   }
 
@@ -79,6 +93,7 @@ public:
 private:
   program_ptr program_;
   caf::response_promise rp;
+  caf::actor sender_;
   caf::actor self_;
   nd_range dims_;
   std::tuple<mem_ptr<raw_t<Ts>>...> mem_refs;
@@ -159,4 +174,3 @@ inline void intrusive_ptr_release(command<Actor, Ts...>* ptr) {
 }
 
 } // namespace caf::cuda
-
