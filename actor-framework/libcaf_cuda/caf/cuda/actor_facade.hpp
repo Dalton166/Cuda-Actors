@@ -158,8 +158,10 @@ private:
       auto msg = std::move(mailbox_.front());
       mailbox_.pop();
 
-      if (!msg || !msg->content())
-        continue;
+      if (!msg || !msg->content().ptr()) { 
+	      std::cout << "Warning gpu actor with id " << actor_id << "Received a message with no content, dropping message\n";
+	      continue;
+      }
 
       current_mailbox_element(msg.get());
       if (msg->content().match_elements<kernel_done_atom>()) {
