@@ -64,64 +64,43 @@ public:
       config_(std::move(cfg)),
       program_(std::move(prog)),
       dims_(nd) {
-	      //std::cout << "Creating actor facade\n";
   }
 
   ~actor_facade() {
- 
-  program_->get_device()->release_stream_for_actor(actor_id);
-	  //std::cout << "Destroying gpu actor\n";
+    program_->get_device()->release_stream_for_actor(actor_id);
   }
 
-
   void create_command(program_ptr program, Ts&&... xs) {
-  pending_promises_++;
-
-  // Log dims_ before command creation
-  /*
-  std::cout << "[LOG] create_command: BEFORE make_counted\n";
-  std::cout << "[LOG] dims_.grid = (" 
-            << dims_.getGridDimX() << ", " 
-            << dims_.getGridDimY() << ", " 
-            << dims_.getGridDimZ() << ")\n";
-  std::cout << "[LOG] dims_.block = (" 
-            << dims_.getBlockDimX() << ", " 
-            << dims_.getBlockDimY() << ", " 
-            << dims_.getBlockDimZ() << ")\n";
-
-	    */
-  // Optional: log types and values of arguments
-  //std::cout << "[LOG] Argument count: " << sizeof...(xs) << "\n";
-  //(std::cout << ... << ("[LOG] Arg: " + to_string_debug(xs) + "\n")); // see helper below
-
-  using command_t = command<caf::actor, raw_t<Ts>...>;
-  auto cmd = make_counted<command_t>(
-    make_response_promise(),
-    caf::actor_cast<caf::actor>(this),
-    program,
-    dims_,
-    actor_id,
-    std::forward<Ts>(xs)...);
-
-  cmd->enqueue();
-  // Log dims_ after command enqueue
-  /*
-  std::cout << "[LOG] create_command: AFTER make_counted, after enqueue\n";
-  std::cout << "[LOG] dims_.grid = (" 
-            << dims_.getGridDimX() << ", " 
-            << dims_.getGridDimY() << ", " 
-            << dims_.getGridDimZ() << ")\n";
-  std::cout << "[LOG] dims_.block = (" 
-            << dims_.getBlockDimX() << ", " 
-            << dims_.getBlockDimY() << ", " 
-            << dims_.getBlockDimZ() << ")\n";
-
-	   */
-}
-
+    pending_promises_++;
+    using command_t = command<caf::actor, raw_t<Ts>...>;
+    auto cmd = make_counted<command_t>(
+      make_response_promise(),
+      caf::actor_cast<caf::actor>(this),
+      program,
+      dims_,
+      actor_id,
+      std::forward<Ts>(xs)...);
+    cmd->enqueue();
+  }
 
   void run_kernel(Ts&... xs) {
     create_command(program_, std::forward<Ts>(xs)...);
+  }
+
+  //again this relies on the knowledge that launch kernel is synchronous
+  //it should not be, this should be deleted eventually but response promise is 
+  //causing too much bugs 
+  void run_kernel_synchronous(caf::actor sender, Ts&... xs) {
+    pending_promises_++;
+    using command_t = command<caf::actor, raw_t<Ts>...>;
+    auto cmd = make_counted<command_t>(
+      sender,
+      caf::actor_cast<caf::actor>(this),
+      program_,
+      dims_,
+      actor_id,
+      std::forward<Ts>(xs)...);
+    cmd->enqueue();
   }
 
 private:
@@ -133,34 +112,31 @@ private:
   std::atomic<bool> shutdown_requested_ = false;
   int actor_id = generate_id();
 
-
   int generate_id() {
     static std::random_device rd;
     static std::mt19937 gen(rd());
     static std::uniform_int_distribution<int> distrib(INT_MIN, INT_MAX);
-
     return distrib(gen);
-}
+  }
 
   bool handle_message(const message& msg) {
     if (!msg.types().empty() && msg.types()[0] == caf::type_id_v<caf::actor>) {
       auto sender = msg.get_as<caf::actor>(0);
       if (msg.match_elements<caf::actor, Ts...>()) {
-           //std::cout << "Wrapper types recognized, running kernel\n";
-	   return unpack_and_run_wrapped(sender, msg, std::index_sequence_for<Ts...>{});
+        return unpack_and_run_wrapped(sender, msg, std::index_sequence_for<Ts...>{});
       }
       if (msg.match_elements<caf::actor, raw_t<Ts>...>()) {
         return unpack_and_run(sender, msg, std::index_sequence_for<Ts...>{});
       }
     }
-    std::cout << "[WARNING], message format not recognized by actor facde, droppping message\n";
+    std::cout << "[WARNING], message format not recognized by actor facade, dropping message\n";
     return false;
   }
 
   template <std::size_t... Is>
   bool unpack_and_run_wrapped(caf::actor sender, const message& msg, std::index_sequence<Is...>) {
     auto wrapped = std::make_tuple(msg.get_as<Ts>(Is + 1)...);
-    run_kernel(std::get<Is>(wrapped)...);
+    run_kernel_synchronous(sender, std::get<Is>(wrapped)...);
     return true;
   }
 
@@ -168,7 +144,7 @@ private:
   bool unpack_and_run(caf::actor sender, const message& msg, std::index_sequence<Is...>) {
     auto unpacked = std::make_tuple(msg.get_as<raw_t<Ts>>(Is + 1)...);
     auto wrapped = std::make_tuple(Ts(std::get<Is>(unpacked))...);
-    run_kernel(std::get<Is>(wrapped)...);
+    run_kernel_synchronous(sender, std::get<Is>(wrapped)...);
     return true;
   }
 
@@ -184,15 +160,10 @@ private:
       if (!msg || !msg->content())
         continue;
 
-      std::cout << "Actor with id : " << actor_id << " Is resuming\n";
       current_mailbox_element(msg.get());
-
       if (msg->content().match_elements<kernel_done_atom>()) {
-	      //std::cout << "Asynchronous kernel has finished\n";
-	if (--pending_promises_ == 0 && shutdown_requested_) {
-          
-      	  std::cout << "Actor with id : " << actor_id << " Is begging to shutdown\n";
-	  quit(exit_reason::user_shutdown);
+        if (--pending_promises_ == 0 && shutdown_requested_) {
+          quit(exit_reason::user_shutdown);
           return resumable::done;
         }
         current_mailbox_element(nullptr);
@@ -200,9 +171,7 @@ private:
       }
 
       if (msg->content().match_elements<exit_msg>()) {
-        
-	std::cout << "Exit message received\n";
-	auto exit = msg->content().get_as<exit_msg>(0);
+        auto exit = msg->content().get_as<exit_msg>(0);
         shutdown_requested_ = true;
         if (pending_promises_ == 0) {
           quit(static_cast<exit_reason>(exit.reason.code()));
@@ -228,7 +197,6 @@ private:
     if (!what)
       return false;
 
-    std::cout << "Actor with id : " << actor_id << " Is enqueuing\n";
     bool was_empty = mailbox_.empty();
     mailbox_.push(std::move(what));
     if (was_empty && sched) {
@@ -250,8 +218,8 @@ private:
   }
 
   void force_close_mailbox() override {
-     std::cout << "Actor with id : " << actor_id  << " force mailbox called\n";
-     while (!mailbox_.empty()) {
+    std::cout << "Actor with id : " << actor_id  << " force mailbox called\n";
+    while (!mailbox_.empty()) {
       mailbox_.pop();
     }
   }
@@ -263,4 +231,3 @@ private:
 };
 
 } // namespace caf::cuda
-
