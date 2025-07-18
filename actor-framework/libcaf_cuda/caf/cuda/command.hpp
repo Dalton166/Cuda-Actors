@@ -71,7 +71,7 @@ public:
     auto outputs = launch_kernel(program_, dims_, mem_refs, actor_id);
     // Check if sender_ is valid (non-null) to determine which messaging approach to use
     if (sender_) {
-      self_->mail(std::move(outputs)).send(sender_);
+      anon_mail(std::move(outputs)).send(sender_);
     } else {
       rp.deliver(std::move(outputs));
     }
