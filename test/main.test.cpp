@@ -1,3 +1,4 @@
+
 #include "main.test.hpp"
 
 #include <caf/all.hpp>
@@ -1108,7 +1109,6 @@ caf::behavior supervisor_shared_fun(caf::stateful_actor<supervisor_state_shared>
   st.id = id;
   st.N = N;
   st.gpu_actor = shared_gpu_actor;
-  st.count = 0;
 
   self->attach_functor([&st](const caf::error& reason) {
     std::cout << "[EXIT] [Shared Supervisor] " << st.id
@@ -1121,19 +1121,22 @@ caf::behavior supervisor_shared_fun(caf::stateful_actor<supervisor_state_shared>
     int N_val = st_ref.N;
     auto iteration_start = Clock::now();
 
-    std::cout << "[DEBUG] Preparing kernel arguments...\n";
+    std::cout << "[DEBUG] [Supervisor " << st_ref.id << "] Preparing kernel arguments...\n";
+
     auto arg1 = caf::cuda::create_in_arg(global_a);
     auto arg2 = caf::cuda::create_in_arg(global_b);
-    auto arg3 = caf::cuda::create_out_arg(global_c); // shared output
+    auto arg3 = caf::cuda::create_out_arg(global_c); // Shared output buffer
     auto arg4 = caf::cuda::create_in_arg(N_val);
 
-    std::cout << "[DEBUG] Arguments prepared: A(" << global_a.size()
-              << "), B(" << global_b.size() << "), C(" << global_c.size()
-              << "), N(" << N_val << ")\n";
+    std::cout << "[DEBUG] [Supervisor " << st_ref.id << "] Arguments prepared: "
+              << "A(" << global_a.size() << "), "
+              << "B(" << global_b.size() << "), "
+              << "C(" << global_c.size() << "), "
+              << "N(" << N_val << ")\n";
+
+    std::cout << "[DEBUG] [Supervisor " << st_ref.id << "] Sending message via mail and requesting response...\n";
 
     auto kernel_start = Clock::now();
-
-    std::cout << "[DEBUG] Sending message via mail and requesting response...\n";
 
     self->mail(st_ref.gpu_actor, arg1, arg2, arg3, arg4)
       .request(st_ref.gpu_actor, std::chrono::seconds(1000))
@@ -1156,7 +1159,7 @@ caf::behavior supervisor_shared_fun(caf::stateful_actor<supervisor_state_shared>
           ++st_ref.count;
 
           if (st_ref.count < 20) {
-            std::cout << "[DEBUG] Scheduling next iteration...\n";
+            std::cout << "[DEBUG] [Supervisor " << st_ref.id << "] Scheduling next iteration...\n";
             self->delayed_send(self, std::chrono::milliseconds(0), std::string("start"));
           } else {
             double kernel_avg = std::accumulate(st_ref.kernel_times.begin(), st_ref.kernel_times.end(), 0.0) / st_ref.kernel_times.size();
@@ -1170,28 +1173,27 @@ caf::behavior supervisor_shared_fun(caf::stateful_actor<supervisor_state_shared>
           }
         },
         [self](caf::error& err) {
-          std::cerr << "[ERROR] [GPU SHARED] Kernel execution failed: "
+          auto& st_ref = self->state();
+          std::cerr << "[ERROR] [GPU SHARED] Supervisor " << st_ref.id
+                    << " Kernel execution failed: "
                     << caf::to_string(err) << "\n";
           self->quit(err);
         });
   };
 
-  // Capture run_iteration so it can be called inside the returned lambda
   return {
-    [self, run_iteration = std::move(run_iteration)](const std::string& msg) {
-      std::cout << "[DEBUG] Received message on supervisor " << self->state().id
-                << ": \"" << msg << "\"\n";
+    [run_iteration, self](const std::string& msg) {
+      auto& st_ref = self->state();
       if (msg == "start") {
-        std::cout << "[INFO] [GPU SHARED] Supervisor " << self->state().id << " starting iteration "
-                  << self->state().count << "\n";
+        std::cout << "[DEBUG] [Supervisor " << st_ref.id << "] Received start message\n";
+        std::cout << "[INFO] [GPU SHARED] Supervisor " << st_ref.id
+                  << " starting iteration " << st_ref.count << "\n";
         run_iteration();
-      } else {
-        std::cout << "[WARN] [GPU SHARED] Supervisor " << self->state().id << " received unknown message: "
-                  << msg << "\n";
       }
     }
   };
 }
+
 
 
 
@@ -1242,6 +1244,204 @@ inline void run_concurrent_mmul_test_shared_gpu(caf::actor_system& sys,
 
 
 
+#pragma once
+
+#include <vector>
+#include <chrono>
+#include <numeric>
+#include <iostream>
+#include <random>
+#include <queue>
+
+#include <caf/all.hpp>
+#include "caf/cuda/actor_facade.hpp"
+#include "caf/cuda/command.hpp"
+#include "caf/cuda/manager.hpp"
+
+using Clock = std::chrono::high_resolution_clock;
+
+// === Global matrices for shared use ===
+                           // GPU actors don't share state, so this is fine
+
+struct supervisor_sync_state {
+  int id = 0;
+  int N = 0;
+  int count = 0;
+  std::vector<double> kernel_times;
+  std::vector<double> full_times;
+  caf::actor gpu_actor;
+  // Queue to store start times for each iteration
+  std::queue<std::pair<Clock::time_point, Clock::time_point>> start_times; // {iteration_start, kernel_start}
+};
+
+caf::behavior supervisor_global_sync_fun(caf::stateful_actor<supervisor_sync_state>* self, int id, int N) {
+  auto& st = self->state();
+  st.id = id;
+  st.N = N;
+
+  const int THREADS = 32;
+  const int BLOCKS = (N + THREADS - 1) / THREADS;
+  caf::cuda::nd_range dims(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
+
+  st.gpu_actor = caf::cuda::manager::get().spawnFromCUBIN(
+    "../mmul.cubin", "matrixMul", dims,
+    in<int>{}, in<int>{}, out<int>{}, in<int>{}
+  );
+
+  // === Register lifecycle hooks only once ===
+  self->attach_functor([=](const caf::error& reason) {
+    std::cout << "[EXIT] Supervisor " << self->state().id
+              << " died with reason: " << caf::to_string(reason)
+              << ", after iteration: " << self->state().count << "\n";
+  });
+
+  self->set_exit_handler([=](const caf::exit_msg& msg) {
+    std::cout << "[EXIT HANDLER] Supervisor " << self->state().id
+              << " received exit from actor: " << to_string(msg.source)
+              << ", reason: " << caf::to_string(msg.reason) << "\n";
+
+    if (msg.source == st.gpu_actor) {
+      std::cerr << "[ERROR] GPU actor crashed or terminated unexpectedly!\n";
+    }
+  });
+
+  self->monitor(st.gpu_actor);  // Detect if GPU actor dies unexpectedly
+
+  auto gpu = st.gpu_actor;
+  self->attach_functor([gpu](const caf::error& reason) {
+    std::cout << "[Supervisor] GPU actor exited with reason: " << caf::to_string(reason) << "\n";
+  });
+
+  self->set_exit_handler([gpu](const caf::exit_msg& msg) {
+    if (msg.source == gpu) {
+      std::cerr << "[Supervisor] GPU actor terminated! Reason: " << caf::to_string(msg.reason) << "\n";
+    }
+  });
+
+  self->system().registry().put(st.gpu_actor.id(), st.gpu_actor);
+  self->attach_functor([=](const caf::error& reason) {
+    std::cout << "[GPU Actor Terminated] Reason: " << to_string(reason) << "\n";
+  });
+
+  auto run_iteration = [self]() {
+    auto& st_ref = self->state();
+    int N_val = st_ref.N;
+
+    auto iteration_start = Clock::now();
+    auto kernel_start = Clock::now();
+
+    auto arg1 = caf::cuda::create_in_arg(global_a);
+    auto arg2 = caf::cuda::create_in_arg(global_b);
+    auto arg3 = caf::cuda::create_out_arg(global_c);
+    auto arg4 = caf::cuda::create_in_arg(N_val);
+
+    // Store start times for this iteration
+    st_ref.start_times.emplace(std::make_pair(iteration_start, kernel_start));
+
+    // Send message synchronously to GPU actor
+    self->send(st_ref.gpu_actor, self, arg1, arg2, arg3, arg4);
+  };
+
+  return {
+    [=](const std::string& msg) {
+      if (msg == "start") {
+        run_iteration();
+      }
+    },
+    [=](const caf::actor&, const std::vector<output_buffer>&) {
+      auto& st_ref = self->state();
+
+      auto kernel_end = Clock::now();
+      auto iteration_end = Clock::now();
+
+      // Retrieve and remove the start times for this iteration
+      if (st_ref.start_times.empty()) {
+        std::cerr << "[ERROR] [GPU GLOBAL SYNC] Supervisor " << st_ref.id
+                  << " received response but no start times available!\n";
+        self->quit(caf::make_error(caf::sec::runtime_error, "No start times for iteration"));
+        return;
+      }
+
+      auto [iteration_start, kernel_start] = st_ref.start_times.front();
+      st_ref.start_times.pop();
+
+      double kernel_time = std::chrono::duration<double>(kernel_end - kernel_start).count();
+      double full_time = std::chrono::duration<double>(iteration_end - iteration_start).count();
+
+      std::cout << "[INFO] [GPU GLOBAL SYNC] Supervisor " << st_ref.id
+                << " Iteration " << st_ref.count
+                << " Kernel round-trip: " << kernel_time << " s, "
+                << "Full iteration time: " << full_time << " s\n";
+
+      st_ref.kernel_times.push_back(kernel_time);
+      st_ref.full_times.push_back(full_time);
+      ++st_ref.count;
+
+      if (st_ref.count < 20) {
+        std::cout << "[DEBUG] Supervisor " << st_ref.id
+                  << " scheduling iteration " << st_ref.count << "\n";
+        self->mail(std::string("start")).send(self);
+      } else {
+        double kernel_avg = std::accumulate(
+          st_ref.kernel_times.begin(), st_ref.kernel_times.end(), 0.0
+        ) / st_ref.kernel_times.size();
+
+        double full_avg = std::accumulate(
+          st_ref.full_times.begin(), st_ref.full_times.end(), 0.0
+        ) / st_ref.full_times.size();
+
+        std::cout << "[INFO] [GPU GLOBAL SYNC] Supervisor " << st_ref.id
+                  << " Kernel average: " << kernel_avg << " s, "
+                  << "Full iteration average: " << full_avg << " s\n";
+
+        std::cout << "[DEBUG] Supervisor " << st_ref.id
+                  << " quitting after iteration " << st_ref.count << "\n";
+
+        self->send_exit(st_ref.gpu_actor, caf::exit_reason::user_shutdown);
+        self->quit();
+      }
+    },
+    [=](caf::error& err) {
+      std::cerr << "[ERROR] [GPU GLOBAL SYNC] Kernel execution failed: "
+                << caf::to_string(err) << "\n";
+      self->quit(err);
+    }
+  };
+}
+
+// === New Test Function ===
+inline void run_concurrent_mmul_test_global_sync(caf::actor_system& sys,
+                                                int num_supervisors,
+                                                int matrix_size) {
+  auto start = Clock::now();
+
+  int N = matrix_size;
+  size_t matrix_elements = static_cast<size_t>(N) * N;
+
+  // Global inputs
+  global_a.assign(matrix_elements, 0);
+  global_b.assign(matrix_elements, 0);
+  global_c.assign(matrix_elements, 0);
+
+  // Optional: Populate input with actual data
+  //std::generate(global_a.begin(), global_a.end(), [] { return rand() % 10; });
+  //std::generate(global_b.begin(), global_b.end(), [] { return rand() % 10; });
+
+  // Spawn supervisors
+  for (int i = 0; i < num_supervisors; ++i) {
+    auto sup = sys.spawn(supervisor_global_sync_fun, i, N);
+    caf::anon_send(sup, std::string("start"));
+  }
+
+  sys.await_all_actors_done();
+
+  auto end = Clock::now();
+  std::chrono::duration<double> duration = end - start;
+  std::cout << "[TIMER] run_concurrent_mmul_test_global_sync took: "
+            << duration.count() << " seconds\n";
+}
+
+
 
 void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
@@ -1254,11 +1454,12 @@ void caf_main(caf::actor_system& sys) {
   //test_mmul_large(sys);
   //run_concurrent_mmul_test(sys,1,50);
    //run_concurrent_mmul_test_global(sys,1,50);
-  //run_concurrent_serial_mmul_test_global_with_worker(sys,1,50);
+  // run_concurrent_serial_mmul_test_global_with_worker(sys,1,50);
   //run_concurrent_mmul_validate_test(sys,100,60);
  //run_all_concurrent_tests(sys);
 
-  run_concurrent_mmul_test_shared_gpu(sys,2,50);
+  run_concurrent_mmul_test_global_sync(sys.1,50);
+  //run_concurrent_mmul_test_shared_gpu(sys,2,50);
 
 }
 
