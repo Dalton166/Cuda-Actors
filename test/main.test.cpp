@@ -115,7 +115,9 @@ void serial_matrix_multiply(const std::vector<int>& a,
                             const std::vector<int>& b,
                             std::vector<int>& c,
                             int N) {
-  for (int i = 0; i < N; ++i) {
+  
+
+ for (int i = 0; i < N; ++i) {
     for (int j = 0; j < N; ++j) {
       int sum = 0;
       for (int k = 0; k < N; ++k) {
@@ -1244,7 +1246,6 @@ inline void run_concurrent_mmul_test_shared_gpu(caf::actor_system& sys,
 
 
 
-#pragma once
 
 #include <vector>
 #include <chrono>
@@ -1443,6 +1444,102 @@ inline void run_concurrent_mmul_test_global_sync(caf::actor_system& sys,
 
 
 
+struct mmul_sync_state {
+  caf::actor gpu_actor;
+  Clock::time_point start_time;
+};
+
+void test_mmul_sync(caf::actor_system& sys, int N) {
+  std::cout << "[TEST] Starting test_mmul_sync\n";
+
+  caf::cuda::manager& mgr = caf::cuda::manager::get();
+
+  int THREADS = 32;
+  int BLOCKS = (N + THREADS - 1) / THREADS;
+
+  caf::cuda::nd_range dim(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
+
+  auto gpuActor = mgr.spawnFromCUBIN(
+    "../mmul.cubin", "matrixMul", dim,
+    in<int>{}, in<int>{}, out<int>{}, in<int>{}
+  );
+
+  std::vector<int> h_a(N * N);
+  std::vector<int> h_b(N * N);
+  std::vector<int> h_c(N * N, 0);
+  std::vector<int> h_ref(N * N, 0);
+  std::vector<int> h_n(1, N);
+
+  std::generate(h_a.begin(), h_a.end(), []() { return rand() % 10; });
+  std::generate(h_b.begin(), h_b.end(), []() { return rand() % 10; });
+
+  serial_matrix_multiply(h_a, h_b, h_ref, N);
+
+  auto arg1 = caf::cuda::create_in_arg(h_a);
+  auto arg2 = caf::cuda::create_in_arg(h_b);
+  auto arg3 = caf::cuda::create_out_arg(h_c);
+  auto arg4 = caf::cuda::create_in_arg(N);
+
+  sys.spawn([=](caf::stateful_actor<mmul_sync_state>* self_actor) {
+    auto& st = self_actor->state();
+    st.gpu_actor = gpuActor;
+
+    // Register lifecycle hooks
+    self_actor->set_exit_handler([=](const caf::exit_msg& msg) {
+      std::cout << "[EXIT HANDLER] test_mmul_sync received exit from actor: "
+                << to_string(msg.source) << ", reason: " << caf::to_string(msg.reason) << "\n";
+      if (msg.source == st.gpu_actor) {
+        std::cerr << "[ERROR] GPU actor crashed or terminated unexpectedly!\n";
+        self_actor->quit(msg.reason);
+      }
+    });
+
+    self_actor->monitor(st.gpu_actor);
+
+    self_actor->attach_functor([=](const caf::error& reason) {
+      std::cout << "[EXIT] test_mmul_sync terminated with reason: "
+                << caf::to_string(reason) << "\n";
+    });
+
+    // Send synchronous message
+    st.start_time = Clock::now();
+    self_actor->send(st.gpu_actor, self_actor, arg1, arg2, arg3, arg4);
+
+    return caf::behavior{
+      [=](const std::vector<output_buffer>& outputs) {
+        auto& st_ref = self_actor->state();
+        auto end = Clock::now();
+        std::chrono::duration<double> elapsed = end - st_ref.start_time;
+
+        std::vector<int> result;
+        for (const auto& out : outputs) {
+          std::visit([&](const auto& vec) {
+            if constexpr (std::is_same_v<std::decay_t<decltype(vec)>, std::vector<int>>) {
+              result = vec;
+            }
+          }, out.data);
+        }
+
+        bool match = result == h_ref;
+        std::cout << "[INFO] Kernel round-trip time: " << elapsed.count() << " seconds\n";
+        std::cout << (match ? "[PASS] GPU result matches reference\n" : "[FAIL] Mismatch in GPU result\n");
+
+        self_actor->send_exit(st_ref.gpu_actor, caf::exit_reason::user_shutdown);
+        self_actor->quit();
+      },
+      [=](caf::error& err) {
+        std::cerr << "[ERROR] test_mmul_sync kernel execution failed: "
+                  << caf::to_string(err) << "\n";
+        self_actor->quit(err);
+      }
+    };
+  });
+
+  sys.await_all_actors_done();
+}
+
+
+
 void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
   //test_main(sys);
@@ -1454,11 +1551,12 @@ void caf_main(caf::actor_system& sys) {
   //test_mmul_large(sys);
   //run_concurrent_mmul_test(sys,1,50);
    //run_concurrent_mmul_test_global(sys,1,50);
-  // run_concurrent_serial_mmul_test_global_with_worker(sys,1,50);
+  //run_concurrent_serial_mmul_test_global_with_worker(sys,1,1024);
   //run_concurrent_mmul_validate_test(sys,100,60);
  //run_all_concurrent_tests(sys);
 
-  run_concurrent_mmul_test_global_sync(sys,1,50);
+  test_mmul_sync(sys,1024);
+  //run_concurrent_mmul_test_global_sync(sys,50,10);
   //run_concurrent_mmul_test_shared_gpu(sys,2,50);
 
 }
