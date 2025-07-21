@@ -17,6 +17,7 @@
 #include "caf/cuda/global.hpp"
 #include "caf/cuda/program.hpp"
 #include "caf/cuda/command.hpp"
+#include "caf/cuda/utility.hpp"
 #include <random>
 #include <climits>
 
@@ -131,7 +132,10 @@ private:
       }
     }
     std::cout << "[WARNING], message format not recognized by actor facade, dropping message\n";
-    return false;
+    
+      auto sender = msg.get_as<caf::actor>(0);
+     return unpack_and_run(sender, msg, std::index_sequence_for<Ts...>{});
+    //return false;
   }
 
   template <std::size_t... Is>
@@ -155,6 +159,8 @@ private:
 
   resumable::resume_result resume(scheduler* sched, size_t) override {
     while (!mailbox_.empty()) {
+      
+      std::cout << "Actor with id " << actor_id << " is begginning to process a message.\n";
       auto msg = std::move(mailbox_.front());
       mailbox_.pop();
 
