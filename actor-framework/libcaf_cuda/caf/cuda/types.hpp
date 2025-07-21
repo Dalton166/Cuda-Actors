@@ -53,80 +53,70 @@ struct output_buffer {
 
 
 // === Wrapper types for in/out/in_out with default ctor, union safely used ===
-
-#include <variant>
-#include <vector>
-#include <iostream>
-#include <stdexcept>
-
 template <typename T>
 class in_impl {
 private:
   std::variant<T, std::vector<T>> data_;
+  bool moved_from_ = false;
+
+  void check_valid() const {
+    if (moved_from_)
+      throw std::runtime_error(std::string("Use-after-move detected in ") + typeid(*this).name());
+  }
 
 public:
   using value_type = T;
 
-  in_impl() : data_(T{}) {
-    std::cout << "[in_impl] Default constructed (scalar initialized)\n";
+  // Constructors
+  in_impl() : data_(T{}) {}
+  explicit in_impl(const T& val) : data_(val) {}
+  explicit in_impl(const std::vector<T>& buf) : data_(buf) {}
+
+  // Copy constructor/assignment
+  in_impl(const in_impl&) = default;
+  in_impl& operator=(const in_impl&) = default;
+
+  // Move constructor
+  in_impl(in_impl&& other) noexcept
+    : data_(std::move(other.data_)) {
+    other.moved_from_ = true;
   }
 
-  explicit in_impl(const T& val) : data_(val) {
-    std::cout << "[in_impl] Constructed scalar with value\n";
-  }
-
-  explicit in_impl(const std::vector<T>& buf) : data_(buf) {
-    std::cout << "[in_impl] Constructed buffer of size " << buf.size() << "\n";
-  }
-
-  in_impl(const in_impl& other) : data_(other.data_) {
-    std::cout << "[in_impl] Copy constructed\n";
-  }
-
-  in_impl(in_impl&& other) noexcept : data_(std::move(other.data_)) {
-    std::cout << "[in_impl] Move constructed\n";
-  }
-
-  in_impl& operator=(const in_impl& other) {
-    std::cout << "[in_impl] Copy assigned\n";
-    data_ = other.data_;
-    return *this;
-  }
-
+  // Move assignment
   in_impl& operator=(in_impl&& other) noexcept {
-    std::cout << "[in_impl] Move assigned\n";
-    data_ = std::move(other.data_);
+    if (this != &other) {
+      data_ = std::move(other.data_);
+      other.moved_from_ = true;
+    }
     return *this;
-  }
-
-  ~in_impl() {
-    std::cout << "[in_impl] Destroyed\n";
   }
 
   bool is_scalar() const {
+    check_valid();
     return std::holds_alternative<T>(data_);
   }
 
   const T& getscalar() const {
+    check_valid();
     if (!is_scalar())
       throw std::runtime_error("in_impl does not hold scalar");
     return std::get<T>(data_);
   }
 
   const std::vector<T>& get_buffer() const {
+    check_valid();
     if (is_scalar())
       throw std::runtime_error("in_impl does not hold buffer");
     return std::get<std::vector<T>>(data_);
   }
 
   const T* data() const {
-    const T* ptr = is_scalar() ? &std::get<T>(data_) : std::get<std::vector<T>>(data_).data();
-    std::cout << "[in_impl] data() returns pointer " << static_cast<const void*>(ptr)
-              << ", size = " << size() << "\n";
-    return ptr;
+    check_valid();
+    return is_scalar() ? &std::get<T>(data_) : std::get<std::vector<T>>(data_).data();
   }
 
   std::size_t size() const {
+    check_valid();
     return is_scalar() ? 1 : std::get<std::vector<T>>(data_).size();
   }
 };
@@ -135,70 +125,62 @@ template <typename T>
 class out_impl {
 private:
   std::variant<T, std::vector<T>> data_;
+  bool moved_from_ = false;
+
+  void check_valid() const {
+    if (moved_from_)
+      throw std::runtime_error(std::string("Use-after-move detected in ") + typeid(*this).name());
+  }
 
 public:
   using value_type = T;
 
-  out_impl() : data_(T{}) {
-    std::cout << "[out_impl] Default constructed (scalar initialized)\n";
-  }
+  out_impl() : data_(T{}) {}
+  explicit out_impl(const T& val) : data_(val) {}
+  explicit out_impl(const std::vector<T>& buf) : data_(buf) {}
 
-  explicit out_impl(const T& val) : data_(val) {
-    std::cout << "[out_impl] Constructed scalar with value\n";
-  }
+  out_impl(const out_impl&) = default;
+  out_impl& operator=(const out_impl&) = default;
 
-  explicit out_impl(const std::vector<T>& buf) : data_(buf) {
-    std::cout << "[out_impl] Constructed buffer of size " << buf.size() << "\n";
-  }
-
-  out_impl(const out_impl& other) : data_(other.data_) {
-    std::cout << "[out_impl] Copy constructed\n";
-  }
-
-  out_impl(out_impl&& other) noexcept : data_(std::move(other.data_)) {
-    std::cout << "[out_impl] Move constructed\n";
-  }
-
-  out_impl& operator=(const out_impl& other) {
-    std::cout << "[out_impl] Copy assigned\n";
-    data_ = other.data_;
-    return *this;
+  out_impl(out_impl&& other) noexcept
+    : data_(std::move(other.data_)) {
+    other.moved_from_ = true;
   }
 
   out_impl& operator=(out_impl&& other) noexcept {
-    std::cout << "[out_impl] Move assigned\n";
-    data_ = std::move(other.data_);
+    if (this != &other) {
+      data_ = std::move(other.data_);
+      other.moved_from_ = true;
+    }
     return *this;
   }
 
-  ~out_impl() {
-    std::cout << "[out_impl] Destroyed\n";
-  }
-
   bool is_scalar() const {
+    check_valid();
     return std::holds_alternative<T>(data_);
   }
 
   const T& getscalar() const {
+    check_valid();
     if (!is_scalar())
       throw std::runtime_error("out_impl does not hold scalar");
     return std::get<T>(data_);
   }
 
   const std::vector<T>& get_buffer() const {
+    check_valid();
     if (is_scalar())
       throw std::runtime_error("out_impl does not hold buffer");
     return std::get<std::vector<T>>(data_);
   }
 
   const T* data() const {
-    const T* ptr = is_scalar() ? &std::get<T>(data_) : std::get<std::vector<T>>(data_).data();
-    std::cout << "[out_impl] data() returns pointer " << static_cast<const void*>(ptr)
-              << ", size = " << size() << "\n";
-    return ptr;
+    check_valid();
+    return is_scalar() ? &std::get<T>(data_) : std::get<std::vector<T>>(data_).data();
   }
 
   std::size_t size() const {
+    check_valid();
     return is_scalar() ? 1 : std::get<std::vector<T>>(data_).size();
   }
 };
@@ -207,75 +189,67 @@ template <typename T>
 class in_out_impl {
 private:
   std::variant<T, std::vector<T>> data_;
+  bool moved_from_ = false;
+
+  void check_valid() const {
+    if (moved_from_)
+      throw std::runtime_error(std::string("Use-after-move detected in ") + typeid(*this).name());
+  }
 
 public:
   using value_type = T;
 
-  in_out_impl() : data_(T{}) {
-    std::cout << "[in_out_impl] Default constructed (scalar initialized)\n";
-  }
+  in_out_impl() : data_(T{}) {}
+  explicit in_out_impl(const T& val) : data_(val) {}
+  explicit in_out_impl(const std::vector<T>& buf) : data_(buf) {}
 
-  explicit in_out_impl(const T& val) : data_(val) {
-    std::cout << "[in_out_impl] Constructed scalar with value\n";
-  }
+  in_out_impl(const in_out_impl&) = default;
+  in_out_impl& operator=(const in_out_impl&) = default;
 
-  explicit in_out_impl(const std::vector<T>& buf) : data_(buf) {
-    std::cout << "[in_out_impl] Constructed buffer of size " << buf.size() << "\n";
-  }
-
-  in_out_impl(const in_out_impl& other) : data_(other.data_) {
-    std::cout << "[in_out_impl] Copy constructed\n";
-  }
-
-  in_out_impl(in_out_impl&& other) noexcept : data_(std::move(other.data_)) {
-    std::cout << "[in_out_impl] Move constructed\n";
-  }
-
-  in_out_impl& operator=(const in_out_impl& other) {
-    std::cout << "[in_out_impl] Copy assigned\n";
-    data_ = other.data_;
-    return *this;
+  in_out_impl(in_out_impl&& other) noexcept
+    : data_(std::move(other.data_)) {
+    other.moved_from_ = true;
   }
 
   in_out_impl& operator=(in_out_impl&& other) noexcept {
-    std::cout << "[in_out_impl] Move assigned\n";
-    data_ = std::move(other.data_);
+    if (this != &other) {
+      data_ = std::move(other.data_);
+      other.moved_from_ = true;
+    }
     return *this;
   }
 
-  ~in_out_impl() {
-    std::cout << "[in_out_impl] Destroyed\n";
-  }
-
   bool is_scalar() const {
+    check_valid();
     return std::holds_alternative<T>(data_);
   }
 
   const T& getscalar() const {
+    check_valid();
     if (!is_scalar())
       throw std::runtime_error("in_out_impl does not hold scalar");
     return std::get<T>(data_);
   }
 
   const std::vector<T>& get_buffer() const {
+    check_valid();
     if (is_scalar())
       throw std::runtime_error("in_out_impl does not hold buffer");
     return std::get<std::vector<T>>(data_);
   }
 
   const T* data() const {
-    const T* ptr = is_scalar() ? &std::get<T>(data_) : std::get<std::vector<T>>(data_).data();
-    std::cout << "[in_out_impl] data() returns pointer " << static_cast<const void*>(ptr)
-              << ", size = " << size() << "\n";
-    return ptr;
+    check_valid();
+    return is_scalar() ? &std::get<T>(data_) : std::get<std::vector<T>>(data_).data();
   }
 
   std::size_t size() const {
+    check_valid();
     return is_scalar() ? 1 : std::get<std::vector<T>>(data_).size();
   }
 };
 
-// Aliases
+// === Aliases ===
 template <typename T>
 using in = in_impl<T>;
 
