@@ -1331,15 +1331,29 @@ caf::behavior supervisor_global_sync_fun(caf::stateful_actor<supervisor_sync_sta
     auto iteration_start = Clock::now();
     auto kernel_start = Clock::now();
 
+    /*
     auto arg1 = caf::cuda::create_in_arg(global_a);
     auto arg2 = caf::cuda::create_in_arg(global_b);
     auto arg3 = caf::cuda::create_out_arg(global_c);
     auto arg4 = caf::cuda::create_in_arg(N_val);
+    */
+
+    auto arg1 = caf::cuda::create_in_arg(std::vector<int>(global_a));
+auto arg2 = caf::cuda::create_in_arg(std::vector<int>(global_b));
+auto arg3 = caf::cuda::create_out_arg(std::vector<int>(global_c));
+auto arg4 = caf::cuda::create_in_arg(N_val);
+
+
 
     // Store start times for this iteration
     st_ref.start_times.emplace(std::make_pair(iteration_start, kernel_start));
 
     // Send message synchronously to GPU actor
+    
+
+    //TODO is this broken?
+    //self->mail( arg1, arg2, arg3, arg4).send(st_ref.gpu_actor);
+
     self->send(st_ref.gpu_actor, self, arg1, arg2, arg3, arg4);
   };
 
@@ -1629,6 +1643,13 @@ caf::behavior supervisor_sync_fun(caf::stateful_actor<supervisor_mmul_state>* se
               << " sending iteration " << st_ref.count
               << ", pending messages: " << st_ref.pending_messages << "\n";
 
+
+
+    std::cout << "[DEBUG] Buffers A: " << static_cast<const void*>(st_ref.h_a.data())
+          << " B: " << static_cast<const void*>(st_ref.h_b.data())
+          << " C: " << static_cast<const void*>(st_ref.h_c.data()) << "\n";
+
+
     // Send message synchronously to GPU actor
     self->send(st_ref.gpu_actor, self, arg1, arg2, arg3, arg4);
   };
@@ -1752,9 +1773,9 @@ void caf_main(caf::actor_system& sys) {
  //run_all_concurrent_tests(sys);
 
   //run_concurrent_mmul_test_shared_gpu(sys,2,50);
-  //test_mmul_sync(sys,1024);
-  //run_concurrent_mmul_test_global_sync(sys,50,1);
-  run_concurrent_mmul_test_sync(sys,50,100);
+  //test_mmul_sync(sys,50);
+  run_concurrent_mmul_test_global_sync(sys,50,50);
+  //run_concurrent_mmul_test_sync(sys,50,1024);
 
 }
 
