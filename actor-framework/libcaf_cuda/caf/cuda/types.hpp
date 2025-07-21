@@ -54,6 +54,11 @@ struct output_buffer {
 
 // === Wrapper types for in/out/in_out with default ctor, union safely used ===
 
+#include <variant>
+#include <vector>
+#include <iostream>
+#include <stdexcept>
+
 template <typename T>
 class in_impl {
 private:
@@ -62,14 +67,41 @@ private:
 public:
   using value_type = T;
 
-  // Default constructor - scalar default initialized
-  in_impl() : data_(T{}) {}
+  in_impl() : data_(T{}) {
+    std::cout << "[in_impl] Default constructed (scalar initialized)\n";
+  }
 
-  // Scalar constructor
-  explicit in_impl(const T& val) : data_(val) {}
+  explicit in_impl(const T& val) : data_(val) {
+    std::cout << "[in_impl] Constructed scalar with value\n";
+  }
 
-  // Vector constructor
-  explicit in_impl(const std::vector<T>& buf) : data_(buf) {}
+  explicit in_impl(const std::vector<T>& buf) : data_(buf) {
+    std::cout << "[in_impl] Constructed buffer of size " << buf.size() << "\n";
+  }
+
+  in_impl(const in_impl& other) : data_(other.data_) {
+    std::cout << "[in_impl] Copy constructed\n";
+  }
+
+  in_impl(in_impl&& other) noexcept : data_(std::move(other.data_)) {
+    std::cout << "[in_impl] Move constructed\n";
+  }
+
+  in_impl& operator=(const in_impl& other) {
+    std::cout << "[in_impl] Copy assigned\n";
+    data_ = other.data_;
+    return *this;
+  }
+
+  in_impl& operator=(in_impl&& other) noexcept {
+    std::cout << "[in_impl] Move assigned\n";
+    data_ = std::move(other.data_);
+    return *this;
+  }
+
+  ~in_impl() {
+    std::cout << "[in_impl] Destroyed\n";
+  }
 
   bool is_scalar() const {
     return std::holds_alternative<T>(data_);
@@ -88,7 +120,10 @@ public:
   }
 
   const T* data() const {
-    return is_scalar() ? &std::get<T>(data_) : std::get<std::vector<T>>(data_).data();
+    const T* ptr = is_scalar() ? &std::get<T>(data_) : std::get<std::vector<T>>(data_).data();
+    std::cout << "[in_impl] data() returns pointer " << static_cast<const void*>(ptr)
+              << ", size = " << size() << "\n";
+    return ptr;
   }
 
   std::size_t size() const {
@@ -104,11 +139,41 @@ private:
 public:
   using value_type = T;
 
-  out_impl() : data_(T{}) {}
+  out_impl() : data_(T{}) {
+    std::cout << "[out_impl] Default constructed (scalar initialized)\n";
+  }
 
-  explicit out_impl(const T& val) : data_(val) {}
+  explicit out_impl(const T& val) : data_(val) {
+    std::cout << "[out_impl] Constructed scalar with value\n";
+  }
 
-  explicit out_impl(const std::vector<T>& buf) : data_(buf) {}
+  explicit out_impl(const std::vector<T>& buf) : data_(buf) {
+    std::cout << "[out_impl] Constructed buffer of size " << buf.size() << "\n";
+  }
+
+  out_impl(const out_impl& other) : data_(other.data_) {
+    std::cout << "[out_impl] Copy constructed\n";
+  }
+
+  out_impl(out_impl&& other) noexcept : data_(std::move(other.data_)) {
+    std::cout << "[out_impl] Move constructed\n";
+  }
+
+  out_impl& operator=(const out_impl& other) {
+    std::cout << "[out_impl] Copy assigned\n";
+    data_ = other.data_;
+    return *this;
+  }
+
+  out_impl& operator=(out_impl&& other) noexcept {
+    std::cout << "[out_impl] Move assigned\n";
+    data_ = std::move(other.data_);
+    return *this;
+  }
+
+  ~out_impl() {
+    std::cout << "[out_impl] Destroyed\n";
+  }
 
   bool is_scalar() const {
     return std::holds_alternative<T>(data_);
@@ -127,7 +192,10 @@ public:
   }
 
   const T* data() const {
-    return is_scalar() ? &std::get<T>(data_) : std::get<std::vector<T>>(data_).data();
+    const T* ptr = is_scalar() ? &std::get<T>(data_) : std::get<std::vector<T>>(data_).data();
+    std::cout << "[out_impl] data() returns pointer " << static_cast<const void*>(ptr)
+              << ", size = " << size() << "\n";
+    return ptr;
   }
 
   std::size_t size() const {
@@ -143,11 +211,41 @@ private:
 public:
   using value_type = T;
 
-  in_out_impl() : data_(T{}) {}
+  in_out_impl() : data_(T{}) {
+    std::cout << "[in_out_impl] Default constructed (scalar initialized)\n";
+  }
 
-  explicit in_out_impl(const T& val) : data_(val) {}
+  explicit in_out_impl(const T& val) : data_(val) {
+    std::cout << "[in_out_impl] Constructed scalar with value\n";
+  }
 
-  explicit in_out_impl(const std::vector<T>& buf) : data_(buf) {}
+  explicit in_out_impl(const std::vector<T>& buf) : data_(buf) {
+    std::cout << "[in_out_impl] Constructed buffer of size " << buf.size() << "\n";
+  }
+
+  in_out_impl(const in_out_impl& other) : data_(other.data_) {
+    std::cout << "[in_out_impl] Copy constructed\n";
+  }
+
+  in_out_impl(in_out_impl&& other) noexcept : data_(std::move(other.data_)) {
+    std::cout << "[in_out_impl] Move constructed\n";
+  }
+
+  in_out_impl& operator=(const in_out_impl& other) {
+    std::cout << "[in_out_impl] Copy assigned\n";
+    data_ = other.data_;
+    return *this;
+  }
+
+  in_out_impl& operator=(in_out_impl&& other) noexcept {
+    std::cout << "[in_out_impl] Move assigned\n";
+    data_ = std::move(other.data_);
+    return *this;
+  }
+
+  ~in_out_impl() {
+    std::cout << "[in_out_impl] Destroyed\n";
+  }
 
   bool is_scalar() const {
     return std::holds_alternative<T>(data_);
@@ -166,7 +264,10 @@ public:
   }
 
   const T* data() const {
-    return is_scalar() ? &std::get<T>(data_) : std::get<std::vector<T>>(data_).data();
+    const T* ptr = is_scalar() ? &std::get<T>(data_) : std::get<std::vector<T>>(data_).data();
+    std::cout << "[in_out_impl] data() returns pointer " << static_cast<const void*>(ptr)
+              << ", size = " << size() << "\n";
+    return ptr;
   }
 
   std::size_t size() const {
