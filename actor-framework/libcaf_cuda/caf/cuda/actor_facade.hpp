@@ -138,6 +138,13 @@ private:
     //return false;
   }
 
+
+  // New method to create tagged arguments based on Ts...
+  template <typename... Us>
+  auto create_tagged_args(Us&&... xs) {
+    return create_tagged_args_impl(std::forward<Us>(xs)..., std::index_sequence_for<Us...>{});
+  }
+
   template <std::size_t... Is>
   bool unpack_and_run_wrapped(caf::actor sender, const message& msg, std::index_sequence<Is...>) {
     auto wrapped = std::make_tuple(msg.get_as<Ts>(Is + 1)...);
@@ -237,6 +244,34 @@ private:
     force_close_mailbox();
     current_mailbox_element(nullptr);
   }
+
+
+  // Implementation helper to process each argument based on its tag type
+  template <typename... Us, std::size_t... Is>
+  auto create_tagged_args_impl(Us&&... xs, std::index_sequence<Is...>) {
+    return std::make_tuple(create_single_arg<Is, Ts, Us>(std::forward<Us>(xs))...);
+  }
+
+  // Helper to create a single tagged argument
+  template <std::size_t I, typename T, typename U>
+  auto create_single_arg(U&& x) {
+    using base_type = typename std::decay_t<T>::value_type;
+
+    if constexpr (std::is_same_v<std::decay_t<T>, in<base_type>>) {
+      return create_in_arg(std::forward<U>(x));
+    } else if constexpr (std::is_same_v<std::decay_t<T>, out<base_type>>) {
+      return create_out_arg(std::forward<U>(x));
+    } else if constexpr (std::is_same_v<std::decay_t<T>, in_out<base_type>>) {
+      return create_in_out_arg(std::forward<U>(x));
+    } else {
+      static_assert(std::is_same_v<std::decay_t<T>, in<base_type>> ||
+                    std::is_same_v<std::decay_t<T>, out<base_type>> ||
+                    std::is_same_v<std::decay_t<T>, in_out<base_type>>,
+                    "Type must be in<T>, out<T>, or in_out<T>");
+    }
+  }
+
+
 };
 
 } // namespace caf::cuda
