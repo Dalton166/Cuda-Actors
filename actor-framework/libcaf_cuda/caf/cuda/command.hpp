@@ -36,7 +36,7 @@ public:
           Us&&... xs)
     : rp(std::move(promise)),
       self_(std::move(self)),
-      program_(std::move(program)),
+      program_(program),
       dims_(dims),
       actor_id(id),
       mem_refs(convert_data_to_args(std::forward<Us>(xs)...)) {
@@ -58,7 +58,7 @@ public:
           Us&&... xs)
     : sender_(std::move(sender)),
       self_(std::move(self)),
-      program_(std::move(program)),
+      program_(program),
       dims_(dims),
       actor_id(id),
       mem_refs(convert_data_to_args(std::forward<Us>(xs)...)) {
