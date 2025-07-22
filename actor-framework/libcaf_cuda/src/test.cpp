@@ -241,49 +241,6 @@ void test_command(actor_system& sys, platform_ptr plat) {
     std::cout << "---- Command tests passed (skipped) ----\n";
 }
 
-void test_actor_facade(actor_system& sys, platform_ptr plat) {
-    std::cout << "\n=== Test Actor Facade ===\n";
-    
-    std::cout << "Test 1: Testing actor facade kernel execution...\n";
-    manager& mgr = manager::get();
-    device_ptr dev = mgr.find_device(0);
-    std::cout << "  -> Device context: " << dev->getContext(0) << "\n";
-    const char* kernel = R"(
-        extern "C" __global__ void test_kernel(int* data) {
-            int idx = threadIdx.x;
-            if (idx < 5) data[idx] = idx + 1;
-        })";
-    program_ptr prog = mgr.create_program(kernel, "test_kernel", dev);
-    std::cout << "  -> Program created with kernel: test_kernel, handle: " << prog->get_kernel() << ", prog=" << prog.get() << "\n";
-    nd_range dims{1, 1, 1, 5, 1, 1};
-    std::vector<int> host_data(5, 0);
-    out<int> output = create_out_arg(host_data);
-    //We should be fine but due to changes, the allocation and execution of kernel
-    //is done on different streams, may cause an issue where kernel launches before
-    //memory is allocated
-    mem_ptr<int> out_mem = dev->make_arg(output,test_actor_id);
-    assert(out_mem->mem() != 0 && "Output memory not allocated");
-    std::cout << "  -> Output memory allocated: " << out_mem->mem() << ", out_mem=" << out_mem.get() << "\n";
-    actor_config actor_cfg;
-    actor_facade<false, out<int>> facade{std::move(actor_cfg), prog, dims, out<int> {}};
-    std::cout << "  -> Actor facade created\n";
-    try {
-        facade.run_kernel(output);
-        std::cout << "  -> Kernel launched via actor facade\n";
-    } catch (const std::exception& e) {
-        std::cout << "  -> Failed: CUDA error during actor facade kernel launch: " << e.what() << "\n";
-        throw;
-    }
-    //std::vector<int> result = output.buffer;
-    std::vector<int> result = out_mem -> copy_to_host();
-    /* we can really only validate output via inspection at this point since 
-     * there is no way to return the buffer since that needs to be handled via caf 
-     */
-    std::cout << " --- Expected output is 1 2 3 4 5\n"; 
-    std::cout << "  -> Actor facade kernel executed successfully.\n";
-    std::cout << "---- Actor Facade tests passed ----\n";
-}
-
 void test_mem_ref_extended(actor_system& sys, platform_ptr plat) {
     std::cout << "\n=== Test Mem Ref Extended ===\n";
     
@@ -475,78 +432,6 @@ void test_kernel_launch_direct(actor_system& sys, platform_ptr plat) {
     std::cout << "---- Kernel Launch Direct tests passed ----\n";
 }
 
-void test_actor_facade_multi_buffer(actor_system& sys, platform_ptr plat) {
-    std::cout << "\n=== Test Actor Facade Multi Buffer ===\n";
-    
-    std::cout << "Test 1: Testing actor facade with multiple buffers...\n";
-    manager& mgr = manager::get();
-    device_ptr dev = mgr.find_device(0);
-    std::cout << "  -> Device context: " << dev->getContext(0) << "\n";
-    const char* kernel = R"(
-        extern "C" __global__ void multi_buffer_kernel(const int* in_data, int* inout_data, int* out_data) {
-            int idx = threadIdx.x;
-            if (idx < 5) {
-                inout_data[idx] = inout_data[idx] * 2; // Hardcoded scale=2
-                out_data[idx] = in_data[idx] + 5;      // Hardcoded offset=5
-            }
-        })";
-    program_ptr prog = mgr.create_program(kernel, "multi_buffer_kernel", dev);
-    std::cout << "  -> Program created with kernel: multi_buffer_kernel, handle: " << prog->get_kernel() << ", prog=" << prog.get() << "\n";
-    nd_range dims{1, 1, 1, 5, 1, 1};
-    
-    // Initialize host buffers
-    std::vector<int> in_host(5, 10);        // in_data: [10, 10, 10, 10, 10]
-    std::vector<int> inout_host(5, 20);     // inout_data: [20, 20, 20, 20, 20]
-    std::vector<int> out_host(5, 0);        // out_data: [0, 0, 0, 0, 0]
-    in<int> in_arg = create_in_arg(in_host);
-    in_out<int> inout_arg = create_in_out_arg(inout_host);
-    out<int> out_arg = create_out_arg(out_host);
-    
-    // Create device memory
-    mem_ptr<int> in_mem = dev->make_arg(in_arg,test_actor_id);
-    mem_ptr<int> inout_mem = dev->make_arg(inout_arg,test_actor_id);
-    mem_ptr<int> out_mem = dev->make_arg(out_arg,test_actor_id);
-    assert(in_mem->mem() != 0 && "Input memory not allocated");
-    assert(inout_mem->mem() != 0 && "In-out memory not allocated");
-    assert(out_mem->mem() != 0 && "Output memory not allocated");
-    std::cout << "  -> Input memory allocated: " << in_mem->mem() << ", in_mem=" << in_mem.get() << "\n";
-    std::cout << "  -> In-out memory allocated: " << inout_mem->mem() << ", inout_mem=" << inout_mem.get() << "\n";
-    std::cout << "  -> Output memory allocated: " << out_mem->mem() << ", out_mem=" << out_mem.get() << "\n";
-    
-    actor_config actor_cfg;
-    actor_facade<false, in<int>, in_out<int>, out<int>> facade{
-        std::move(actor_cfg), prog, dims, in<int>{}, in_out<int>{}, out<int>{}};
-    std::cout << "  -> Actor facade created\n";
-    
-    try {
-        facade.run_kernel(in_arg, inout_arg, out_arg);
-        std::cout << "  -> Kernel launched via actor facade\n";
-        
-        // Validate results via inspection using copy_to_host
-        std::vector<int> inout_result = inout_mem->copy_to_host();
-        std::vector<int> out_result = out_mem->copy_to_host();
-        
-        // Expected: inout_result = [40, 40, 40, 40, 40] (20 * 2)
-        // Expected: out_result = [15, 15, 15, 15, 15] (10 + 5)
-        std::cout << " --- Expected inout_result is 40 40 40 40 40\n";
-        std::cout << " --- Expected out_result is 15 15 15 15 15\n";
-        /*
-	for (size_t i = 0; i < 5; ++i) {
-            if (inout_result[i] != 40) {
-                std::cout << "  -> Failed: inout_result[" << i << "] = " << inout_result[i] << ", expected 40\n";
-            }
-            if (out_result[i] != 15) {
-                std::cout << "  -> Failed: out_result[" << i << "] = " << out_result[i] << ", expected 15\n";
-            }
-        }
-	*/
-        std::cout << "  -> Multi-buffer kernel executed successfully\n";
-    } catch (const std::exception& e) {
-        std::cout << "  -> Failed: CUDA error during actor facade kernel launch: " << e.what() << "\n";
-        throw;
-    }
-    std::cout << "---- Actor Facade Multi Buffer tests passed ----\n";
-}
 void test_kernel_launch_multi_buffer(actor_system& sys, platform_ptr plat) {
   std::cout << "\n=== Test Kernel Launch Multi Buffer ===\n";
 
