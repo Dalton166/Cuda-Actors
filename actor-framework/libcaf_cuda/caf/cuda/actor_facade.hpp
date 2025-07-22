@@ -72,7 +72,6 @@ public:
   }
 
   void create_command(program_ptr program, Ts&&... xs) {
-    pending_promises_++;
     using command_t = command<caf::actor, raw_t<Ts>...>;
     auto cmd = make_counted<command_t>(
       make_response_promise(),
@@ -93,7 +92,6 @@ public:
   //causing too much bugs
   //
   void run_kernel_synchronous(caf::actor sender, Ts&... xs) {
-    pending_promises_++;
     using command_t = command<caf::actor, raw_t<Ts>...>;
     auto cmd = make_counted<command_t>(
       sender,
@@ -133,9 +131,7 @@ private:
     }
     std::cout << "[WARNING], message format not recognized by actor facade, dropping message\n";
     
-      auto sender = msg.get_as<caf::actor>(0);
-     return unpack_and_run(sender, msg, std::index_sequence_for<Ts...>{});
-    //return false;
+     return false;
   }
 
   template <std::size_t... Is>
@@ -164,11 +160,20 @@ private:
       auto msg = std::move(mailbox_.front());
       mailbox_.pop();
 
+
+      if (shutdown_requested_) {
+      
+	      std::cout << "Warning actor with id " << actor_id << " Is processing message after shutdown has been requested\n";
+      
+      }
+
       if (!msg || !msg->content().ptr()) { 
 	      std::cout << "Warning gpu actor with id " << actor_id << "Received a message with no content, dropping message\n";
 	      continue;
       }
 
+
+      pending_promises_++;
       current_mailbox_element(msg.get());
       if (msg->content().match_elements<kernel_done_atom>()) {
         if (--pending_promises_ == 0 && shutdown_requested_) {
@@ -182,7 +187,7 @@ private:
       if (msg->content().match_elements<exit_msg>()) {
         auto exit = msg->content().get_as<exit_msg>(0);
         shutdown_requested_ = true;
-        if (pending_promises_ == 0) {
+        if (--pending_promises_ == 0) {
           quit(static_cast<exit_reason>(exit.reason.code()));
           return resumable::done;
         } else {
@@ -192,6 +197,7 @@ private:
       }
 
       handle_message(msg->content());
+      pending_promises_--;
       current_mailbox_element(nullptr);
     }
 

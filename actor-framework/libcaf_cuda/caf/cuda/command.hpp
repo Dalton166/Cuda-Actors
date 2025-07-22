@@ -74,6 +74,7 @@ public:
       anon_mail(std::move(outputs)).send(sender_);
     } else {
       rp.deliver(std::move(outputs));
+    anon_mail(kernel_done_atom_v).send(self_);
     }
 
     for_each_tuple(mem_refs, [](auto& mem) {
@@ -81,7 +82,6 @@ public:
         mem->reset();
     });
 
-    anon_mail(kernel_done_atom_v).send(self_);
   }
 
   template <class A, class... S>
