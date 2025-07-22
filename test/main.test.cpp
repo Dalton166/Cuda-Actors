@@ -1339,10 +1339,9 @@ caf::behavior supervisor_global_sync_fun(caf::stateful_actor<supervisor_sync_sta
     */
 
     auto arg1 = caf::cuda::create_in_arg(std::vector<int>(global_a));
-auto arg2 = caf::cuda::create_in_arg(std::vector<int>(global_b));
-auto arg3 = caf::cuda::create_out_arg(std::vector<int>(global_c));
-auto arg4 = caf::cuda::create_in_arg(N_val);
-
+    auto arg2 = caf::cuda::create_in_arg(std::vector<int>(global_b));
+    auto arg3 = caf::cuda::create_out_arg(std::vector<int>(global_c));
+    auto arg4 = caf::cuda::create_in_arg(N_val);
 
 
     // Store start times for this iteration
@@ -1354,7 +1353,8 @@ auto arg4 = caf::cuda::create_in_arg(N_val);
     //TODO is this broken?
     //self->mail( arg1, arg2, arg3, arg4).send(st_ref.gpu_actor);
 
-    self->send(st_ref.gpu_actor, self, arg1, arg2, arg3, arg4);
+      self->send(st_ref.gpu_actor, self, arg1, arg2, arg3, arg4);
+     //self->send(st_ref.gpu_actor, self, global_a, global_b, global_c, N_val);
   };
 
   return {
@@ -1630,10 +1630,21 @@ caf::behavior supervisor_sync_fun(caf::stateful_actor<supervisor_mmul_state>* se
     auto iteration_start = Clock::now();
     auto kernel_start = Clock::now();
 
+    /*
     auto arg1 = caf::cuda::create_in_arg(st_ref.h_a);
     auto arg2 = caf::cuda::create_in_arg(st_ref.h_b);
     auto arg3 = caf::cuda::create_out_arg(st_ref.h_c);
     auto arg4 = caf::cuda::create_in_arg(st_ref.N);
+
+    */
+
+    auto arg1 = caf::cuda::create_in_arg(std::vector<int>(st_ref.h_a));
+    auto arg2 = caf::cuda::create_in_arg(std::vector<int>(st_ref.h_b));
+    auto arg3 = caf::cuda::create_out_arg(std::vector<int>(st_ref.h_c));
+
+    auto arg4 = caf::cuda::create_in_arg(st_ref.N);
+
+
 
     // Store start times and increment pending messages
     st_ref.start_times.emplace(std::make_pair(iteration_start, kernel_start));
@@ -1774,7 +1785,7 @@ void caf_main(caf::actor_system& sys) {
 
   //run_concurrent_mmul_test_shared_gpu(sys,2,50);
   //test_mmul_sync(sys,50);
-  run_concurrent_mmul_test_global_sync(sys,50,50);
+  run_concurrent_mmul_test_global_sync(sys,50,1024);
   //run_concurrent_mmul_test_sync(sys,50,1024);
 
 }
