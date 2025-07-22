@@ -31,6 +31,7 @@ include_directories(
 
 # 5) Declare your executable
 add_executable(test main.test.cpp)
+target_compile_definitions(test PRIVATE CAF_ENABLE_LOGGING)
 
 target_link_libraries(test
   PRIVATE
