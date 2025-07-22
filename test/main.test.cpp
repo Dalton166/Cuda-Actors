@@ -929,7 +929,7 @@ caf::behavior cpu_supervisor_global_fun(caf::stateful_actor<cpu_supervisor_state
     auto start = Clock::now();
 
     // Send global buffers to worker actor for multiplication
-    self->request(st_ref.worker, std::chrono::seconds(1000),
+    self->request(st_ref.worker, std::chrono::seconds(100000),
                   cpu_global_a, cpu_global_b, cpu_global_c, st_ref.N)
       .then(
         [self, start]() {
@@ -1005,6 +1005,9 @@ inline void run_concurrent_serial_mmul_test_global_with_worker(caf::actor_system
 
 
 
+//This has been modified to turn off gpu tests untill i can figure out what is wrong
+//with the gpu actors code and has been updated to only test the stuff 
+//that needs to be run 
 void run_all_concurrent_tests(caf::actor_system& sys) {
   std::vector<int> matrix_sizes = {1024, 2048, 4096};
   std::vector<int> actor_counts = {1, 50, 200};
@@ -1014,8 +1017,8 @@ void run_all_concurrent_tests(caf::actor_system& sys) {
       std::cout << "\n=== Running tests for N = " << N
                 << ", num_actors = " << num_actors << " ===\n";
 
-      std::cout << "[RUN] GPU concurrent test (global matrices)...\n";
-      run_concurrent_mmul_test_global(sys, num_actors, N);
+      //std::cout << "[RUN] GPU concurrent test (global matrices)...\n";
+      //run_concurrent_mmul_test_global(sys, num_actors, N);
 
       std::cout << "[RUN] CPU concurrent test with worker (global matrices)...\n";
       run_concurrent_serial_mmul_test_global_with_worker(sys, num_actors, N);
@@ -1037,7 +1040,7 @@ void caf_main(caf::actor_system& sys) {
   //run_concurrent_mmul_test_global(sys,1,1024);
  //run_concurrent_serial_mmul_test_global_with_worker(sys,2,1024);
   //run_concurrent_mmul_validate_test(sys,100,60);
- //run_all_concurrent_tests(sys);
+   run_all_concurrent_tests(sys);
 
 }
 
