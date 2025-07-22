@@ -112,6 +112,8 @@ private:
   std::atomic<int> pending_promises_ = 0;
   std::atomic<bool> shutdown_requested_ = false;
   int actor_id = generate_id();
+  std::atomic_flag resuming_flag_ = ATOMIC_FLAG_INIT;
+
 
   int generate_id() {
     static std::random_device rd;
@@ -155,78 +157,65 @@ private:
   }
 
   resumable::resume_result resume(scheduler* sched, size_t) override {
-    while (!mailbox_.empty()) {
-      
-      std::cout << "Actor with id " << actor_id << " is begginning to process a message.\n";
-      
-          std::cout << "[Thread " << std::this_thread::get_id() << "] resume() started, mailbox size: " << mailbox_.size() << "\n";
-
-      /*
-      if (shutdown_requested_) {
-      
-	      std::cout << "Warning actor with id " << actor_id << " Is processing message after shutdown has been requested\n";
-    std::cout << "[Thread " << std::this_thread::get_id() << "] resume() finished\n";
-      
-          return resumable::resume_later;
-      }
-      */
-
-      if (mailbox_.size() == 0 && shutdown_requested_) {
-      
-	      return resumable::done;
-      }
-
-      auto msg = std::move(mailbox_.front());
-      mailbox_.pop();
-
-
-      if (!msg || !msg->content().ptr()) { 
-	      std::cout << "Warning gpu actor with id " << actor_id << "Received a message with no content, dropping message\n";
-	          std::cout << "[Thread " << std::this_thread::get_id() << "] resume() finished\n";
-
-	      continue;
-      }
-
-
-      pending_promises_++;
-      current_mailbox_element(msg.get());
-      if (msg->content().match_elements<kernel_done_atom>()) {
-        if (--pending_promises_ == 0 && shutdown_requested_) {
-          quit(exit_reason::user_shutdown);
-              std::cout << "[Thread " << std::this_thread::get_id() << "] resume() finished\n";
-
-	  return resumable::done;
-        }
-        current_mailbox_element(nullptr);
-    std::cout << "[Thread " << std::this_thread::get_id() << "] resume() finished\n";
-
-	continue;
-      }
-
-      if (msg->content().match_elements<exit_msg>()) {
-        auto exit = msg->content().get_as<exit_msg>(0);
-        shutdown_requested_ = true;
-        if (--pending_promises_ == 0) {
-          quit(static_cast<exit_reason>(exit.reason.code()));
-    std::cout << "[Thread " << std::this_thread::get_id() << "] resume() finished\n";
-
-	  return resumable::done;
-        } else {
-          current_mailbox_element(nullptr);
-    std::cout << "[Thread " << std::this_thread::get_id() << "] resume() finished\n";
-
-	  return resumable::resume_later;
-        }
-      }
-
-      handle_message(msg->content());
-      pending_promises_--;
-      current_mailbox_element(nullptr);
-    }
-    std::cout << "[Thread " << std::this_thread::get_id() << "] resume() finished\n";
-
-    return shutdown_requested_ ? resumable::resume_later : resumable::done;
+  if (resuming_flag_.test_and_set(std::memory_order_acquire)) {
+    //std::cout << "[Thread " << std::this_thread::get_id()
+    //          << "] resume() skipped: already running on another thread.\n";
+    return resumable::resume_later;
   }
+
+  // Ensure the flag is cleared even on early return
+  auto clear_flag = caf::detail::scope_guard([this] noexcept {
+    resuming_flag_.clear(std::memory_order_release);
+  });
+
+  while (!mailbox_.empty()) {
+   // std::cout << "[Thread " << std::this_thread::get_id()
+              //<< "] resume() running, mailbox size: " << mailbox_.size() << "\n";
+
+    if (mailbox_.size() == 0 && shutdown_requested_)
+      return resumable::done;
+
+    auto msg = std::move(mailbox_.front());
+    mailbox_.pop();
+
+    if (!msg || !msg->content().ptr()) {
+      std::cout << "[Thread " << std::this_thread::get_id()
+                << "] Dropping message with no content\n";
+      continue;
+    }
+
+    pending_promises_++;
+    current_mailbox_element(msg.get());
+
+    if (msg->content().match_elements<kernel_done_atom>()) {
+      if (--pending_promises_ == 0 && shutdown_requested_) {
+        quit(exit_reason::user_shutdown);
+        return resumable::done;
+      }
+      current_mailbox_element(nullptr);
+      continue;
+    }
+
+    if (msg->content().match_elements<exit_msg>()) {
+      auto exit = msg->content().get_as<exit_msg>(0);
+      shutdown_requested_ = true;
+      if (--pending_promises_ == 0) {
+        quit(static_cast<exit_reason>(exit.reason.code()));
+        return resumable::done;
+      } else {
+        current_mailbox_element(nullptr);
+        return resumable::resume_later;
+      }
+    }
+
+    handle_message(msg->content());
+    pending_promises_--;
+    current_mailbox_element(nullptr);
+  }
+
+  //std::cout << "[Thread " << std::this_thread::get_id() << "] resume() finished\n";
+  return shutdown_requested_ ? resumable::resume_later : resumable::done;
+}
 
   void ref_resumable() const noexcept override {}
 
