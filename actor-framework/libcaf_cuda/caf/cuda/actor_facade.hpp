@@ -20,6 +20,7 @@
 #include "caf/cuda/utility.hpp"
 #include <random>
 #include <climits>
+#include <thread>
 
 namespace caf::cuda {
 
@@ -157,18 +158,32 @@ private:
     while (!mailbox_.empty()) {
       
       std::cout << "Actor with id " << actor_id << " is begginning to process a message.\n";
+      
+          std::cout << "[Thread " << std::this_thread::get_id() << "] resume() started, mailbox size: " << mailbox_.size() << "\n";
+
+      /*
+      if (shutdown_requested_) {
+      
+	      std::cout << "Warning actor with id " << actor_id << " Is processing message after shutdown has been requested\n";
+    std::cout << "[Thread " << std::this_thread::get_id() << "] resume() finished\n";
+      
+          return resumable::resume_later;
+      }
+      */
+
+      if (mailbox_.size() == 0 && shutdown_requested_) {
+      
+	      return resumable::done;
+      }
+
       auto msg = std::move(mailbox_.front());
       mailbox_.pop();
 
 
-      if (shutdown_requested_) {
-      
-	      std::cout << "Warning actor with id " << actor_id << " Is processing message after shutdown has been requested\n";
-      
-      }
-
       if (!msg || !msg->content().ptr()) { 
 	      std::cout << "Warning gpu actor with id " << actor_id << "Received a message with no content, dropping message\n";
+	          std::cout << "[Thread " << std::this_thread::get_id() << "] resume() finished\n";
+
 	      continue;
       }
 
@@ -178,10 +193,14 @@ private:
       if (msg->content().match_elements<kernel_done_atom>()) {
         if (--pending_promises_ == 0 && shutdown_requested_) {
           quit(exit_reason::user_shutdown);
-          return resumable::done;
+              std::cout << "[Thread " << std::this_thread::get_id() << "] resume() finished\n";
+
+	  return resumable::done;
         }
         current_mailbox_element(nullptr);
-        continue;
+    std::cout << "[Thread " << std::this_thread::get_id() << "] resume() finished\n";
+
+	continue;
       }
 
       if (msg->content().match_elements<exit_msg>()) {
@@ -189,10 +208,14 @@ private:
         shutdown_requested_ = true;
         if (--pending_promises_ == 0) {
           quit(static_cast<exit_reason>(exit.reason.code()));
-          return resumable::done;
+    std::cout << "[Thread " << std::this_thread::get_id() << "] resume() finished\n";
+
+	  return resumable::done;
         } else {
           current_mailbox_element(nullptr);
-          return resumable::resume_later;
+    std::cout << "[Thread " << std::this_thread::get_id() << "] resume() finished\n";
+
+	  return resumable::resume_later;
         }
       }
 
@@ -200,6 +223,7 @@ private:
       pending_promises_--;
       current_mailbox_element(nullptr);
     }
+    std::cout << "[Thread " << std::this_thread::get_id() << "] resume() finished\n";
 
     return shutdown_requested_ ? resumable::resume_later : resumable::done;
   }
@@ -234,13 +258,21 @@ private:
 
   void force_close_mailbox() override {
     std::cout << "Actor with id : " << actor_id  << " force mailbox called\n";
+        std::cout << "[Thread " << std::this_thread::get_id() << "] Accessing mailbox, size: " << mailbox_.size() << "\n";
+
     while (!mailbox_.empty()) {
       mailbox_.pop();
     }
+
+        std::cout << "[Thread " << std::this_thread::get_id() << "] force_close_mailbox() finished, mailbox size after: " << mailbox_.size() << "\n";
+
   }
 
+
+
+
   void quit(exit_reason reason) {
-    force_close_mailbox();
+    //force_close_mailbox();
     current_mailbox_element(nullptr);
   }
 };
