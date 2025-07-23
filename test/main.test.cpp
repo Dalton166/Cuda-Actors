@@ -1906,8 +1906,17 @@ void caf_main(caf::actor_system& sys) {
 
   //run_concurrent_mmul_test_shared_gpu(sys,2,50);
   //test_mmul_sync(sys,50);
-  run_concurrent_mmul_test_global_sync(sys,20,1024);
+//  run_concurrent_mmul_test_global_sync(sys,20,1024);
+
+
   //run_concurrent_mmul_test_sync(sys,50,1024);
+
+
+  //running test with varying sizes and iterations
+  std::vector<int> sizes = {1,2,3};
+  std::vector<int> iterations = {1,2,3};
+  run_concurrent_serial_mmul_test_per_actor(sys,sizes,iterations);
+
 
 }
 
