@@ -158,8 +158,6 @@ private:
 
   resumable::resume_result resume(scheduler* sched, size_t) override {
   if (resuming_flag_.test_and_set(std::memory_order_acquire)) {
-    //std::cout << "[Thread " << std::this_thread::get_id()
-    //          << "] resume() skipped: already running on another thread.\n";
     return resumable::resume_later;
   }
 
@@ -169,9 +167,6 @@ private:
   });
 
   while (!mailbox_.empty()) {
-   // std::cout << "[Thread " << std::this_thread::get_id()
-              //<< "] resume() running, mailbox size: " << mailbox_.size() << "\n";
-
     if (mailbox_.size() == 0 && shutdown_requested_)
       return resumable::done;
 
@@ -212,8 +207,6 @@ private:
     pending_promises_--;
     current_mailbox_element(nullptr);
   }
-
-  //std::cout << "[Thread " << std::this_thread::get_id() << "] resume() finished\n";
   return shutdown_requested_ ? resumable::resume_later : resumable::done;
 }
 
