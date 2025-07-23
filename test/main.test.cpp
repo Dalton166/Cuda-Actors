@@ -1820,6 +1820,8 @@ caf::behavior cpu_supervisor_per_actor_fun(caf::stateful_actor<cpu_supervisor_pe
 
           auto& st_ref = self->state();
           std::cout << "[INFO] [CPU PER ACTOR] Supervisor " << st_ref.id
+                    << " (Matrix Size: " << st_ref.N << "x" << st_ref.N
+                    << ", Total Iterations: " << st_ref.num_iterations << ")"
                     << " Iteration " << st_ref.count
                     << " Serial multiply time: " << duration << " s\n";
 
@@ -1831,6 +1833,8 @@ caf::behavior cpu_supervisor_per_actor_fun(caf::stateful_actor<cpu_supervisor_pe
           } else {
             double avg = std::accumulate(st_ref.run_times.begin(), st_ref.run_times.end(), 0.0) / st_ref.run_times.size();
             std::cout << "[INFO] [CPU PER ACTOR] Supervisor " << st_ref.id
+                      << " (Matrix Size: " << st_ref.N << "x" << st_ref.N
+                      << ", Total Iterations: " << st_ref.num_iterations << ")"
                       << " Average serial multiply time: " << avg << " s\n";
 
             self->send_exit(st_ref.worker, caf::exit_reason::user_shutdown);
@@ -1850,10 +1854,9 @@ caf::behavior cpu_supervisor_per_actor_fun(caf::stateful_actor<cpu_supervisor_pe
       }
     }
   };
-
-
-
 }
+
+
 
 // === Test Function ===
 inline void run_concurrent_serial_mmul_test_per_actor(caf::actor_system& sys,
