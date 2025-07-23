@@ -156,20 +156,19 @@ private:
     return subtype_t(0);
   }
 
-  resumable::resume_result resume(scheduler* sched, size_t) override {
+ resumable::resume_result resume(scheduler* sched, size_t max_throughput) override {
   if (resuming_flag_.test_and_set(std::memory_order_acquire)) {
     return resumable::resume_later;
   }
 
-  // Ensure the flag is cleared even on early return
+  //ensure the lock is released on exit of this method 
   auto clear_flag = caf::detail::scope_guard([this] noexcept {
     resuming_flag_.clear(std::memory_order_release);
   });
 
-  while (!mailbox_.empty()) {
-    if (mailbox_.size() == 0 && shutdown_requested_)
-      return resumable::done;
+  size_t processed = 0;
 
+  while (!mailbox_.empty() && processed < max_throughput) {
     auto msg = std::move(mailbox_.front());
     mailbox_.pop();
 
@@ -188,6 +187,7 @@ private:
         return resumable::done;
       }
       current_mailbox_element(nullptr);
+      ++processed;
       continue;
     }
 
@@ -206,7 +206,13 @@ private:
     handle_message(msg->content());
     pending_promises_--;
     current_mailbox_element(nullptr);
+    ++processed;
   }
+
+  // If there's still more work, return resume_later
+  if (!mailbox_.empty())
+    return resumable::resume_later;
+
   return shutdown_requested_ ? resumable::resume_later : resumable::done;
 }
 
@@ -239,15 +245,9 @@ private:
   }
 
   void force_close_mailbox() override {
-    std::cout << "Actor with id : " << actor_id  << " force mailbox called\n";
-        std::cout << "[Thread " << std::this_thread::get_id() << "] Accessing mailbox, size: " << mailbox_.size() << "\n";
-
     while (!mailbox_.empty()) {
       mailbox_.pop();
     }
-
-        std::cout << "[Thread " << std::this_thread::get_id() << "] force_close_mailbox() finished, mailbox size after: " << mailbox_.size() << "\n";
-
   }
 
 
