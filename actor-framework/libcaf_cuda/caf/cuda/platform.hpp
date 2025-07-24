@@ -15,7 +15,7 @@
 
 namespace caf::cuda {
 
-class platform : public ref_counted {
+class CAF_CUDA_EXPORT platform : public ref_counted {
 public:
   friend class program;
   template <class T, class... Ts>
