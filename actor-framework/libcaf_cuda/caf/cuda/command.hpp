@@ -28,26 +28,37 @@ template <class Actor, class... Ts>
 class command : public ref_counted {
 public:
   template <typename... Us>
-    command(caf::response_promise promise,
-          caf::actor self,
-          program_ptr program,
-          nd_range dims,
-          int id,
-          Us&&... xs)
-    : rp(std::move(promise)),
-      self_(std::move(self)),
-      program_(std::move(program)),
-      dims_(dims),
-      actor_id(id),
-      dev_(platform::create()->schedule(id)),
-      mem_refs(convert_data_to_args(std::forward<Us>(xs)...)) {
-    static_assert(sizeof...(Us) == sizeof...(Ts), "Argument count mismatch");
-  }
+command(caf::response_promise promise,
+        caf::actor self,
+        program_ptr program,
+        nd_range dims,
+        int id, 
+        Us&&... xs)
+  : rp(std::move(promise)),
+    self_(std::move(self)),
+    program_(std::move(program)),
+    dims_(dims),
+    actor_id(id),
+    mem_refs() {   // default-initialize mem_refs; will assign below
+
+  // Now safely do prints and dev_ initialization here:
+  std::cout << "Before calling platform::schedule\n";
+  dev_ = platform::create()->schedule(id);
+  std::cout << "After calling platform::schedule\n";
+
+  // Initialize mem_refs after dev_ is valid
+  mem_refs = convert_data_to_args(std::forward<Us>(xs)...);
+
+  static_assert(sizeof...(Us) == sizeof...(Ts), "Argument count mismatch");
+}
   ~command() = default;
 
   void enqueue() {
     //auto outputs = launch_kernel(program_, dims_, mem_refs, actor_id);
-    rp.deliver(std::move(launch_kernel(program_, dims_, mem_refs, actor_id)));
+   
+
+     std::cout << "Enqueue called \n";
+     rp.deliver(std::move(launch_kernel(program_, dims_, mem_refs, actor_id)));
     anon_mail(kernel_done_atom_v).send(self_);
     for_each_tuple(mem_refs, [](auto& mem) {
       if (mem)
@@ -74,6 +85,7 @@ private:
 
  template <typename T>
   mem_ptr<T> makeArg(in<T> arg) {
+	  std::cout << "Calling on device " << dev_ -> getId() << "\n";
     return dev_->make_arg(arg, actor_id);
   }
 
