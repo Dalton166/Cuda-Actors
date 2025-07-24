@@ -153,11 +153,11 @@ private:
 
 
 
-  subtype_t subtype() const noexcept {
+  subtype_t subtype() const noexcept override {
     return subtype_t(0);
   }
 
- resumable::resume_result resume(scheduler* sched, size_t max_throughput) {
+ resumable::resume_result resume(::caf::scheduler* sched, size_t max_throughput) override {
   if (resuming_flag_.test_and_set(std::memory_order_acquire)) {
     return resumable::resume_later;
   }
@@ -217,11 +217,11 @@ private:
   return shutdown_requested_ ? resumable::resume_later : resumable::done;
 }
 
-  void ref_resumable() const noexcept  {}
+  void ref_resumable() const noexcept override  {}
 
-  void deref_resumable() const noexcept  {}
+  void deref_resumable() const noexcept override  {}
 
-  bool enqueue(mailbox_element_ptr what, scheduler* sched) {
+  bool enqueue(mailbox_element_ptr what, ::caf::scheduler* sched) override {
     if (!what)
       return false;
 
@@ -233,19 +233,19 @@ private:
     return true;
   }
 
-  void launch(scheduler* sched, bool lazy, [[maybe_unused]] bool interruptible) {
+  void launch(::caf::scheduler* sched, bool lazy, [[maybe_unused]] bool interruptible) override {
     if (!lazy && sched) {
       sched->schedule(this);
     }
   }
 
-  void do_unstash(mailbox_element_ptr what) {
+  void do_unstash(mailbox_element_ptr what) override {
     if (what) {
       mailbox_.push(std::move(what));
     }
   }
 
-  void force_close_mailbox()  {
+  void force_close_mailbox() override  {
     while (!mailbox_.empty()) {
       mailbox_.pop();
     }
