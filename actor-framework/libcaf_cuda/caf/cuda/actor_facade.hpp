@@ -132,6 +132,10 @@ private:
         return unpack_and_run(sender, msg, std::index_sequence_for<Ts...>{});
       }
     }
+
+    if (!msg.types().empty()) { 
+	    return unpack_and_run_wrapped_async(msg, std::index_sequence_for<Ts...>{});
+    }
     std::cout << "[WARNING], message format not recognized by actor facade, dropping message\n";
     
      return false;
@@ -151,6 +155,17 @@ private:
     run_kernel_synchronous(sender, std::get<Is>(wrapped)...);
     return true;
   }
+
+
+  template <std::size_t... Is>
+  bool unpack_and_run_wrapped_async(const message& msg, std::index_sequence<Is...>) {
+    auto wrapped = std::make_tuple(msg.get_as<Ts>(Is)...);
+    run_kernel(std::get<Is>(wrapped)...);
+    return true;
+  }
+
+
+
 
   subtype_t subtype() const noexcept override {
     return subtype_t(0);
