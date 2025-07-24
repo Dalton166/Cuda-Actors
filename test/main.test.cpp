@@ -1906,7 +1906,10 @@ void caf_main(caf::actor_system& sys) {
   //test_mmul_sync(sys,50);
 //  run_concurrent_mmul_test_global_sync(sys,20,1024);
   //run_concurrent_mmul_test_sync(sys,50,1024);
-   run_concurrent_mmul_test_global(sys,1,50);
+
+   //test_mmul_from_cubin(sys,50);
+   //test_mmul_from_cubin(sys,1024);
+   run_concurrent_mmul_test_global(sys,50,4096);
   //run_concurrent_mmul_test(sys,1,50);
 
 
