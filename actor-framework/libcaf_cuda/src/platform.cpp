@@ -75,7 +75,9 @@ scheduler* platform::get_scheduler() {
 }
 
 device_ptr platform::schedule(int actor_id) {
-  return scheduler_->schedule(actor_id);
+  
+	//std::cout <<  "schedule called\n";
+	return scheduler_->schedule(actor_id);
 }
 
 void platform::release_streams_for_actor(int actor_id) {
