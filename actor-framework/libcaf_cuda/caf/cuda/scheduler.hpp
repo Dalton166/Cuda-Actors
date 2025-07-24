@@ -138,6 +138,7 @@ public:
     }
     size_t num_devices = devices_.size();
     size_t device_index = static_cast<size_t>(actor_id) % num_devices;
+    //std::cout << "picking device with id of " << devices_[device_index] -> getId() << " \n";
     return devices_[device_index];
   }
 
