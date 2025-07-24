@@ -26,15 +26,16 @@ program_ptr manager::create_program(const char * kernel,
 
 	CUdevice current_device = device -> getDevice();;
 
+	/*
 	int d_id = device -> getId();
 	int c_id = device -> getContextId();
 	int s_id = device -> getStreamId();
-
+	*/
 
 	//the compiled program can be accessed via ptx.data() afterwards
 	std::vector<char> ptx;
 	compile_nvrtc_program(kernel,current_device,ptx);
-	program_ptr prog = make_counted<program>(name,device,d_id,c_id,s_id, ptx);
+	program_ptr prog = make_counted<program>(name, ptx);
 	return prog;
 }
 
@@ -70,13 +71,10 @@ program_ptr manager::create_program_from_ptx(const std::string& filename,
                std::istreambuf_iterator<char>());
   }
 
-  int d_id = device->getId();
-  int c_id = device->getContextId();
-  int s_id = device->getStreamId();
-
-  // 🔒 Guard the actual JIT as well — this is the critical part!
+   // 🔒 Guard the actual JIT as well — this is the critical part!
   std::lock_guard<std::mutex> guard(*file_mutex);
-  return make_counted<program>(kernel_name, device, d_id, c_id, s_id, std::move(ptx));
+  program_ptr prog = make_counted<program>(kernel_name, ptx);
+  return prog;
 }
 
 
@@ -93,12 +91,9 @@ program_ptr manager::create_program_from_cubin(const std::string& filename,
   std::vector<char> cubin((std::istreambuf_iterator<char>(in)),
                           std::istreambuf_iterator<char>());
 
-  int d_id = device->getId();
-  int c_id = device->getContextId();
-  int s_id = device->getStreamId();
-
-  // Reuse the same constructor as PTX (program class doesn't care)
-  return make_counted<program>(kernel_name, device, d_id, c_id, s_id, std::move(cubin));
+   // Reuse the same constructor as PTX (program class doesn't care)
+  program_ptr prog = make_counted<program>(kernel_name, std::move(cubin));
+  return prog;
 }
 
 
