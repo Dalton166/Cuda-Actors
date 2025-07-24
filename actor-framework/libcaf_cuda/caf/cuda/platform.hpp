@@ -23,7 +23,9 @@ public:
   static platform_ptr create() {
     static platform_ptr instance;
     if (!instance) {
-      instance = make_counted<platform>();
+      
+	     std::cout << "[platform] constructor called\n";
+	    instance = make_counted<platform>();
     }
     return instance;
   }
@@ -59,6 +61,8 @@ private:
     devices_.resize(device_count);
     contexts_.resize(device_count);
 
+    std::cout << "Device count is " << device_count << " \n";
+
     for (int i = 0; i < device_count; ++i) {
       CUdevice cuda_device;
       check(cuDeviceGet(&cuda_device, i), "cuDeviceGet");
@@ -80,7 +84,8 @@ private:
     }
   }
 
-  ~platform() override {
+  ~platform()  {
+	  std::cout << "Destroying platform\n";
     // Context destruction handled by device destructors
   }
 
