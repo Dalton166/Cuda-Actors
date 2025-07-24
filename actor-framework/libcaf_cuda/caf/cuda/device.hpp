@@ -86,7 +86,7 @@ public:
     auto kernel_args = prepare_kernel_args(args);
     launch_kernel_internal(kernel, range, stream, kernel_args.ptrs.data());
 
-    CHECK_CUDA(cuStreamSynchronize(stream));
+    //CHECK_CUDA(cuStreamSynchronize(stream));
     CHECK_CUDA(cuCtxPopCurrent(nullptr));
 
     auto outputs = collect_output_buffers(args);

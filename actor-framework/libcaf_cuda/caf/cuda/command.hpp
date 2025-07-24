@@ -26,6 +26,7 @@ namespace caf::cuda {
 template <class Actor, class... Ts>
 class command : public ref_counted {
 public:
+  // Original constructor with response_promise for backwards compatibility
   template <typename... Us>
   command(caf::response_promise promise,
           caf::actor self,
@@ -35,39 +36,23 @@ public:
           Us&&... xs)
     : rp(std::move(promise)),
       self_(std::move(self)),
-      program_(std::move(program)),
+      program_(program),
       dims_(dims),
       actor_id(id),
       mem_refs(convert_data_to_args(std::forward<Us>(xs)...)) {
     static_assert(sizeof...(Us) == sizeof...(Ts), "Argument count mismatch");
   }
-
-  //TODO, fix compiler errors
-  command(program_ptr program, int id)
-  : program_(std::move(program)),
-    actor_id(id) {
-  // Instruct device to release any per-actor stream resources
-  if (program_) {
-    if (auto dev = program_->get_device()) {
-      dev->release_stream_for_actor(actor_id);
-    }
-  }
-}
-
-
   ~command() = default;
 
   void enqueue() {
-    auto outputs = launch_kernel(program_, dims_, mem_refs, actor_id);
-    rp.deliver(std::move(outputs));
-
+    //auto outputs = launch_kernel(program_, dims_, mem_refs, actor_id);
+    rp.deliver(std::move(launch_kernel(program_, dims_, mem_refs, actor_id)));
+    anon_mail(kernel_done_atom_v).send(self_);
     for_each_tuple(mem_refs, [](auto& mem) {
       if (mem)
         mem->reset();
     });
 
-    //anon_send(self_, kernel_done_atom_v);
-    anon_mail(kernel_done_atom_v).send(self_);
   }
 
   template <class A, class... S>
@@ -159,4 +144,3 @@ inline void intrusive_ptr_release(command<Actor, Ts...>* ptr) {
 }
 
 } // namespace caf::cuda
-

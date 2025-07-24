@@ -14,6 +14,15 @@
 
 namespace caf::cuda {
 
+
+// This helper calls manager singleton's get_context_by_id
+inline CUcontext getContextById(int device_id, int context_id) {
+  auto& mgr = manager::get();
+  return mgr.get_context_by_id(device_id, context_id);
+}
+
+
+
 // keep the old name
 template <class T>
 class mem_ref : public caf::ref_counted {

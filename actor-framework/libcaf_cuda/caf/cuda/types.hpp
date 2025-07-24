@@ -53,45 +53,70 @@ struct output_buffer {
 
 
 // === Wrapper types for in/out/in_out with default ctor, union safely used ===
-
 template <typename T>
 class in_impl {
 private:
   std::variant<T, std::vector<T>> data_;
+  bool moved_from_ = false;
+
+  void check_valid() const {
+    if (moved_from_)
+      throw std::runtime_error(std::string("Use-after-move detected in ") + typeid(*this).name());
+  }
 
 public:
   using value_type = T;
 
-  // Default constructor - scalar default initialized
+  // Constructors
   in_impl() : data_(T{}) {}
-
-  // Scalar constructor
   explicit in_impl(const T& val) : data_(val) {}
-
-  // Vector constructor
   explicit in_impl(const std::vector<T>& buf) : data_(buf) {}
 
+  // Copy constructor/assignment
+  in_impl(const in_impl&) = default;
+  in_impl& operator=(const in_impl&) = default;
+
+  // Move constructor
+  in_impl(in_impl&& other) noexcept
+    : data_(std::move(other.data_)) {
+    other.moved_from_ = true;
+  }
+
+  // Move assignment
+  in_impl& operator=(in_impl&& other) noexcept {
+    if (this != &other) {
+      data_ = std::move(other.data_);
+      other.moved_from_ = true;
+    }
+    return *this;
+  }
+
   bool is_scalar() const {
+    check_valid();
     return std::holds_alternative<T>(data_);
   }
 
   const T& getscalar() const {
+    check_valid();
     if (!is_scalar())
       throw std::runtime_error("in_impl does not hold scalar");
     return std::get<T>(data_);
   }
 
   const std::vector<T>& get_buffer() const {
+    check_valid();
     if (is_scalar())
       throw std::runtime_error("in_impl does not hold buffer");
     return std::get<std::vector<T>>(data_);
   }
 
   const T* data() const {
+    check_valid();
     return is_scalar() ? &std::get<T>(data_) : std::get<std::vector<T>>(data_).data();
   }
 
   std::size_t size() const {
+    check_valid();
     return is_scalar() ? 1 : std::get<std::vector<T>>(data_).size();
   }
 };
@@ -100,37 +125,62 @@ template <typename T>
 class out_impl {
 private:
   std::variant<T, std::vector<T>> data_;
+  bool moved_from_ = false;
+
+  void check_valid() const {
+    if (moved_from_)
+      throw std::runtime_error(std::string("Use-after-move detected in ") + typeid(*this).name());
+  }
 
 public:
   using value_type = T;
 
   out_impl() : data_(T{}) {}
-
   explicit out_impl(const T& val) : data_(val) {}
-
   explicit out_impl(const std::vector<T>& buf) : data_(buf) {}
 
+  out_impl(const out_impl&) = default;
+  out_impl& operator=(const out_impl&) = default;
+
+  out_impl(out_impl&& other) noexcept
+    : data_(std::move(other.data_)) {
+    other.moved_from_ = true;
+  }
+
+  out_impl& operator=(out_impl&& other) noexcept {
+    if (this != &other) {
+      data_ = std::move(other.data_);
+      other.moved_from_ = true;
+    }
+    return *this;
+  }
+
   bool is_scalar() const {
+    check_valid();
     return std::holds_alternative<T>(data_);
   }
 
   const T& getscalar() const {
+    check_valid();
     if (!is_scalar())
       throw std::runtime_error("out_impl does not hold scalar");
     return std::get<T>(data_);
   }
 
   const std::vector<T>& get_buffer() const {
+    check_valid();
     if (is_scalar())
       throw std::runtime_error("out_impl does not hold buffer");
     return std::get<std::vector<T>>(data_);
   }
 
   const T* data() const {
+    check_valid();
     return is_scalar() ? &std::get<T>(data_) : std::get<std::vector<T>>(data_).data();
   }
 
   std::size_t size() const {
+    check_valid();
     return is_scalar() ? 1 : std::get<std::vector<T>>(data_).size();
   }
 };
@@ -139,42 +189,67 @@ template <typename T>
 class in_out_impl {
 private:
   std::variant<T, std::vector<T>> data_;
+  bool moved_from_ = false;
+
+  void check_valid() const {
+    if (moved_from_)
+      throw std::runtime_error(std::string("Use-after-move detected in ") + typeid(*this).name());
+  }
 
 public:
   using value_type = T;
 
   in_out_impl() : data_(T{}) {}
-
   explicit in_out_impl(const T& val) : data_(val) {}
-
   explicit in_out_impl(const std::vector<T>& buf) : data_(buf) {}
 
+  in_out_impl(const in_out_impl&) = default;
+  in_out_impl& operator=(const in_out_impl&) = default;
+
+  in_out_impl(in_out_impl&& other) noexcept
+    : data_(std::move(other.data_)) {
+    other.moved_from_ = true;
+  }
+
+  in_out_impl& operator=(in_out_impl&& other) noexcept {
+    if (this != &other) {
+      data_ = std::move(other.data_);
+      other.moved_from_ = true;
+    }
+    return *this;
+  }
+
   bool is_scalar() const {
+    check_valid();
     return std::holds_alternative<T>(data_);
   }
 
   const T& getscalar() const {
+    check_valid();
     if (!is_scalar())
       throw std::runtime_error("in_out_impl does not hold scalar");
     return std::get<T>(data_);
   }
 
   const std::vector<T>& get_buffer() const {
+    check_valid();
     if (is_scalar())
       throw std::runtime_error("in_out_impl does not hold buffer");
     return std::get<std::vector<T>>(data_);
   }
 
   const T* data() const {
+    check_valid();
     return is_scalar() ? &std::get<T>(data_) : std::get<std::vector<T>>(data_).data();
   }
 
   std::size_t size() const {
+    check_valid();
     return is_scalar() ? 1 : std::get<std::vector<T>>(data_).size();
   }
 };
 
-// Aliases
+// === Aliases ===
 template <typename T>
 using in = in_impl<T>;
 
