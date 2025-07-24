@@ -88,22 +88,6 @@ public:
     create_command(program_, std::forward<Ts>(xs)...);
   }
 
-  //again this relies on the knowledge that launch kernel is synchronous
-  //it should not be, this should be deleted eventually but response promise is 
-  //causing too much bugs
-  //
-  void run_kernel_synchronous(caf::actor sender, Ts&... xs) {
-    using command_t = command<caf::actor, raw_t<Ts>...>;
-    auto cmd = make_counted<command_t>(
-      sender,
-      caf::actor_cast<caf::actor>(this),
-      program_,
-      dims_,
-      actor_id,
-      std::forward<Ts>(xs)...);
-    cmd->enqueue();
-  }
-
 private:
   caf::actor_config config_;
   program_ptr program_;
@@ -144,7 +128,7 @@ private:
   template <std::size_t... Is>
   bool unpack_and_run_wrapped(caf::actor sender, const message& msg, std::index_sequence<Is...>) {
     auto wrapped = std::make_tuple(msg.get_as<Ts>(Is + 1)...);
-    run_kernel_synchronous(sender, std::get<Is>(wrapped)...);
+    run_kernel(std::get<Is>(wrapped)...);
     return true;
   }
 
@@ -152,7 +136,7 @@ private:
   bool unpack_and_run(caf::actor sender, const message& msg, std::index_sequence<Is...>) {
     auto unpacked = std::make_tuple(msg.get_as<raw_t<Ts>>(Is + 1)...);
     auto wrapped = std::make_tuple(Ts(std::get<Is>(unpacked))...);
-    run_kernel_synchronous(sender, std::get<Is>(wrapped)...);
+    run_kernel(std::get<Is>(wrapped)...);
     return true;
   }
 
