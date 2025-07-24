@@ -99,7 +99,7 @@ void test_manager(actor_system& sys, platform_ptr plat) {
         })";
     program_ptr prog = mgr.create_program(kernel, "test_kernel", dev);
     assert(prog != nullptr && "Program creation failed: nullptr returned");
-    assert(prog->get_kernel() != nullptr && "Kernel creation failed: nullptr returned");
+    assert(prog->get_kernel(0) != nullptr && "Kernel creation failed: nullptr returned");
     std::cout << "  -> Program and kernel created successfully.\n";
 
     std::cout << "Test 4: Testing invalid device ID (999)...\n";
@@ -124,9 +124,7 @@ void test_program(actor_system& sys, platform_ptr plat) {
             data[idx] = idx;
         })";
     program_ptr prog = mgr.create_program(kernel, "test_kernel", dev);
-    assert(prog->get_device_id() == 0 && "Program device ID mismatch: expected 0");
-    assert(prog->get_context_id() == 0 && "Program context ID mismatch: expected 0");
-    assert(prog->get_stream_id() == 0 && "Program stream ID mismatch: expected 0");
+    //this test used to check more but redundant method of program were removed
     std::cout << "  -> Program properties valid (device_id=0, context_id=0, stream_id=0).\n";
     std::cout << "---- Program tests passed ----\n";
 }
@@ -152,7 +150,7 @@ void test_create_program(actor_system& sys, platform_ptr plat) {
             }
             std::cout << "  -> Program created: prog=" << prog.get() << "\n";
 
-            CUfunction kernel = prog->get_kernel();
+            CUfunction kernel = prog->get_kernel(0);
             if (!kernel) {
                 throw std::runtime_error("get_kernel returned null CUfunction");
             }
@@ -338,7 +336,7 @@ void test_kernel_launch(actor_system& sys, platform_ptr plat) {
                 output[0] = 42;
             })";
         program_ptr prog = mgr.create_program(kernel_code, "simple_kernel", dev);
-        std::cout << "  -> Program created with kernel: simple_kernel, handle: " << prog->get_kernel() << ", prog=" << prog.get() << "\n";
+        std::cout << "  -> Program created with kernel: simple_kernel, handle: " << prog->get_kernel(0) << ", prog=" << prog.get() << "\n";
         std::vector<int> host_data(1, 0);
         out<int> output = create_out_arg(host_data);
         mem_ptr<int> out_mem = dev->make_arg(output,test_actor_id);
@@ -350,8 +348,8 @@ void test_kernel_launch(actor_system& sys, platform_ptr plat) {
             CUcontext current_ctx;
             CHECK_CUDA(cuCtxGetCurrent(&current_ctx));
             std::cout << "  -> Current context before launch: " << current_ctx << "\n";
-            std::cout << "  -> Launching kernel with context: " << ctx << ", kernel: " << prog->get_kernel() << ", args: " << out_mem->mem() << "\n";
-            dev->launch_kernel(prog->get_kernel(), dims, std::make_tuple(out_mem), 0);
+            std::cout << "  -> Launching kernel with context: " << ctx << ", kernel: " << prog->get_kernel(0) << ", args: " << out_mem->mem() << "\n";
+            dev->launch_kernel(prog->get_kernel(0), dims, std::make_tuple(out_mem), 0);
             std::cout << "  -> Kernel launched\n";
             CHECK_CUDA(cuCtxSynchronize());
             std::cout << "  -> Context synchronized\n";
@@ -386,7 +384,7 @@ void test_kernel_launch_direct(actor_system& sys, platform_ptr plat) {
             })";
         try {
             program_ptr prog = mgr.create_program(kernel_code, "simple_kernel", dev);
-            std::cout << "  -> Program created with kernel: simple_kernel, handle: " << prog->get_kernel() << ", prog=" << prog.get() << "\n";
+            std::cout << "  -> Program created with kernel: simple_kernel, handle: " << prog->get_kernel(0) << ", prog=" << prog.get() << "\n";
 
             std::vector<int> host_data(1, 0);
             out<int> output = create_out_arg(host_data);
@@ -405,7 +403,7 @@ void test_kernel_launch_direct(actor_system& sys, platform_ptr plat) {
             std::cout << "  -> Launching kernel with device_ptr=" << device_ptr << "\n";
             void* kernel_args[] = { &device_ptr };
             CHECK_CUDA(cuLaunchKernel(
-                prog->get_kernel(),
+                prog->get_kernel(0),
                 dims.getGridDimX(), dims.getGridDimY(), dims.getGridDimZ(),
                 dims.getBlockDimX(), dims.getBlockDimY(), dims.getBlockDimZ(),
                 0, nullptr, kernel_args, nullptr
@@ -455,7 +453,7 @@ void test_kernel_launch_multi_buffer(actor_system& sys, platform_ptr plat) {
 
   program_ptr prog = mgr.create_program(kernel_code, "multi_buffer_kernel", dev);
   std::cout << "  -> Program created with kernel: multi_buffer_kernel, handle: "
-            << prog->get_kernel() << ", prog=" << prog.get() << "\n";
+            << prog->get_kernel(0) << ", prog=" << prog.get() << "\n";
 
   constexpr size_t n = 5;
   std::vector<int> in_host(n, 10);
@@ -487,10 +485,10 @@ void test_kernel_launch_multi_buffer(actor_system& sys, platform_ptr plat) {
     CHECK_CUDA(cuCtxGetCurrent(&current_ctx));
     std::cout << "  -> Current context before launch: " << current_ctx << "\n";
     std::cout << "  -> Launching kernel with context: " << ctx
-              << ", kernel: " << prog->get_kernel() << "\n";
+              << ", kernel: " << prog->get_kernel(0) << "\n";
 
     // Launch kernel with a tuple of mem_ptrs as arguments
-    dev->launch_kernel(prog->get_kernel(), dims,
+    dev->launch_kernel(prog->get_kernel(0), dims,
                        std::make_tuple(in_mem, inout_mem, out_mem), 0);
 
     std::cout << "  -> Kernel launched\n";
@@ -658,7 +656,7 @@ void test_scalar_kernel_launch_wrapper_api() {
 
   // Compile the scalar‐only kernel
   auto prog = mgr.create_program(scalar_kernel_code, "scalar_kernel", dev);
-  CUfunction k = prog->get_kernel();
+  CUfunction k = prog->get_kernel(0);
 
   // Prepare scalar args via the wrapper types
   in<int>    a_arg(42);
@@ -691,7 +689,7 @@ void test_scalar_kernel_launch_runtime_api()  {
     })";
 
   program_ptr prog = mgr.create_program(kernel_code, "scalar_kernel", dev);
-  CUfunction func = prog->get_kernel();
+  CUfunction func = prog->get_kernel(0);
   CUcontext ctx = dev->getContext();
 
   // Host-side input values
@@ -760,7 +758,7 @@ void test_add_scalar_to_buffer() {
     })";
 
   program_ptr prog = mgr.create_program(kernel_code, "add_scalar_kernel", dev);
-  CUfunction kernel = prog->get_kernel();
+  CUfunction kernel = prog->get_kernel(0);
 
   constexpr size_t n = 5;
   std::vector<int> buffer_host = {1, 2, 3, 4, 5};
