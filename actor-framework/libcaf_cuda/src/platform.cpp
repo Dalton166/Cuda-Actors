@@ -31,11 +31,11 @@ platform::platform() {
     devices_[i] = make_counted<device>(cuda_device, contexts_[i], name, i);
   }
 
-  scheduler_ = (device_count <= 1)
-      ? std::make_unique<single_device_scheduler>()
-      : std::make_unique<multi_device_scheduler>();
-
-  scheduler_->set_devices(devices_);
+scheduler_ = (device_count <= 1)
+    ? std::unique_ptr<scheduler>{std::make_unique<single_device_scheduler>()}
+    : std::unique_ptr<scheduler>{std::make_unique<multi_device_scheduler>()};
+  
+    scheduler_->set_devices(devices_);
 
   if (device_count > 0) {
     check(cuCtxSetCurrent(contexts_[0]), "cuCtxSetCurrent");
