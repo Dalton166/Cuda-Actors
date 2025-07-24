@@ -853,7 +853,7 @@ self->attach_functor([=](const caf::error& reason) {
 
     auto kernel_start = Clock::now();
 
-    self->mail(st_ref.gpu_actor, arg1, arg2, arg3, arg4)
+    self->mail(arg1, arg2, arg3, arg4)
       .request(st_ref.gpu_actor, std::chrono::seconds(1000))
       .then(
         [self, iteration_start, kernel_start](const std::vector<output_buffer>&) {
@@ -1898,8 +1898,6 @@ void caf_main(caf::actor_system& sys) {
    //test_mmul_from_cubin(sys,1024);
    //test_mmul_plain(sys,1024);
   //test_mmul_large(sys);
-  //run_concurrent_mmul_test(sys,1,50);
-   //run_concurrent_mmul_test_global(sys,1,50);
   //run_concurrent_serial_mmul_test_global_with_worker(sys,1,1024);
   //run_concurrent_mmul_validate_test(sys,100,60);
  //run_all_concurrent_tests(sys);
@@ -1907,15 +1905,9 @@ void caf_main(caf::actor_system& sys) {
   //run_concurrent_mmul_test_shared_gpu(sys,2,50);
   //test_mmul_sync(sys,50);
 //  run_concurrent_mmul_test_global_sync(sys,20,1024);
-
-
   //run_concurrent_mmul_test_sync(sys,50,1024);
-
-
-  //running test with varying sizes and iterations
-  std::vector<int> sizes = {1,2,3};
-  std::vector<int> iterations = {1,2,3};
-  run_concurrent_serial_mmul_test_per_actor(sys,sizes,iterations);
+   run_concurrent_mmul_test_global(sys,1,50);
+  //run_concurrent_mmul_test(sys,1,50);
 
 
 }
