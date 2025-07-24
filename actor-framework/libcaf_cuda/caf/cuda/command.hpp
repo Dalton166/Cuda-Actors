@@ -16,6 +16,7 @@
 
 #include "caf/cuda/global.hpp"
 #include "caf/cuda/nd_range.hpp"
+#include "caf/cuda/platform.hpp"
 #include "caf/cuda/arguments.hpp"
 #include "caf/cuda/opencl_err.hpp"
 #include "caf/cuda/device.hpp"
