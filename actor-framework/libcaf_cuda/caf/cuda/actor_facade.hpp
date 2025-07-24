@@ -17,6 +17,7 @@
 #include "caf/cuda/global.hpp"
 #include "caf/cuda/program.hpp"
 #include "caf/cuda/command.hpp"
+#include "caf/cuda/platform.hpp"
 #include "caf/cuda/utility.hpp"
 #include <random>
 #include <climits>
@@ -69,7 +70,8 @@ public:
   }
 
   ~actor_facade() {
-    program_->get_device()->release_stream_for_actor(actor_id);
+    auto plat = platform::create();
+    plat->release_streams_for_actor(actor_id);
   }
 
   void create_command(program_ptr program, Ts&&... xs) {
