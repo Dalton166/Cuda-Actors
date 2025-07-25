@@ -10,4 +10,5 @@
 namespace caf::cuda {
 
 	CAF_CUDA_EXPORT int random_number();
+	CAF_CUDA_EXPORT std::vector<char> load_cubin(const std::string&);
 }
