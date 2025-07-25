@@ -106,8 +106,4 @@ bool compile_nvrtc_program(const char* source, CUdevice device, std::vector<char
     return true;
 }
 
-
-
-
-
 }
