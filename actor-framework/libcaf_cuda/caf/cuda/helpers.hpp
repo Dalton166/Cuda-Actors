@@ -6,6 +6,7 @@
 #include "caf/cuda/global.hpp"
 #include <random>
 #include <climits>
+#include <fstream>
 
 namespace caf::cuda {
 
