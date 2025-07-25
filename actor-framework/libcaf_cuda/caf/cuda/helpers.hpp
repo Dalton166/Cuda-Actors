@@ -5,10 +5,9 @@
 #pragma once
 #include "caf/cuda/global.hpp"
 #include <random>
+#include <climits>
 
 namespace caf::cuda {
 
-
-	int CAF_CUDA_EXPORT(random_number());
-
+	int CAF_CUDA_EXPORT random_number();
 }
