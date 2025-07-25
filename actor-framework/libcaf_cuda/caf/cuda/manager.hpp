@@ -172,7 +172,6 @@ private:
   platform_ptr platform_;
 
   bool compile_nvrtc_program(const char* source, CUdevice device, std::vector<char>& ptx_out);
-  std::string get_computer_architecture_string(CUdevice device);
 
 
   static manager* instance_;
