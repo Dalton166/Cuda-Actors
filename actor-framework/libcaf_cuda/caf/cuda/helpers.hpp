@@ -9,5 +9,5 @@
 
 namespace caf::cuda {
 
-	int CAF_CUDA_EXPORT random_number();
+	CAF_CUDA_EXPORT int random_number();
 }
