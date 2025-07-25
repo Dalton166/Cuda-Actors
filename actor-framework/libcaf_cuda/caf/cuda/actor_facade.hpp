@@ -102,10 +102,8 @@ private:
 
 
   int generate_id() {
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-    static std::uniform_int_distribution<int> distrib(INT_MIN, INT_MAX);
-    return distrib(gen);
+  
+      return random_number();	  
   }
 
   bool handle_message(const message& msg) {
