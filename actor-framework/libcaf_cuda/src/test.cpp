@@ -13,7 +13,6 @@
 #include <caf/cuda/mem_ref.hpp>
 #include <caf/cuda/platform.hpp>
 #include <caf/cuda/global.hpp>
-#include <caf/cuda/cuda-actors.hpp>
 #include "caf/detail/test.hpp"
 
 using namespace caf;

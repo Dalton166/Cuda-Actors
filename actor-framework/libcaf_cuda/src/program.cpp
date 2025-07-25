@@ -20,7 +20,6 @@
 
 #include "caf/cuda/manager.hpp"
 #include "caf/cuda/program.hpp"
-#include "caf/cuda/opencl_err.hpp"
 
 
 /*
