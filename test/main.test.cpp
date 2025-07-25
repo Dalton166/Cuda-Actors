@@ -664,7 +664,7 @@ caf::behavior supervisor_fun_validate(caf::stateful_actor<supervisor_state>* sel
     std::generate(st.h_b.begin(), st.h_b.end(), [] { return rand() % 10; });
     auto arg1 = caf::cuda::create_in_arg(st.h_a);
     auto arg2 = caf::cuda::create_in_arg(st.h_b);
-    auto arg3 = caf::cuda::create_out_arg(st.h_c);
+    auto arg3 = caf::cuda::create_out_arg(st.N * st.N);
     auto arg4 = caf::cuda::create_in_arg(st.N); //i have no idea why this needs to be squared but it does
 
     auto kernel_start = Clock::now();
@@ -2043,9 +2043,10 @@ void caf_main(caf::actor_system& sys) {
 
    //test_mmul_from_cubin(sys,50);
    //test_mmul_from_cubin(sys,1024);
-   run_concurrent_mmul_test_global(sys,50,1024);
+   //run_concurrent_mmul_test_global(sys,50,1024);
   //run_concurrent_mmul_test(sys,1,50);
 
+  run_concurrent_mmul_validate_test(sys,100,60);
 
 }
 
