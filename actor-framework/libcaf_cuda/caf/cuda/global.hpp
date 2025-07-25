@@ -8,7 +8,7 @@
 #include <cuda.h>
 #include "caf/cuda/types.hpp" //be sure to include any caf-cuda headers after this one
 #include "caf/cuda/nd_range.hpp"
-//#include "caf/cuda/cuda-actors.hpp"
+#include "caf/cuda/helpers.hpp"
 #include <nvrtc.h>
 // CAF type ID registration
 #include <caf/type_id.hpp>
