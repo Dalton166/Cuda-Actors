@@ -2,8 +2,9 @@
 
 #include <vector>
 #include <tuple>
+#include "caf/cuda/global.hpp"
 #include "caf/cuda/device.hpp"
-#include "caf/cuda/types.hpp"
+
 
 namespace caf::cuda {
 
@@ -137,7 +138,7 @@ public:
       throw std::runtime_error("No devices available");
     }
     size_t num_devices = devices_.size();
-    size_t device_index = static_cast<size_t>(actor_id) % num_devices;
+    size_t device_index = static_cast<size_t>(random_number()) % num_devices;
     //std::cout << "picking device with id of " << devices_[device_index] -> getId() << " \n";
     return devices_[device_index];
   }
