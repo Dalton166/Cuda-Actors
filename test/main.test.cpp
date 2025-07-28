@@ -1940,7 +1940,7 @@ caf::behavior gpu_supervisor_per_actor_fun(caf::stateful_actor<gpu_supervisor_pe
     auto kernel_start = Clock::now();
 
     self->mail(st_ref.gpu_actor, arg1, arg2, arg3, arg4)
-      .request(st_ref.gpu_actor, std::chrono::seconds(100))
+      .request(st_ref.gpu_actor, std::chrono::seconds(100000))
       .then(
         [self, iteration_start, kernel_start](const std::vector<output_buffer>&) {
           auto& st_ref = self->state();
@@ -2069,7 +2069,7 @@ void caf_main(caf::actor_system& sys) {
 
   //run_concurrent_mmul_validate_test(sys,100,60);
 
-  run_gpu_batch_tests();
+  run_gpu_batch_tests(sys);
 
 }
 
