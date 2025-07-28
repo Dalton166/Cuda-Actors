@@ -1083,8 +1083,8 @@ void run_all_concurrent_tests(caf::actor_system& sys) {
       std::cout << "[RUN] GPU concurrent test (global matrices)...\n";
       run_concurrent_mmul_test_global(sys, num_actors, N);
 
-      std::cout << "[RUN] CPU concurrent test with worker (global matrices)...\n";
-      run_concurrent_serial_mmul_test_global_with_worker(sys, num_actors, N);
+      //std::cout << "[RUN] CPU concurrent test with worker (global matrices)...\n";
+      //run_concurrent_serial_mmul_test_global_with_worker(sys, num_actors, N);
     }
   }
 }
@@ -2022,6 +2022,27 @@ inline void run_concurrent_gpu_mmul_test_per_actor(caf::actor_system& sys,
 
 
 
+void run_gpu_batch_tests(actor_system& sys) {
+    std::vector<int> requested_batch_sizes = {200, 400,600,1000};
+    std::vector<int> base_sizes = {32, 64, 128, 256, 512, 1024, 2048, 4096};
+
+    for (int batch_size : requested_batch_sizes) {
+        // Round up to nearest multiple of 8
+        int adjusted_size = ((batch_size + 7) / 8) * 8;
+
+        std::vector<int> iterations(adjusted_size, 20);
+        std::vector<int> sizes;
+
+        for (int i = 0; i < adjusted_size / static_cast<int>(base_sizes.size()); ++i) {
+            sizes.insert(sizes.end(), base_sizes.begin(), base_sizes.end());
+        }
+
+        std::cout << "=== Running batch size: " << adjusted_size
+                  << " (original request: " << batch_size << ") ===" << std::endl;
+
+	run_concurrent_gpu_mmul_test_per_actor(sys, sizes, iterations);
+    }
+}
 
 void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
@@ -2034,7 +2055,7 @@ void caf_main(caf::actor_system& sys) {
   //test_mmul_large(sys);
   //run_concurrent_serial_mmul_test_global_with_worker(sys,1,1024);
   //run_concurrent_mmul_validate_test(sys,100,60);
- //run_all_concurrent_tests(sys);
+   run_all_concurrent_tests(sys);
 
   //run_concurrent_mmul_test_shared_gpu(sys,2,50);
   //test_mmul_sync(sys,50);
@@ -2043,7 +2064,7 @@ void caf_main(caf::actor_system& sys) {
 
    //test_mmul_from_cubin(sys,50);
    //test_mmul_from_cubin(sys,1024);
-   run_concurrent_mmul_test_global(sys,50,1024);
+   //run_concurrent_mmul_test_global(sys,50,1024);
   //run_concurrent_mmul_test(sys,1,50);
 
   //run_concurrent_mmul_validate_test(sys,100,60);
