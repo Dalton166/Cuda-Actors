@@ -18,29 +18,46 @@ platform::platform() {
   devices_.resize(device_count);
   contexts_.resize(device_count);
 
-  std::cout << "Device count is " << device_count << " \n";
+  std::cout << "Device count is " << device_count << "\n";
+
+  std::vector<std::string> device_names(device_count);
 
   for (int i = 0; i < device_count; ++i) {
     CUdevice cuda_device;
     check(cuDeviceGet(&cuda_device, i), "cuDeviceGet");
 
     char name[256];
-    cuDeviceGetName(name, 256, cuda_device);
+    check(cuDeviceGetName(name, sizeof(name), cuda_device), "cuDeviceGetName");
+    device_names[i] = name;
 
     check(cuCtxCreate(&contexts_[i], CU_CTX_SCHED_AUTO | CU_CTX_MAP_HOST, cuda_device), "cuCtxCreate");
     devices_[i] = make_counted<device>(cuda_device, contexts_[i], name, i);
   }
 
-scheduler_ = (device_count <= 1)
-    ? std::unique_ptr<scheduler>{std::make_unique<single_device_scheduler>()}
-    : std::unique_ptr<scheduler>{std::make_unique<multi_device_scheduler>()};
-  
-    scheduler_->set_devices(devices_);
+  // Check if all devices are the same by comparing their names
+  bool all_same = std::all_of(
+    device_names.begin() + 1,
+    device_names.end(),
+    [&](const std::string& name) { return name == device_names[0]; });
+
+  //as of right now the multi gpu scheduler cannot handle 
+  //devices that are not the same so if this is detected 
+  //we turn off multi gpu support
+  if (device_count > 1 && !all_same) {
+    scheduler_ = std::make_unique<multi_device_scheduler>();
+    std::cout << "Using multi-device scheduler (heterogeneous GPUs)\n";
+  } else {
+    scheduler_ = std::make_unique<single_device_scheduler>();
+    std::cout << "Using single-device scheduler (homogeneous or single GPU)\n";
+  }
+
+  scheduler_->set_devices(devices_);
 
   if (device_count > 0) {
     check(cuCtxSetCurrent(contexts_[0]), "cuCtxSetCurrent");
   }
 }
+
 
 platform::~platform() {
   std::cout << "Destroying platform\n";
