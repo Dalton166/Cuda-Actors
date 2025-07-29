@@ -43,7 +43,7 @@ platform::platform() {
   //as of right now the multi gpu scheduler cannot handle 
   //devices that are not the same so if this is detected 
   //we turn off multi gpu support
-  if (device_count > 1 && !all_same) {
+  if (device_count > 1 && all_same) {
     scheduler_ = std::make_unique<multi_device_scheduler>();
     std::cout << "Using multi-device scheduler (heterogeneous GPUs)\n";
   } else {
