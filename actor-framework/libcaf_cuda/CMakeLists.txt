@@ -18,9 +18,9 @@ set(LIBCAF_CUDA_SRCS
   src/device.cpp
   src/global.cpp
   src/manager.cpp
-  src/opencl_err.cpp
   src/platform.cpp
   src/program.cpp
+  src/helpers.cpp
   #src/command.cpp
   src/test.cpp
 )

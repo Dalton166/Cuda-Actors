@@ -19,7 +19,6 @@
 #include "caf/cuda/device.hpp"
 #include "caf/cuda/program.hpp"
 #include "caf/cuda/actor_facade.hpp"
-#include "caf/cuda/opencl_err.hpp"
 #include "caf/cuda/platform.hpp"
 
 namespace caf::cuda {
@@ -173,7 +172,6 @@ private:
   platform_ptr platform_;
 
   bool compile_nvrtc_program(const char* source, CUdevice device, std::vector<char>& ptx_out);
-  std::string get_computer_architecture_string(CUdevice device);
 
 
   static manager* instance_;

@@ -17,6 +17,7 @@
 #include "caf/cuda/global.hpp"
 #include "caf/cuda/program.hpp"
 #include "caf/cuda/command.hpp"
+#include "caf/cuda/platform.hpp"
 #include "caf/cuda/utility.hpp"
 #include <random>
 #include <climits>
@@ -69,7 +70,8 @@ public:
   }
 
   ~actor_facade() {
-    program_->get_device()->release_stream_for_actor(actor_id);
+    auto plat = platform::create();
+    plat->release_streams_for_actor(actor_id);
   }
 
   void create_command(program_ptr program, Ts&&... xs) {
@@ -88,22 +90,6 @@ public:
     create_command(program_, std::forward<Ts>(xs)...);
   }
 
-  //again this relies on the knowledge that launch kernel is synchronous
-  //it should not be, this should be deleted eventually but response promise is 
-  //causing too much bugs
-  //
-  void run_kernel_synchronous(caf::actor sender, Ts&... xs) {
-    using command_t = command<caf::actor, raw_t<Ts>...>;
-    auto cmd = make_counted<command_t>(
-      sender,
-      caf::actor_cast<caf::actor>(this),
-      program_,
-      dims_,
-      actor_id,
-      std::forward<Ts>(xs)...);
-    cmd->enqueue();
-  }
-
 private:
   caf::actor_config config_;
   program_ptr program_;
@@ -116,10 +102,8 @@ private:
 
 
   int generate_id() {
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-    static std::uniform_int_distribution<int> distrib(INT_MIN, INT_MAX);
-    return distrib(gen);
+  
+      return random_number();	  
   }
 
   bool handle_message(const message& msg) {
@@ -132,6 +116,10 @@ private:
         return unpack_and_run(sender, msg, std::index_sequence_for<Ts...>{});
       }
     }
+
+    if (!msg.types().empty()) { 
+	    return unpack_and_run_wrapped_async(msg, std::index_sequence_for<Ts...>{});
+    }
     std::cout << "[WARNING], message format not recognized by actor facade, dropping message\n";
     
      return false;
@@ -140,7 +128,7 @@ private:
   template <std::size_t... Is>
   bool unpack_and_run_wrapped(caf::actor sender, const message& msg, std::index_sequence<Is...>) {
     auto wrapped = std::make_tuple(msg.get_as<Ts>(Is + 1)...);
-    run_kernel_synchronous(sender, std::get<Is>(wrapped)...);
+    run_kernel(std::get<Is>(wrapped)...);
     return true;
   }
 
@@ -148,15 +136,26 @@ private:
   bool unpack_and_run(caf::actor sender, const message& msg, std::index_sequence<Is...>) {
     auto unpacked = std::make_tuple(msg.get_as<raw_t<Ts>>(Is + 1)...);
     auto wrapped = std::make_tuple(Ts(std::get<Is>(unpacked))...);
-    run_kernel_synchronous(sender, std::get<Is>(wrapped)...);
+    run_kernel(std::get<Is>(wrapped)...);
     return true;
   }
+
+
+  template <std::size_t... Is>
+  bool unpack_and_run_wrapped_async(const message& msg, std::index_sequence<Is...>) {
+    auto wrapped = std::make_tuple(msg.get_as<Ts>(Is)...);
+    run_kernel(std::get<Is>(wrapped)...);
+    return true;
+  }
+
+
+
 
   subtype_t subtype() const noexcept override {
     return subtype_t(0);
   }
 
- resumable::resume_result resume(scheduler* sched, size_t max_throughput) override {
+ resumable::resume_result resume(::caf::scheduler* sched, size_t max_throughput) override {
   if (resuming_flag_.test_and_set(std::memory_order_acquire)) {
     return resumable::resume_later;
   }
@@ -216,11 +215,11 @@ private:
   return shutdown_requested_ ? resumable::resume_later : resumable::done;
 }
 
-  void ref_resumable() const noexcept override {}
+  void ref_resumable() const noexcept override  {}
 
-  void deref_resumable() const noexcept override {}
+  void deref_resumable() const noexcept override  {}
 
-  bool enqueue(mailbox_element_ptr what, scheduler* sched) override {
+  bool enqueue(mailbox_element_ptr what, ::caf::scheduler* sched) override {
     if (!what)
       return false;
 
@@ -232,7 +231,7 @@ private:
     return true;
   }
 
-  void launch(scheduler* sched, bool lazy, [[maybe_unused]] bool interruptible) override {
+  void launch(::caf::scheduler* sched, bool lazy, [[maybe_unused]] bool interruptible) override {
     if (!lazy && sched) {
       sched->schedule(this);
     }
@@ -244,7 +243,7 @@ private:
     }
   }
 
-  void force_close_mailbox() override {
+  void force_close_mailbox() override  {
     while (!mailbox_.empty()) {
       mailbox_.pop();
     }

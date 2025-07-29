@@ -86,7 +86,7 @@ public:
     auto kernel_args = prepare_kernel_args(args);
     launch_kernel_internal(kernel, range, stream, kernel_args.ptrs.data());
 
-    CHECK_CUDA(cuStreamSynchronize(stream));
+    //CHECK_CUDA(cuStreamSynchronize(stream));
     CHECK_CUDA(cuCtxPopCurrent(nullptr));
 
     auto outputs = collect_output_buffers(args);
@@ -177,7 +177,7 @@ private:
 
   template <typename T>
   mem_ptr<T> scratch_argument(const out<T>& arg, int actor_id, int access) {
-    size_t size = arg.is_scalar() ? 1 : arg.size();
+    size_t size = arg.is_scalar() ? arg.getscalar() : arg.size();
     CUdeviceptr dev_ptr;
     CUstream stream = get_stream_for_actor(actor_id);
     CHECK_CUDA(cuCtxPushCurrent(getContext()));

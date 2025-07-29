@@ -16,8 +16,8 @@
 
 #include "caf/cuda/global.hpp"
 #include "caf/cuda/nd_range.hpp"
+#include "caf/cuda/platform.hpp"
 #include "caf/cuda/arguments.hpp"
-#include "caf/cuda/opencl_err.hpp"
 #include "caf/cuda/device.hpp"
 #include <caf/send.hpp>
 
@@ -26,57 +26,39 @@ namespace caf::cuda {
 template <class Actor, class... Ts>
 class command : public ref_counted {
 public:
-  // Original constructor with response_promise for backwards compatibility
   template <typename... Us>
-  command(caf::response_promise promise,
-          caf::actor self,
-          program_ptr program,
-          nd_range dims,
-          int id,
-          Us&&... xs)
-    : rp(std::move(promise)),
-      self_(std::move(self)),
-      program_(program),
-      dims_(dims),
-      actor_id(id),
-      mem_refs(convert_data_to_args(std::forward<Us>(xs)...)) {
-    static_assert(sizeof...(Us) == sizeof...(Ts), "Argument count mismatch");
-  }
+command(caf::response_promise promise,
+        caf::actor self,
+        program_ptr program,
+        nd_range dims,
+        int id, 
+        Us&&... xs)
+  : rp(std::move(promise)),
+    self_(std::move(self)),
+    program_(std::move(program)),
+    dims_(dims),
+    actor_id(id),
+    mem_refs() {   // default-initialize mem_refs; will assign below
 
-  // New synchronous constructor
-  // this is really only here since there may be an issue of
-  // response promise sliently failing 
-  // this should eventually be removed 
-  // since it relies on the knowledge that the implementation of 
-  // launch_kernel is synchronous, even though it is not supposed to be
-  template <typename... Us>
-  command(caf::actor sender,
-          caf::actor self,
-          program_ptr program,
-          nd_range dims,
-          int id,
-          Us&&... xs)
-    : sender_(std::move(sender)),
-      self_(std::move(self)),
-      program_(program),
-      dims_(dims),
-      actor_id(id),
-      mem_refs(convert_data_to_args(std::forward<Us>(xs)...)) {
-    static_assert(sizeof...(Us) == sizeof...(Ts), "Argument count mismatch");
-  }
+  // Now safely do prints and dev_ initialization here:
+  //std::cout << "Before calling platform::schedule\n";
+  dev_ = platform::create()->schedule(id);
+  //std::cout << "After calling platform::schedule\n";
 
+  // Initialize mem_refs after dev_ is valid
+  mem_refs = convert_data_to_args(std::forward<Us>(xs)...);
+
+  static_assert(sizeof...(Us) == sizeof...(Ts), "Argument count mismatch");
+}
   ~command() = default;
 
   void enqueue() {
-    auto outputs = launch_kernel(program_, dims_, mem_refs, actor_id);
-    // Check if sender_ is valid (non-null) to determine which messaging approach to use
-    if (sender_) {
-      anon_mail(std::move(outputs)).send(sender_);
-    } else {
-      rp.deliver(std::move(outputs));
-    anon_mail(kernel_done_atom_v).send(self_);
-    }
+    //auto outputs = launch_kernel(program_, dims_, mem_refs, actor_id);
+   
 
+     //std::cout << "Enqueue called \n";
+     rp.deliver(std::move(launch_kernel(program_, dims_, mem_refs, actor_id)));
+    anon_mail(kernel_done_atom_v).send(self_);
     for_each_tuple(mem_refs, [](auto& mem) {
       if (mem)
         mem->reset();
@@ -93,51 +75,38 @@ public:
 private:
   program_ptr program_;
   caf::response_promise rp;
-  caf::actor sender_;
   caf::actor self_;
   nd_range dims_;
   std::tuple<mem_ptr<raw_t<Ts>>...> mem_refs;
   std::atomic<int> ref_count{0};
   int actor_id;
+  device_ptr dev_;
 
-  template <typename T>
+ template <typename T>
   mem_ptr<T> makeArg(in<T> arg) {
-    return program_->get_device()->make_arg(arg, actor_id);
+	  //std::cout << "Calling on device " << dev_ -> getId() << "\n";
+    return dev_->make_arg(arg, actor_id);
   }
 
   template <typename T>
   mem_ptr<T> makeArg(out<T> arg) {
-    return program_->get_device()->make_arg(arg, actor_id);
+    return dev_->make_arg(arg, actor_id);
   }
 
   template <typename T>
   mem_ptr<T> makeArg(in_out<T> arg) {
-    return program_->get_device()->make_arg(arg, actor_id);
+    return dev_->make_arg(arg, actor_id);
   }
 
-  // Fallback for raw types
   template <typename T>
   mem_ptr<T> makeArg(T&& val) {
-    return program_->get_device()->make_arg(std::forward<T>(val), actor_id);
+    return dev_->make_arg(std::forward<T>(val), actor_id);
   }
+
 
   template <typename... Args>
   auto convert_data_to_args(Args&&... args) {
     return std::make_tuple(makeArg(std::forward<Args>(args))...);
-  }
-
-  void print_and_cleanup_outputs(std::tuple<mem_ptr<raw_t<Ts>>...>& mem_refs) {
-    for_each_tuple(mem_refs, [](auto& mem) {
-      if (!mem) return;
-      if (mem->access() == OUT || mem->access() == IN_OUT) {
-        auto host_data = mem->copy_to_host();
-        std::cout << "Output buffer (" << host_data.size() << "): ";
-        for (const auto& val : host_data)
-          std::cout << val << " ";
-        std::cout << '\n';
-      }
-      mem->reset();
-    });
   }
 
   template <typename Tuple, typename Func, size_t... Is>
@@ -151,13 +120,11 @@ private:
   }
 
   auto launch_kernel(program_ptr program,
-                     const caf::cuda::nd_range& range,
+                     const nd_range& range,
                      std::tuple<mem_ptr<raw_t<Ts>>...> args,
-                     int actor_id)
-    -> std::vector<output_buffer> {
-    CUfunction kernel = program->get_kernel();
-    device_ptr dev = program->get_device();
-    return dev->launch_kernel(kernel, range, args, actor_id);
+                     int actor_id) -> std::vector<output_buffer> {
+    CUfunction kernel = program->get_kernel(dev_->getId());
+    return dev_->launch_kernel(kernel, range, args, actor_id);
   }
 };
 
