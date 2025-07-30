@@ -14,7 +14,18 @@ namespace caf::cuda {
 class behavior_base {
 public:
   virtual ~behavior_base() = default;
+
+  virtual const program_ptr& program() const noexcept = 0;
+  virtual const nd_range& range() const noexcept = 0;
+  virtual const std::string& name() const noexcept = 0;
+  virtual const std::optional<std::function<void(caf::message&)>>& preprocessor() const noexcept = 0;
+  virtual const std::optional<std::function<void(output_buffer&)>>& postprocessor() const noexcept = 0;
+  virtual std::size_t num_args() const noexcept = 0;
 };
+
+using behavior_base_ptr = std::shared_ptr<behavior_base>;
+
+
 
 // Main template
 template <typename... Args>
@@ -50,15 +61,16 @@ public:
       post_(std::nullopt),
       args_tuple_(std::forward<Args>(args)...) {}
 
-  // === Getters ===
-  const program_ptr& program() const noexcept { return prog_; }
-  const nd_range& range() const noexcept { return range_; }
-  const std::string& name() const noexcept { return name_; }
-  const std::optional<preprocess_fn>& preprocessor() const noexcept { return pre_; }
-  const std::optional<postprocess_fn>& postprocessor() const noexcept { return post_; }
-  const tag_types& arg_tags() const noexcept { return args_tuple_; }
+  // === Overrides from behavior_base ===
+  const program_ptr& program() const noexcept override { return prog_; }
+  const nd_range& range() const noexcept override { return range_; }
+  const std::string& name() const noexcept override { return name_; }
+  const std::optional<preprocess_fn>& preprocessor() const noexcept override { return pre_; }
+  const std::optional<postprocess_fn>& postprocessor() const noexcept override { return post_; }
+  std::size_t num_args() const noexcept override { return sizeof...(Args); }
 
-  static constexpr std::size_t num_args() noexcept { return sizeof...(Args); }
+  // Access to tag args tuple
+  const tag_types& arg_tags() const noexcept { return args_tuple_; }
 
 private:
   program_ptr prog_;
