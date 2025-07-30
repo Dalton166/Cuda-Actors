@@ -19,19 +19,15 @@
 #include "caf/cuda/command.hpp"
 #include "caf/cuda/platform.hpp"
 #include "caf/cuda/utility.hpp"
-#include "caf/cuda/behavior.hpp"
 #include <random>
 #include <climits>
 #include <thread>
 
 namespace caf::cuda {
 
-
 template <bool PassConfig, class... Ts>
 class actor_facade : public caf::local_actor, public caf::resumable {
 public:
-  using behavior_table_t = std::map<std::string, behavior_base_ptr>;
- 
   static caf::actor create(
     caf::actor_system& sys,
     caf::actor_config&& actor_conf,
@@ -49,7 +45,6 @@ public:
       std::forward<Ts>(xs)...);
   }
 
-  //creation for a single behavior
   static caf::actor create(
     caf::actor_system* sys,
     caf::actor_config&& actor_conf,
@@ -67,122 +62,32 @@ public:
       std::forward<Ts>(xs)...);
   }
 
-
-
-  // Constructor for behavior table mode
-  actor_facade(caf::actor_config& cfg, behavior_table_t table)
-    : caf::local_actor(cfg), behavior_table_(std::move(table)) {
-    if (behavior_table_.empty())
-      throw std::runtime_error("behavior table cannot be empty");
-    default_behavior_name_ = behavior_table_.begin()->first;
+  actor_facade(caf::actor_config&& cfg, program_ptr prog, nd_range nd, Ts&&... xs)
+    : local_actor(cfg),
+      config_(std::move(cfg)),
+      program_(std::move(prog)),
+      dims_(nd) {
   }
 
-  // Variadic constructor with default pre/post lambdas (no ambiguity)
-  template <typename... Args>
-  actor_facade(caf::actor_config& cfg,
-               program_ptr prog,
-               nd_range range,
-               std::string kernel_name,
-               behavior::preprocess_fn pre = [](const caf::message&) {},
-               behavior::postprocess_fn post = [](const output_buffer&) {},
-               Args&&... args)
-    : caf::local_actor(cfg) {
-    auto behavior_instance = std::make_shared<behavior<Args...>>(
-      std::move(prog), std::move(range), std::move(kernel_name),
-      std::move(pre), std::move(post), std::forward<Args>(args)...);
-    default_behavior_name_ = "default";
-    behavior_table_[default_behavior_name_] = std::move(behavior_instance);
-  }
-
-  // Create method for legacy behavior mode (single behavior)
-  template <typename... Ts>
-  static caf::actor create(
-    caf::actor_system& sys,
-    caf::actor_config&& actor_conf,
-    program_ptr program,
-    nd_range dims,
-    Ts&&... xs
-  ) {
-    return caf::make_actor<actor_facade>(
-      sys.next_actor_id(),
-      sys.node(),
-      &sys,
-      std::move(actor_conf),
-      std::move(program),
-      std::move(dims),
-      std::forward<Ts>(xs)...);
-  }
-
-  // Create method for behavior table mode
-  static caf::actor create(
-    caf::actor_system& sys,
-    caf::actor_config&& actor_conf,
-    behavior_table_t table
-  ) {
-    return caf::make_actor<actor_facade>(
-      sys.next_actor_id(),
-      sys.node(),
-      &sys,
-      std::move(actor_conf),
-      std::move(table));
-  }
-
-
-   using behavior_table_t = std::map<std::string, behavior_base_ptr>;
-
-  // Constructor for behavior table mode
-  actor_facade(caf::actor_config& cfg, behavior_table_t table)
-    : caf::local_actor(cfg), behavior_table_(std::move(table)) {
-    if (behavior_table_.empty())
-      throw std::runtime_error("behavior table cannot be empty");
-    default_behavior_name_ = behavior_table_.begin()->first;
-  }
-
-  // Variadic constructor with default pre/post lambdas (no ambiguity)
-  template <typename... Args>
-  actor_facade(caf::actor_config& cfg,
-               program_ptr prog,
-               nd_range range,
-               std::string kernel_name,
-               behavior::preprocess_fn pre = [](const caf::message&) {},
-               behavior::postprocess_fn post = [](const output_buffer&) {},
-               Args&&... args)
-    : caf::local_actor(cfg) {
-    auto behavior_instance = std::make_shared<behavior<Args...>>(
-      std::move(prog), std::move(range), std::move(kernel_name),
-      std::move(pre), std::move(post), std::forward<Args>(args)...);
-    default_behavior_name_ = "default";
-    behavior_table_[default_behavior_name_] = std::move(behavior_instance);
-  }
-
- 
- }  
-  
   ~actor_facade() {
     auto plat = platform::create();
     plat->release_streams_for_actor(actor_id);
   }
 
+  void create_command(program_ptr program, Ts&&... xs) {
+    using command_t = command<caf::actor, raw_t<Ts>...>;
+    auto cmd = make_counted<command_t>(
+      make_response_promise(),
+      caf::actor_cast<caf::actor>(this),
+      program,
+      dims_,
+      actor_id,
+      std::forward<Ts>(xs)...);
+    cmd->enqueue();
+  }
 
-
-template <typename... RawArgs>
-void create_command(behavior_base* behavior_ptr, RawArgs&&... raw_args) {
-  using cmd_t = command<caf::actor, raw_t<std::decay_t<RawArgs>>...>;
-  auto cmd = make_counted<cmd_t>(
-    make_response_promise(),
-    caf::actor_cast<caf::actor>(this),
-    behavior_ptr->program(),
-    behavior_ptr->range(),
-    actor_id(),
-    std::forward<RawArgs>(raw_args)...);
-  cmd->enqueue();
-}
-
-
-
-
-  void run_kernel(Ts&... xs) { 
-   create_command(get_active_behavior(), std::forward<Ts>(xs)...);
+  void run_kernel(Ts&... xs) {
+    create_command(program_, std::forward<Ts>(xs)...);
   }
 
 private:
@@ -194,24 +99,6 @@ private:
   std::atomic<bool> shutdown_requested_ = false;
   int actor_id = generate_id();
   std::atomic_flag resuming_flag_ = ATOMIC_FLAG_INIT;
-  behavior_table_t behavior_table_;
-  std::string default_behavior_name_;
-
-
-  // Switch active behavior by name
-  void set_behavior(const std::string& name) {
-    if (!behavior_table_.contains(name))
-      throw std::runtime_error("behavior not found: " + name);
-    default_behavior_name_ = name;
-  }
-
-
- behavior_base_ptr& get_active_behavior() {
-    auto it = behavior_table_.find(default_behavior_name_);
-    if (it == behavior_table_.end())
-      throw std::runtime_error("default behavior not found");
-    return it->second;
-  }
 
 
   int generate_id() {
@@ -238,9 +125,6 @@ private:
      return false;
   }
 
-
-
-  //puts wrapped args into a tuple and launchs a kernel 
   template <std::size_t... Is>
   bool unpack_and_run_wrapped(caf::actor sender, const message& msg, std::index_sequence<Is...>) {
     auto wrapped = std::make_tuple(msg.get_as<Ts>(Is + 1)...);
