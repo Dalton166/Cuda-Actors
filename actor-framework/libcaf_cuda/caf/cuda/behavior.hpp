@@ -1,85 +1,127 @@
 #pragma once
 
 #include "caf/cuda/global.hpp"
+#include <caf/actor.hpp>
 #include <caf/message.hpp>
-#include <functional>
-#include <optional>
+
 #include <string>
 #include <tuple>
-#include <type_traits>
+#include <vector>
+#include <functional>
 #include <utility>
 
 namespace caf::cuda {
 
-class behavior_base {
+template <class... Ts>
+class AbstractBehavior {
 public:
-  virtual ~behavior_base() = default;
+  using preprocess_fn = std::function<void(const caf::message&)>;
 
-  virtual const program_ptr& program() const noexcept = 0;
-  virtual const nd_range& range() const noexcept = 0;
-  virtual const std::string& name() const noexcept = 0;
-  virtual const std::optional<std::function<void(caf::message&)>>& preprocessor() const noexcept = 0;
-  virtual const std::optional<std::function<void(output_buffer&)>>& postprocessor() const noexcept = 0;
-  virtual std::size_t num_args() const noexcept = 0;
-};
+  template <class... Us>
+  using postprocess_fn = std::function<void(std::tuple<mem_ref<Us>...>&)>;
 
-using behavior_base_ptr = std::shared_ptr<behavior_base>;
+  AbstractBehavior(std::string name,
+                 program_ptr program,
+                 nd_range dims,
+                 preprocess_fn preprocess,
+                 std::vector<caf::actor> targets = {},
+                 Args&&... xs)
+  : name_(std::move(name)),
+    program_(std::move(program)),
+    dims_(std::move(dims)),
+    preprocess_(std::move(preprocess)),
+    targets_(std::move(targets)),
+    args_(std::forward<Args>(xs)...) // perfect-forward and store as tuple
+{},
 
+  virtual ~AbstractBehavior() = default;
 
+  // Entry point with response promise
+  virtual void execute(const caf::message& msg, int actor_id, caf::response_promise& rp) {
+    rp_ = rp;
+    preprocess(msg);
+    auto results = execute_command<Ts...>(msg, actor_id);
+    postprocess(results);
+    reply(results, rp_);
+    cleanup();
+  }
 
-// Main template
-template <typename... Args>
-class behavior : public behavior_base {
-public:
-  using tag_types = std::tuple<Args...>;
-  using raw_types = std::tuple<raw_t<Args>...>;
-  using preprocess_fn = std::function<void(caf::message&)>;
-  using postprocess_fn = std::function<void(output_buffer&)>;
+  // Fire-and-forget entry point without response promise
+  virtual void execute(const caf::message& msg, int actor_id) {
+    preprocess(msg);
+    auto results = execute_command<Ts...>(msg, actor_id);
+    postprocess(results);
+    reply(results);
+    cleanup();
+  }
 
-  behavior(program_ptr prog,
-           nd_range range,
-           std::string name,
-           std::optional<preprocess_fn> pre,
-           std::optional<postprocess_fn> post,
-           Args&&... args)
-    : prog_(std::move(prog)),
-      range_(std::move(range)),
-      name_(std::move(name)),
-      pre_(std::move(pre)),
-      post_(std::move(post)),
-      args_tuple_(std::forward<Args>(args)...) {}
+  // Execute command: create and enqueue kernel command
+  template <class... Us >
+  std::tuple<mem_ref<Us>...> execute_command(const caf::message& msg, int actor_id) {
+    // Example command creation and enqueue:
+    using command_t = command<caf::actor, raw_t<Us>...>;
+    auto cmd = make_counted<command_t>(
+      make_response_promise(),
+      caf::actor_cast<caf::actor>(this),
+      program_,
+      dims_,
+      actor_id,
+      /* Here you’d extract and forward args from msg */);
+    cmd->enqueue();
 
-  // Overload for no pre/post lambdas (optional)
-  behavior(program_ptr prog,
-           nd_range range,
-           std::string name,
-           Args&&... args)
-    : prog_(std::move(prog)),
-      range_(std::move(range)),
-      name_(std::move(name)),
-      pre_(std::nullopt),
-      post_(std::nullopt),
-      args_tuple_(std::forward<Args>(args)...) {}
+    // Return kernel outputs (stub: implement actual logic)
+    return std::tuple<mem_ref<Us>...>{};
+  }
 
-  // === Overrides from behavior_base ===
-  const program_ptr& program() const noexcept override { return prog_; }
-  const nd_range& range() const noexcept override { return range_; }
-  const std::string& name() const noexcept override { return name_; }
-  const std::optional<preprocess_fn>& preprocessor() const noexcept override { return pre_; }
-  const std::optional<postprocess_fn>& postprocessor() const noexcept override { return post_; }
-  std::size_t num_args() const noexcept override { return sizeof...(Args); }
+  // Postprocess setter
+  template <class... Us>
+  void set_postprocess(postprocess_fn<Us...> fn) {
+    postprocess_ = [fn = std::move(fn)](std::tuple<mem_ref<Us>...>& results) {
+      fn(results);
+    };
+  }
 
-  // Access to tag args tuple
-  const tag_types& arg_tags() const noexcept { return args_tuple_; }
+  template <class... Us>
+  void postprocess(std::tuple<mem_ref<Us>...>& results) {
+    if (postprocess_) {
+      postprocess_(results);
+    }
+  }
 
-private:
-  program_ptr prog_;
-  nd_range range_;
+  // Templated reply overloads with default no-op implementations
+  template <class... Us>
+  void reply(const std::tuple<mem_ref<Us>...>& /*results*/, caf::response_promise& /*rp*/) {
+    // default: do nothing
+  }
+
+  template <class... Us>
+  void reply(const std::tuple<mem_ref<Us>...>& /*results*/) {
+    // default: do nothing
+  }
+
+  virtual void cleanup() {}
+
+  // Accessors
+  const std::string& name() const { return name_; }
+  bool is_asynchronous() const { return is_asynchronous_; }
+  const std::vector<caf::actor>& targets() const { return targets_; }
+  const program_ptr& program() const { return program_; }
+  const nd_range& dims() const { return dims_; }
+
+protected:
   std::string name_;
-  std::optional<preprocess_fn> pre_;
-  std::optional<postprocess_fn> post_;
-  tag_types args_tuple_;
+  bool is_asynchronous_ = false;
+  program_ptr program_;
+  nd_range dims_;
+  preprocess_fn preprocess_;
+  std::vector<caf::actor> targets_;
+  caf::response_promise rp_;
+
+  std::function<void(std::any&)> postprocess_any_;
 };
+
+template <class... Ts>
+using behavior_ptr = caf::intrusive_ptr<AbstractBehavior<Ts...>>;
 
 } // namespace caf::cuda
 
