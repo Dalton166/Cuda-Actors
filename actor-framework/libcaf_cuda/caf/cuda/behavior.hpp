@@ -111,12 +111,6 @@ AbstractBehavior(std::string name,
     reply(results);
     cleanup();
   }
-
-  // Virtual command execution, overridable by derived classes
-  virtual std::tuple<mem_ptr<raw_t<Ts>>...> execute_command(const caf::message& msg, int actor_id) {
-    return execute_command_impl(msg, actor_id, std::make_index_sequence<sizeof...(Ts)>{});
-  }
-
   // Getters
   const std::string& name() const {
     return name_;
@@ -132,6 +126,11 @@ protected:
     if (preprocess_)
       preprocess_(msg);
     return detail::tag_message_with_wrappers(msg, args_);
+  }
+
+  // Virtual command execution, overridable by derived classes
+  virtual std::tuple<mem_ptr<raw_t<Ts>>...> execute_command(const caf::message& msg, int actor_id) {
+    return execute_command_impl(msg, actor_id, std::make_index_sequence<sizeof...(Ts)>{});
   }
 
   template <std::size_t... Is>
