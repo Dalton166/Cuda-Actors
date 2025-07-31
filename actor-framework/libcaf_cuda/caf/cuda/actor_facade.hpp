@@ -111,6 +111,17 @@ private:
       return random_number();	  
   }
 
+
+  template <typename... Ts>
+  behavior_ptr<Ts...> get_behavior(const std::string& name) {
+  auto it = behavior_table.find(name);
+  if (it != behavior_table.end()) {
+    return it->second;
+  }
+  throw std::runtime_error("Behavior not found: " + name);
+}
+
+
   bool handle_message(const message& msg) {
     if (!msg.types().empty() && msg.types()[0] == caf::type_id_v<caf::actor>) {
       auto sender = msg.get_as<caf::actor>(0);
