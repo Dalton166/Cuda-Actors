@@ -97,11 +97,10 @@ public:
 
   // Main entry point with response promise
   virtual void execute(const caf::message& msg, int actor_id, caf::response_promise& rp) {
-    rp_ = std::move(rp);
     auto tagged_msg = preprocess(msg);
     auto results = execute_command(tagged_msg, actor_id);
     postprocess(results);
-    reply(results, rp_);
+    reply(results, rp);
     cleanup();
   }
 
@@ -139,16 +138,14 @@ protected:
   template <std::size_t... Is>
   std::tuple<mem_ptr<raw_t<Ts>>...> execute_command_impl(const caf::message& msg, int actor_id, std::index_sequence<Is...>) {
     auto cmd = caf::make_counted<command<caf::actor, Ts...>>(
-      std::move(rp_),
+      msg,
       self_,
       program_,
       dims_,
       actor_id,
       std::get<Is>(args_)...);
-    cmd->enqueue();
-
-    // NOTE: For now, returning empty default-constructed tuple since actual mem_refs come asynchronously
-    return std::tuple<mem_ptr<raw_t<Ts>>...>{};
+   
+    return  cmd->enqueue();
   }
 
   // Virtual hooks — override as needed
