@@ -103,8 +103,7 @@ private:
   int actor_id = generate_id();
   std::atomic_flag resuming_flag_ = ATOMIC_FLAG_INIT;
   behavior_table_t behavior_table;
-
-
+  behavior_ptr current_behavior;
 
   int generate_id() {
   
