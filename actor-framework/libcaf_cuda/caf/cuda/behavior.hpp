@@ -32,23 +32,29 @@ struct wrapper_traits<in_out<T>> {
 
 template <typename Wrapper>
 auto wrap_msg_element(const caf::message& msg, size_t index) {
-  using T = typename wrapper_traits<Wrapper>::raw_type;
+  using raw_type = typename wrapper_traits<Wrapper>::raw_type;
 
   const auto& val = msg.at(index);
   auto val_type = val.type();
 
-  if (val_type == caf::type_id_v<T>) {
-    auto scalar_val = msg.get_as<T>(index);
-    return wrapper_traits<Wrapper>::wrap(scalar_val);
+  // Already wrapped? Just return as-is.
+  if (val_type == caf::type_id_v<Wrapper>)
+    return msg.get_as<Wrapper>(index);
+
+  // Scalar
+  if (val_type == caf::type_id_v<raw_type>) {
+    return wrapper_traits<Wrapper>::wrap(msg.get_as<raw_type>(index));
   }
-  else if (val_type == caf::type_id_v<std::vector<T>>) {
-    auto vec_val = msg.get_as<std::vector<T>>(index);
-    return wrapper_traits<Wrapper>::wrap(vec_val);
+
+  // Vector
+  if (val_type == caf::type_id_v<std::vector<raw_type>>) {
+    return wrapper_traits<Wrapper>::wrap(msg.get_as<std::vector<raw_type>>(index));
   }
-  else {
-    throw std::runtime_error("Unexpected type in message at index " + std::to_string(index));
-  }
+
+  // Otherwise: unsupported type
+  throw std::runtime_error("wrap_msg_element: Unexpected type at index " + std::to_string(index));
 }
+
 
 template <typename Tuple, size_t... Is>
 caf::message tag_message_impl(const caf::message& msg, std::index_sequence<Is...>) {
