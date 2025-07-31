@@ -65,39 +65,6 @@ static caf::actor create(
       std::move(dims),
       std::forward<Ts>(xs)...);
   }
-
-template <class... Ts>
-void add_behavior(behavior_table_t& table, behavior_ptr<Ts...> behavior) {
-  const std::string& key = behavior->name();
-  table.emplace(key, behavior); // copy the intrusive_ptr
-}
-
-} // namespace caf::cuda
-
-      &sys,
-      std::move(actor_conf),
-      std::move(program),
-      std::move(dims),
-      std::forward<Ts>(xs)...);
-  }
-
-  static caf::actor create(
-    caf::actor_system* sys,
-    caf::actor_config&& actor_conf,
-    program_ptr program,
-    nd_range dims,
-    Ts&&... xs
-  ) {
-    return caf::make_actor<actor_facade<PassConfig, std::decay_t<Ts>...>, caf::actor>(
-      sys->next_actor_id(),
-      sys->node(),
-      sys,
-      std::move(actor_conf),
-      std::move(program),
-      std::move(dims),
-      std::forward<Ts>(xs)...);
-  }
-
   actor_facade(caf::actor_config&& cfg, program_ptr prog, nd_range nd, Ts&&... xs)
     : local_actor(cfg),
       config_(std::move(cfg)),
@@ -145,15 +112,12 @@ private:
   }
 
 
-  template <class... Ts>
-void add_behavior(const behavior_ptr<Ts...>& behavior) {
+void add_behavior(const behavior_ptr& behavior) {
   const std::string& key = behavior->name();
   behavior_table.emplace(key, behavior); // stored as behavior_base_ptr
 }
 
-
-  template <typename... Ts>
-  behavior_ptr<Ts...> get_behavior(const std::string& name) {
+  behavior_ptr get_behavior(const std::string& name) {
   auto it = behavior_table.find(name);
   if (it != behavior_table.end()) {
     return it->second;
