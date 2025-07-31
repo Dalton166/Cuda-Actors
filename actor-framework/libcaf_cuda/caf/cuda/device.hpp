@@ -74,7 +74,42 @@ public:
     return scratch_argument(arg, actor_id, OUT);
   }
 
-  // Launch kernel with wrapper args
+
+
+  //launches a kernel using wrapper types, in, in_out and out as arguments
+  //and returns a tuple of mem ref's that hold device memory 
+  template <typename... Args>
+std::tuple<mem_ref<typename raw_type<Args>::type>...>
+launch_kernel_mem_ref(CUfunction kernel,
+                      const nd_range& range,
+                      std::tuple<Args...> args,
+                      int actor_id) {
+  // Step 1: Allocate mem_ptr<T> for each wrapper type
+  auto mem_refs = std::apply([&](auto&&... arg) {
+    return std::make_tuple(make_arg(std::forward<decltype(arg)>(arg), actor_id)...);
+  }, args);
+
+  // Step 2: Prepare kernel argument pointers
+  auto kernel_args = prepare_kernel_args(mem_refs);
+
+  // Step 3: Launch kernel
+  CUstream stream = get_stream_for_actor(actor_id);
+  CHECK_CUDA(cuCtxPushCurrent(getContext()));
+  launch_kernel_internal(kernel, range, stream, kernel_args.ptrs.data());
+  CHECK_CUDA(cuCtxPopCurrent(nullptr));
+
+  // Step 4: Clean up kernel argument pointers (device-side)
+  cleanup_kernel_args(kernel_args);
+
+  // Step 5: Return the tuple of mem_ptr<T>...
+  return mem_refs;
+}
+
+
+
+
+  // Launch kernel with args that have already been allocated 
+  // on the device via mem_ref<T>
   template <typename... Ts>
   std::vector<output_buffer> launch_kernel(CUfunction kernel,
                                            const nd_range& range,
@@ -141,6 +176,8 @@ private:
   std::mutex stream_mutex_;
 
   // === Memory handling ===
+  
+  //allocate a readonly input buffer on the gpu
   template <typename T>
   mem_ptr<T> global_argument(const in<T>& arg, int actor_id, int access) {
     CUstream stream = get_stream_for_actor(actor_id);
@@ -158,6 +195,7 @@ private:
       new mem_ref<T>(arg.size(), dev_ptr, access, id_, 0, stream));
   }
 
+  //allocate a read and write input buffer on the gpu
   template <typename T>
   mem_ptr<T> global_argument(const in_out<T>& arg, int actor_id, int access) {
     CUstream stream = get_stream_for_actor(actor_id);
@@ -175,6 +213,7 @@ private:
       new mem_ref<T>(arg.size(), dev_ptr, access, id_, 0, stream));
   }
 
+  //allocate an output buffer on the gpu 
   template <typename T>
   mem_ptr<T> scratch_argument(const out<T>& arg, int actor_id, int access) {
     size_t size = arg.is_scalar() ? arg.getscalar() : arg.size();
