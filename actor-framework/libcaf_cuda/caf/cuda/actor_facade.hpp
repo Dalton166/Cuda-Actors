@@ -31,6 +31,7 @@ using behavior_table_t = std::unordered_map<std::string, behavior_ptr>;
 template <bool PassConfig, class... Ts>
 class actor_facade : public caf::local_actor, public caf::resumable {
 public:
+public:
   static caf::actor create(
     caf::actor_system& sys,
     caf::actor_config&& actor_conf,
@@ -40,9 +41,30 @@ public:
   ) {
     return caf::make_actor<actor_facade<PassConfig, std::decay_t<Ts>...>, caf::actor>(
       sys.next_actor_id(),
-      sys.node(),namespace caf::cuda {
+      sys.node(),
+      &sys,
+      std::move(actor_conf),
+      std::move(program),
+      std::move(dims),
+      std::forward<Ts>(xs)...);
+  }
 
-using behavior_table_t = std::map<std::string, behavior_base_ptr>;
+static caf::actor create(
+    caf::actor_system* sys,
+    caf::actor_config&& actor_conf,
+    program_ptr program,
+    nd_range dims,
+    Ts&&... xs
+  ) {
+    return caf::make_actor<actor_facade<PassConfig, std::decay_t<Ts>...>, caf::actor>(
+      sys->next_actor_id(),
+      sys->node(),
+      sys,
+      std::move(actor_conf),
+      std::move(program),
+      std::move(dims),
+      std::forward<Ts>(xs)...);
+  }
 
 template <class... Ts>
 void add_behavior(behavior_table_t& table, behavior_ptr<Ts...> behavior) {
