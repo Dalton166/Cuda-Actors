@@ -87,7 +87,7 @@ public:
 };
 
 
-using behavior_ptr = caf::intrusive_ptr<behavior_base>;
+using behavior_ptr = std::shared_ptr<behavior_base>;
 
 
 //An abstract behavior that implements some of commonly used features by 
