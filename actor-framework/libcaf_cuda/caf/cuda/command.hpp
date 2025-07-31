@@ -37,7 +37,7 @@ public:
   : msg_(msg),
     program_(program),
     dims_(dims),
-    actor_id(id),
+    actor_id(id)
     { 
   dev_ = platform::create()->schedule(id);
   static_assert(sizeof...(Us) == sizeof...(Ts), "Argument count mismatch");
