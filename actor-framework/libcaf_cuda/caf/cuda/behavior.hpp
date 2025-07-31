@@ -1,19 +1,69 @@
-#pragma once
 
-#include <tuple>
-#include <vector>
-#include <functional>
-#include <string>
-#include <caf/actor.hpp>
-#include <caf/message.hpp>
-#include <caf/response_promise.hpp>
-#include <caf/intrusive_ptr.hpp>
-
-#include "caf/cuda/global.hpp"
-#include "caf/cuda/nd_range.hpp"
-#include "caf/cuda/command.hpp" // your command class header
+#include <stdexcept>
 
 namespace caf::cuda {
+
+namespace detail {
+
+// Traits to get raw type and wrapping function for each wrapper
+template <typename Wrapper>
+struct wrapper_traits;
+
+template <typename T>
+struct wrapper_traits<in<T>> {
+  using raw_type = T;
+  static auto wrap(const T& val) { return create_in_arg(val); }
+  static auto wrap(const std::vector<T>& val) { return create_in_arg(val); }
+};
+
+template <typename T>
+struct wrapper_traits<out<T>> {
+  using raw_type = T;
+  static auto wrap(const T& val) { return create_out_arg(val); }
+  static auto wrap(const std::vector<T>& val) { return create_out_arg(val); }
+};
+
+template <typename T>
+struct wrapper_traits<in_out<T>> {
+  using raw_type = T;
+  static auto wrap(const T& val) { return create_in_out_arg(val); }
+  static auto wrap(const std::vector<T>& val) { return create_in_out_arg(val); }
+};
+
+template <typename Wrapper>
+auto wrap_msg_element(const caf::message& msg, size_t index) {
+  using T = typename wrapper_traits<Wrapper>::raw_type;
+
+  const auto& val = msg.at(index);
+  auto val_type = val.type();
+
+  if (val_type == caf::type_id_v<T>) {
+    auto scalar_val = msg.get_as<T>(index);
+    return wrapper_traits<Wrapper>::wrap(scalar_val);
+  }
+  else if (val_type == caf::type_id_v<std::vector<T>>) {
+    auto vec_val = msg.get_as<std::vector<T>>(index);
+    return wrapper_traits<Wrapper>::wrap(vec_val);
+  }
+  else {
+    throw std::runtime_error("Unexpected type in message at index " + std::to_string(index));
+  }
+}
+
+template <typename Tuple, size_t... Is>
+caf::message tag_message_impl(const caf::message& msg, std::index_sequence<Is...>) {
+  if (msg.size() != sizeof...(Is))
+    throw std::runtime_error("Message size does not match argument tuple size.");
+
+  return caf::make_message(wrap_msg_element<std::tuple_element_t<Is, Tuple>>(msg, Is)...);
+}
+
+template <typename... Args>
+caf::message tag_message_with_wrappers(const caf::message& msg, const std::tuple<Args...>& args) {
+  return tag_message_impl<std::tuple<Args...>>(msg, std::make_index_sequence<sizeof...(Args)>{});
+}
+
+} // namespace detail
 
 template <class... Ts>
 class AbstractBehavior {
@@ -42,8 +92,8 @@ public:
   // Main entry point with response promise
   virtual void execute(const caf::message& msg, int actor_id, caf::response_promise& rp) {
     rp_ = std::move(rp);
-    preprocess(msg);
-    auto results = execute_command(msg, actor_id);
+    auto tagged_msg = preprocess(msg);
+    auto results = execute_command(tagged_msg, actor_id);
     postprocess(results);
     reply(results, rp_);
     cleanup();
@@ -51,8 +101,8 @@ public:
 
   // Fire-and-forget entry point (no response promise)
   virtual void execute(const caf::message& msg, int actor_id) {
-    preprocess(msg);
-    auto results = execute_command(msg, actor_id);
+    auto tagged_msg = preprocess(msg);
+    auto results = execute_command(tagged_msg, actor_id);
     postprocess(results);
     reply(results);
     cleanup();
@@ -73,7 +123,13 @@ public:
   }
 
 protected:
-  // Helper to unpack args_ tuple and launch the command
+  // Override preprocess to return tagged message
+  virtual caf::message preprocess(const caf::message& msg) {
+    if (preprocess_)
+      preprocess_(msg);
+    return detail::tag_message_with_wrappers(msg, args_);
+  }
+
   template <std::size_t... Is>
   std::tuple<mem_ptr<raw_t<Ts>>...> execute_command_impl(const caf::message& msg, int actor_id, std::index_sequence<Is...>) {
     auto cmd = caf::make_counted<command<caf::actor, Ts...>>(
@@ -90,10 +146,6 @@ protected:
   }
 
   // Virtual hooks — override as needed
-  virtual void preprocess(const caf::message& msg) {
-    if (preprocess_) preprocess_(msg);
-  }
-
   virtual void postprocess(const std::tuple<mem_ptr<raw_t<Ts>>...>& /*results*/) {
     // Default no-op
   }
