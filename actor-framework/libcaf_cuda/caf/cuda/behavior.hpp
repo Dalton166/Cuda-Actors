@@ -195,7 +195,6 @@ protected:
   preprocess_fn preprocess_;
   std::vector<caf::actor> targets_;
   std::tuple<Ts...> args_;
-  caf::response_promise rp_;
   caf::actor self_; // You might want to set this after construction or via a setter
 
 };
