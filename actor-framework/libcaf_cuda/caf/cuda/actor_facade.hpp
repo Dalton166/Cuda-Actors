@@ -27,6 +27,7 @@
 
 namespace caf::cuda {
 
+using behavior_table_t = std::unordered_map<std::string, behavior_ptr>;
 template <bool PassConfig, class... Ts>
 class actor_facade : public caf::local_actor, public caf::resumable {
 public:
@@ -101,6 +102,8 @@ private:
   std::atomic<bool> shutdown_requested_ = false;
   int actor_id = generate_id();
   std::atomic_flag resuming_flag_ = ATOMIC_FLAG_INIT;
+  behavior_table_t behavior_table;
+
 
 
   int generate_id() {
