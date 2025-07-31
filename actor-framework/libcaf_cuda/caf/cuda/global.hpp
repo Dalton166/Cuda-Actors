@@ -196,8 +196,12 @@ CAF_BEGIN_TYPE_ID_BLOCK(cuda, caf::first_custom_type_id)
   CAF_ADD_TYPE_ID(cuda, (buffer_variant))
   CAF_ADD_TYPE_ID(cuda, (output_buffer))
   CAF_ADD_TYPE_ID(cuda, (std::vector<output_buffer>))
-  // Your atoms — atoms count as types too!
+  
+  //atoms 
   CAF_ADD_ATOM(cuda, kernel_done_atom)
+  CAF_ADD_ATOM(cuda, become)
+  CAF_ADD_ATOM(cuda, launch_behavior)
+  CAF_ADD_ATOM(cuda, update_behavior)
 
 CAF_END_TYPE_ID_BLOCK(cuda)
 
