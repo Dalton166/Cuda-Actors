@@ -78,24 +78,22 @@ class AbstractBehavior {
 public:
   using preprocess_fn = std::function<void(const caf::message&)>;
 
-  template <class... Args>
-  AbstractBehavior(std::string name,
-                   program_ptr program,
-                   nd_range dims,
-                   int actor_id,
-                   preprocess_fn preprocess,
-                   std::vector<caf::actor> targets = {},
-                   Args&&... xs)
-    : name_(std::move(name)),
-      program_(std::move(program)),
-      dims_(std::move(dims)),
-      actor_id_(actor_id),
-      preprocess_(std::move(preprocess)),
-      targets_(std::move(targets)),
-      args_(std::forward<Args>(xs)...)
-  {}
+AbstractBehavior(std::string name,
+                 program_ptr program,
+                 nd_range dims,
+                 int actor_id,
+                 preprocess_fn preprocess,
+                 std::vector<caf::actor> targets,
+                 Ts&&... xs)
+  : name_(std::move(name)),
+    program_(std::move(program)),
+    dims_(std::move(dims)),
+    actor_id_(actor_id),
+    preprocess_(std::move(preprocess)),
+    targets_(std::move(targets)),
+    args_(std::forward<Ts>(xs)...) {} 
 
-  virtual ~AbstractBehavior() = default;
+   virtual ~AbstractBehavior() = default;
 
   // Main entry point with response promise
   virtual void execute(const caf::message& msg, int actor_id, caf::response_promise& rp) {
