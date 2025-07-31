@@ -20,6 +20,7 @@
 #include "caf/cuda/arguments.hpp"
 #include "caf/cuda/device.hpp"
 #include <caf/send.hpp>
+#include <caf/message.hpp>
 
 namespace caf::cuda {
 
@@ -50,7 +51,30 @@ command(caf::response_promise promise,
 
   static_assert(sizeof...(Us) == sizeof...(Ts), "Argument count mismatch");
 }
-  ~command() = default;
+
+
+  //this should be the new command constructor as 
+  //its roles are shifitng from launching a kernel and replying as well as cleaningup
+  //to unpacking a message, launching a kenrel and returning its result, as well as 
+  //handle device scheduling
+  command(caf::message msg,
+        caf::actor self,
+        program_ptr program,
+        nd_range dims,
+        int id, 
+        Us&&... xs)
+  : msg_(msg),
+    self_(self),
+    program_(program),
+    dims_(dims),
+    actor_id(id),
+    { 
+  dev_ = platform::create()->schedule(id);
+  static_assert(sizeof...(Us) == sizeof...(Ts), "Argument count mismatch");
+}
+
+
+ ~command() = default;
 
   void enqueue() {
     //auto outputs = launch_kernel(program_, dims_, mem_refs, actor_id);
@@ -65,6 +89,19 @@ command(caf::response_promise promise,
     });
 
   }
+
+
+  //unpacks a caf message and calls launch_kernel_mem_ref and returns its result  
+ std::tuple<mem_ref<raw_t<Ts>>...> enqueue() {
+  // Step 1: Unpack message
+  auto unpacked = msg_.template get_as<std::tuple<Ts...>>(0);
+
+  // Step 2: Launch kernel via centralized utility
+  CUfunction kernel = program_->get_kernel(dev_->getId());
+  return dev_->launch_kernel_mem_ref(kernel, dims_, unpacked, actor_id);
+}
+
+
 
   template <class A, class... S>
   friend void intrusive_ptr_add_ref(command<A, S...>* ptr);
@@ -81,6 +118,7 @@ private:
   std::atomic<int> ref_count{0};
   int actor_id;
   device_ptr dev_;
+  caf::message msg_;
 
  template <typename T>
   mem_ptr<T> makeArg(in<T> arg) {
