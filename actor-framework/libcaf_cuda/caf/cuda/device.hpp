@@ -78,13 +78,16 @@ public:
 
   //launches a kernel using wrapper types, in, in_out and out as arguments
   //and returns a tuple of mem ref's that hold device memory 
-  template <typename... Args>
-std::tuple<mem_ref<typename raw_type<Args>::type>...>
-launch_kernel_mem_ref(CUfunction kernel,
+
+
+  
+  	  template <typename... Args>
+	  std::tuple<mem_ref<raw_t<Args>>...>
+	  launch_kernel_mem_ref(CUfunction kernel,
                       const nd_range& range,
                       std::tuple<Args...> args,
                       int actor_id) {
-  // Step 1: Allocate mem_ptr<T> for each wrapper type
+  // Step 1: Allocate mem_ref<T> for each wrapper type
   auto mem_refs = std::apply([&](auto&&... arg) {
     return std::make_tuple(make_arg(std::forward<decltype(arg)>(arg), actor_id)...);
   }, args);
@@ -98,13 +101,12 @@ launch_kernel_mem_ref(CUfunction kernel,
   launch_kernel_internal(kernel, range, stream, kernel_args.ptrs.data());
   CHECK_CUDA(cuCtxPopCurrent(nullptr));
 
-  // Step 4: Clean up kernel argument pointers (device-side)
+  // Step 4: Clean up kernel argument pointers
   cleanup_kernel_args(kernel_args);
 
-  // Step 5: Return the tuple of mem_ptr<T>...
+  // Step 5: Return tuple of mem_ref<T>...
   return mem_refs;
 }
-
 
 
 
