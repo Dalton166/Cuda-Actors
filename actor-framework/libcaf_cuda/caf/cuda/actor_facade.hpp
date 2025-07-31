@@ -40,7 +40,18 @@ public:
   ) {
     return caf::make_actor<actor_facade<PassConfig, std::decay_t<Ts>...>, caf::actor>(
       sys.next_actor_id(),
-      sys.node(),
+      sys.node(),namespace caf::cuda {
+
+using behavior_table_t = std::map<std::string, behavior_base_ptr>;
+
+template <class... Ts>
+void add_behavior(behavior_table_t& table, behavior_ptr<Ts...> behavior) {
+  const std::string& key = behavior->name();
+  table.emplace(key, behavior); // copy the intrusive_ptr
+}
+
+} // namespace caf::cuda
+
       &sys,
       std::move(actor_conf),
       std::move(program),
@@ -112,6 +123,13 @@ private:
   }
 
 
+  template <class... Ts>
+void add_behavior(const behavior_ptr<Ts...>& behavior) {
+  const std::string& key = behavior->name();
+  behavior_table.emplace(key, behavior); // stored as behavior_base_ptr
+}
+
+
   template <typename... Ts>
   behavior_ptr<Ts...> get_behavior(const std::string& name) {
   auto it = behavior_table.find(name);
@@ -171,6 +189,7 @@ private:
     return subtype_t(0);
   }
 
+ //schedules an actor for execution 
  resumable::resume_result resume(::caf::scheduler* sched, size_t max_throughput) override {
   if (resuming_flag_.test_and_set(std::memory_order_acquire)) {
     return resumable::resume_later;
@@ -183,6 +202,7 @@ private:
 
   size_t processed = 0;
 
+  //process messages
   while (!mailbox_.empty() && processed < max_throughput) {
     auto msg = std::move(mailbox_.front());
     mailbox_.pop();
@@ -264,8 +284,6 @@ private:
       mailbox_.pop();
     }
   }
-
-
 
 
   void quit(exit_reason reason) {
