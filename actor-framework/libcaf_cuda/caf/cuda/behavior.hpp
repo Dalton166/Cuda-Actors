@@ -1,7 +1,7 @@
 #include <stdexcept>
 #include "caf/cuda/global.hpp"
 #include "caf/cuda/command.hpp"
-#include <caf/message>
+#include <caf/message.hpp>
 
 namespace caf::cuda {
 
@@ -31,13 +31,11 @@ struct wrapper_traits<in_out<T>> {
   static auto wrap(const T& val) { return create_in_out_arg(val); }
   static auto wrap(const std::vector<T>& val) { return create_in_out_arg(val); }
 };
-
 template <typename Wrapper>
 auto wrap_msg_element(const caf::message& msg, size_t index) {
   using raw_type = typename wrapper_traits<Wrapper>::raw_type;
 
-  const auto& val = msg.at(index);
-  auto val_type = val.type();
+  auto val_type = msg.type_at(index);
 
   // Already wrapped? Just return as-is.
   if (val_type == caf::type_id_v<Wrapper>)
@@ -56,6 +54,7 @@ auto wrap_msg_element(const caf::message& msg, size_t index) {
   // Otherwise: unsupported type
   throw std::runtime_error("wrap_msg_element: Unexpected type at index " + std::to_string(index));
 }
+
 
 
 template <typename Tuple, size_t... Is>
