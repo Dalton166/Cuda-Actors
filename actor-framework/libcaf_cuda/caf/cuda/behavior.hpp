@@ -1,5 +1,7 @@
-#include "caf/cuda/global.hpp"
 #include <stdexcept>
+#include "caf/cuda/global.hpp"
+#include "caf/cuda/command.hpp"
+#include <caf/message>
 
 namespace caf::cuda {
 

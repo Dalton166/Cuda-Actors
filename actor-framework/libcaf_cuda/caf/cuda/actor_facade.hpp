@@ -6,6 +6,10 @@
 #include <queue>
 #include <utility>
 #include <type_traits>
+#include <random>
+#include <climits>
+#include <thread>
+
 
 #include <caf/local_actor.hpp>
 #include <caf/actor.hpp>
@@ -19,9 +23,7 @@
 #include "caf/cuda/command.hpp"
 #include "caf/cuda/platform.hpp"
 #include "caf/cuda/utility.hpp"
-#include <random>
-#include <climits>
-#include <thread>
+#include "caf/cuda/behavior.hpp"
 
 namespace caf::cuda {
 
