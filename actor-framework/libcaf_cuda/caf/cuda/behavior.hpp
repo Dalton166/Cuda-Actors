@@ -1,4 +1,4 @@
-
+#include "caf/cuda/global.hpp"
 #include <stdexcept>
 
 namespace caf::cuda {
@@ -139,7 +139,6 @@ protected:
   std::tuple<mem_ptr<raw_t<Ts>>...> execute_command_impl(const caf::message& msg, int actor_id, std::index_sequence<Is...>) {
     auto cmd = caf::make_counted<command<caf::actor, Ts...>>(
       msg,
-      self_,
       program_,
       dims_,
       actor_id,
