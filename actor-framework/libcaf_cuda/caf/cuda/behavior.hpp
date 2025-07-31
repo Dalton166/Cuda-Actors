@@ -72,10 +72,34 @@ caf::message tag_message_with_wrappers(const caf::message& msg, const std::tuple
 
 } // namespace detail
 
-template <class... Ts>
-class AbstractBehavior {
+
+//this class represents the interface that the actor facade will use on all
+//behaviors, required for a non templated pointer
+class behavior_base {
 public:
-  using preprocess_fn = std::function<void(const caf::message&)>;
+  virtual ~behavior_base() = default;
+
+  virtual void execute(const caf::message& msg, int actor_id) = 0;
+  virtual void execute(const caf::message& msg, int actor_id, caf::response_promise& rp) = 0;
+
+  virtual const std::string& name() const = 0;
+  virtual bool is_asynchronous() const = 0;
+};
+
+
+using behavior_base_ptr = caf::intrusive_ptr<behavior_base>;
+
+
+//An abstract behavior that implements some of commonly used features by 
+//other behavior subclasses
+//all behavior subclasses should inherit from AbstractBehavior or 
+//one of its children and not behavior_base,behavior_base is just an interface 
+template <class... Ts>
+class AbstractBehavior : public behavior_base {
+public:
+
+     using preprocess_fn = std::function<caf::message(const caf::message&)>;
+
 
 AbstractBehavior(std::string name,
                  program_ptr program,
@@ -175,9 +199,6 @@ protected:
   caf::actor self_; // You might want to set this after construction or via a setter
 
 };
-
-template <class... Ts>
-using behavior_ptr = caf::intrusive_ptr<AbstractBehavior<Ts...>>;
 
 } // namespace caf::cuda
 
