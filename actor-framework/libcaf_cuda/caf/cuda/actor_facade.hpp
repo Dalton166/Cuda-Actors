@@ -127,11 +127,20 @@ private:
                     return true;
             }
 
+	    /*
+	     * As of right now launch behavior would be nice 
+	     * but it does not work as we would have to 
+	     * modify the message in order to make it work with behavior
+	     * will have to come back to this later, to see what can be done 
+	     * about this, as per usual it is the annoying wrapper types 
+	     * that make this infinitely more complicated to code
             //are we executing a behavior
             else if (msg.match_element<launch_behavior>(0)) {
 
+		    //todo implement a handler somehow 
                     return true;
             }
+	    */
 
             //update a behaviors state
             else if (msg.match_element<update_behavior>(0)) {
@@ -178,10 +187,13 @@ private:
 
 
 
-void add_behavior(const behavior_ptr& behavior) {
-  const std::string& key = behavior->name();
-  behavior_table.emplace(key, behavior); // stored as behavior_base_ptr
-}
+
+ 
+ 
+  void add_behavior(const behavior_ptr& behavior) {
+     const std::string& key = behavior->name();
+     behavior_table.emplace(key, behavior); // stored as behavior_base_ptr
+    }
 
   behavior_ptr get_behavior(const std::string& name) {
   auto it = behavior_table.find(name);
@@ -190,6 +202,20 @@ void add_behavior(const behavior_ptr& behavior) {
   }
   throw std::runtime_error("Behavior not found: " + name);
 }
+
+ 
+    void execute_current_behavior(caf::message& msg) {
+
+	//if the behavior is asynchronous make a response promise 
+	if (behavior_ptr -> is_asynchronous) {
+		caf::response_promise rp = make_response_promise();
+		behavior_ptr -> execute_behavior(rp,actor_id,caf::actor_cast<caf::actor>(this));
+	}	
+	else {	
+		behavior_ptr -> execute_behavior(actor_id,caf::actor_cast<caf::actor>(this));
+	}
+    }
+
 
   template <std::size_t... Is>
   bool unpack_and_run_wrapped(caf::actor sender, const message& msg, std::index_sequence<Is...>) {
