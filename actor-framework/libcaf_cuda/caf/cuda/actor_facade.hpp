@@ -134,7 +134,7 @@ private:
             }
 
             //update a behaviors state
-            else if (msg.match_element<update_behavior(0)) {
+            else if (msg.match_element<update_behavior>(0)) {
 
                     return true;
             }
@@ -144,7 +144,7 @@ private:
                     return true;
             }
 
-            return true
+            return true;
     }
     std::cout << "[WARNING], message format not recognized by actor facade, dropping message\n";
 
