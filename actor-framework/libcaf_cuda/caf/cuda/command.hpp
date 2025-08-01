@@ -48,7 +48,7 @@ public:
   virtual ~base_command() = default;
 
   // Unpacks a caf message and calls launch_kernel_mem_ref and returns its result  
-  virtual std::tuple<mem_ref<raw_t<Ts>>...> enqueue() {
+  virtual std::tuple<mem_ref<raw_t<Ts>>...> base_enqueue() {
     // Step 1: Unpack message
     auto unpacked = msg_.template get_as<std::tuple<Ts...>>(0);
 
@@ -108,7 +108,7 @@ public:
   // Override enqueue to return collected output_buffers instead of mem_refs tuple
   std::vector<output_buffer> enqueue() {
     // Call base enqueue to get tuple of mem_refs
-    auto mem_refs = base::enqueue();
+    auto mem_refs = base::base_enqueue();
 
     // Convert mem_refs to output_buffers via helper
     auto result = collect_output_buffers_helper(mem_refs);
