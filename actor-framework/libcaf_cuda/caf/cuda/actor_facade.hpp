@@ -27,7 +27,11 @@
 
 namespace caf::cuda {
 
+
+template <typename... Ts>
+using defaultBehavior = AsynchronousUnicastBehavior<Ts...>;
 using behavior_table_t = std::unordered_map<std::string, behavior_ptr>;
+
 template <bool PassConfig, class... Ts>
 class actor_facade : public caf::local_actor, public caf::resumable {
 public:
