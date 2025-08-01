@@ -88,7 +88,6 @@ static caf::actor create(
       dims_,
       actor_id,//techinically a race condition but this never gets used, should remove at some point              
       std::move(pre),
-      std::move(target),
       std::move(post),
       std::forward<Ts>(xs)...);
   } 
@@ -107,10 +106,7 @@ static caf::actor create(
       "default",         
       program_,
       dims_,
-      actor_id,//techinically a race condition but this never gets used, should remove at some point              
-      std::move(pre),
-      std::move(target),
-      std::move(post),
+      actor_id,//techinically a race condition but this never gets used, should remove at some point              ,
       std::forward<Ts>(xs)...);
   } 
 
@@ -249,7 +245,7 @@ private:
 }
 
  
-    void execute_current_behavior(caf::message& msg) {
+    void execute_current_behavior(caf::message msg) {
 
 	//if the behavior is asynchronous make a response promise 
 	if (current_behavior -> is_asynchronous()) {
