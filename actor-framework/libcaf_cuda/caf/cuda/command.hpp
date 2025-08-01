@@ -116,6 +116,8 @@ public:
       if (mem)
         mem->reset();
     });
+
+     return result;
   }
 
 
