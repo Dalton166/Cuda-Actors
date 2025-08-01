@@ -55,14 +55,33 @@ auto wrap_msg_element(const caf::message& msg, size_t index) {
   throw std::runtime_error("wrap_msg_element: Unexpected type at index " + std::to_string(index));
 }
 
-
-
+// Modified tag_message_impl to accept an offset for message index
 template <typename Tuple, size_t... Is>
-caf::message tag_message_impl(const caf::message& msg, std::index_sequence<Is...>) {
-  if (msg.size() != sizeof...(Is))
-    throw std::runtime_error("Message size does not match argument tuple size.");
+caf::message tag_message_impl(const caf::message& msg, std::index_sequence<Is...>, size_t offset = 0) {
+  if (msg.size() < offset + sizeof...(Is))
+    throw std::runtime_error("Message too short for expected args");
 
-  return caf::make_message(wrap_msg_element<std::tuple_element_t<Is, Tuple>>(msg, Is)...);
+  return caf::make_message(
+    wrap_msg_element<std::tuple_element_t<Is, Tuple>>(msg, Is + offset)...
+  );
+}
+
+// Helper to strip first two elements if atom matches
+template <typename Tuple>
+caf::message strip_launch_behavior_prefix(const caf::message& msg) {
+  if (msg.size() < 2)
+    return msg;
+
+  if (msg.match_element<launch_behavior>(0)) {
+    // We expect the message size to be args_ size + 2
+    constexpr size_t N = std::tuple_size_v<Tuple>;
+    if (msg.size() != N + 2)
+      throw std::runtime_error("Message size does not match expected args plus 2");
+
+    // Return a new message from msg elements [2..]
+    return tag_message_impl<Tuple>(msg, std::make_index_sequence<N>{}, 2);
+  }
+  return msg;
 }
 
 template <typename... Args>
