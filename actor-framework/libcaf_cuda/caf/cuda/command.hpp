@@ -32,7 +32,6 @@ class base_command : public ref_counted {
 public:
   template <typename... Us>
   base_command(caf::message msg,
-               caf::actor self,
                program_ptr program,
                nd_range dims,
                int id,
@@ -93,13 +92,11 @@ public:
 
   template <typename... Us>
   command(caf::message msg,
-          caf::actor self,
           program_ptr program,
           nd_range dims,
           int id,
           Us&&... xs)
     : base(std::move(msg),
-           std::move(self),
            std::move(program),
            std::move(dims),
            id,
