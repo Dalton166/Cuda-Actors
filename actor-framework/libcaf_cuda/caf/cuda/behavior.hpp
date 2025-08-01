@@ -128,8 +128,8 @@ public:
                    nd_range dims,
                    int actor_id,
                    preprocess_fn preprocess,
-                   std::vector<caf::actor> targets,
                    postprocess_fn postprocessor,
+                   std::vector<caf::actor> targets,
                    Ts&&... xs)
     : name_(std::move(name)),
       program_(std::move(program)),
@@ -226,8 +226,8 @@ protected:
   nd_range dims_;
   int actor_id_;
   preprocess_fn preprocess_;
-  std::vector<caf::actor> targets_;
   postprocess_fn postprocessor_;
+  std::vector<caf::actor> targets_;
   std::tuple<Ts...> args_;
 };
 
@@ -245,7 +245,6 @@ public:
                               nd_range dims,
                               int actor_id,
                               preprocess_fn preprocess,
-                              caf::actor target,
                               postprocess_fn postprocessor,
                               Ts&&... xs)
     : super(std::move(name),
@@ -253,9 +252,9 @@ public:
             std::move(dims),
             actor_id,
             std::move(preprocess),
-            std::vector<caf::actor>{std::move(target)},
             std::move(postprocessor),
-            std::forward<Ts>(xs)...) {
+            std::vector<caf::actor>{}, //  send empty list, since Unicast doesn't need it
+	    std::forward<Ts>(xs)...) {
     this->is_asynchronous_ = true;
   }
 
