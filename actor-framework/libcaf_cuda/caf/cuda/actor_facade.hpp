@@ -150,7 +150,8 @@ private:
 
             else {
                     //right here should be the place where we execute the current behavior
-                    return true;
+                    execute_current_behavior(msg);
+		    return true;
             }
 
             return true;
