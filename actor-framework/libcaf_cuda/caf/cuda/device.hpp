@@ -199,7 +199,7 @@ private:
     CUstream stream = get_stream_for_actor(actor_id);
     if (arg.is_scalar()) {
       return caf::intrusive_ptr<mem_ref<T>>(
-        new mem_ref<T>(arg.getscalar(), access, id_, 0, stream));
+        new mem_ref<T>(arg.getscalar(), access, id_, 0, getContext(), stream));
     }
     size_t bytes = arg.size() * sizeof(T);
     CUdeviceptr dev_ptr;
@@ -208,7 +208,7 @@ private:
     CHECK_CUDA(cuMemcpyHtoDAsync(dev_ptr, arg.data(), bytes, stream));
     CHECK_CUDA(cuCtxPopCurrent(nullptr));
     return caf::intrusive_ptr<mem_ref<T>>(
-      new mem_ref<T>(arg.size(), dev_ptr, access, id_, 0, stream));
+      new mem_ref<T>(arg.size(), dev_ptr, access, id_, 0, getContext(), stream));
   }
 
   //allocate a read and write input buffer on the gpu
@@ -217,7 +217,7 @@ private:
     CUstream stream = get_stream_for_actor(actor_id);
     if (arg.is_scalar()) {
       return caf::intrusive_ptr<mem_ref<T>>(
-        new mem_ref<T>(arg.getscalar(), access, id_, 0, stream));
+        new mem_ref<T>(arg.getscalar(), access, id_, 0, getContext(), stream));
     }
     size_t bytes = arg.size() * sizeof(T);
     CUdeviceptr dev_ptr;
@@ -226,7 +226,7 @@ private:
     CHECK_CUDA(cuMemcpyHtoDAsync(dev_ptr, arg.data(), bytes, stream));
     CHECK_CUDA(cuCtxPopCurrent(nullptr));
     return caf::intrusive_ptr<mem_ref<T>>(
-      new mem_ref<T>(arg.size(), dev_ptr, access, id_, 0, stream));
+      new mem_ref<T>(arg.size(), dev_ptr, access, id_, 0, getContext() ,stream));
   }
 
   //allocate an output buffer on the gpu 
@@ -239,7 +239,7 @@ private:
     CHECK_CUDA(cuMemAlloc(&dev_ptr, size * sizeof(T)));
     CHECK_CUDA(cuCtxPopCurrent(nullptr));
     return caf::intrusive_ptr<mem_ref<T>>(
-      new mem_ref<T>(size, dev_ptr, access, id_, 0, stream));
+      new mem_ref<T>(size, dev_ptr, access, id_, 0, getContext() ,stream));
   }
 
   // === Kernel launch core ===
