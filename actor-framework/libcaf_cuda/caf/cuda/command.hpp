@@ -85,6 +85,7 @@ inline void intrusive_ptr_release(base_command<Actor, Ts...>* ptr) {
 }
 
 // This class really just returns an output buffer instead of a tuple of mem refs
+// also handles mem ref cleanup for you 
 template <class Actor, class... Ts>
 class command : public base_command<Actor, Ts...> {
 public:
@@ -107,11 +108,30 @@ public:
   // Override enqueue to return collected output_buffers instead of mem_refs tuple
   std::vector<output_buffer> enqueue() {
     // Call base enqueue to get tuple of mem_refs
-    auto mem_refs_tuple = base::enqueue();
+    auto mem_refs = base::enqueue();
 
     // Convert mem_refs to output_buffers via helper
-    return collect_output_buffers_helper(mem_refs_tuple);
+    auto result = collect_output_buffers_helper(mem_refs);
+     for_each_tuple(mem_refs, [](auto& mem) {
+      if (mem)
+        mem->reset();
+    });
   }
+
+
+
+  template <typename Tuple, typename Func, size_t... Is>
+  void for_each_tuple_impl(Tuple& t, Func&& f, std::index_sequence<Is...>) {
+    (f(std::get<Is>(t)), ...);
+  }
+
+  template <typename... Is, typename Func>
+  void for_each_tuple(std::tuple<Is...>& t, Func&& f) {
+    for_each_tuple_impl(t, std::forward<Func>(f), std::index_sequence_for<Is...>{});
+  }
+
+
+
 };
 
 } // namespace caf::cuda
