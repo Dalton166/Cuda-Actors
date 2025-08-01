@@ -252,10 +252,10 @@ private:
 	//if the behavior is asynchronous make a response promise 
 	if (current_behavior -> is_asynchronous()) {
 		caf::response_promise rp = make_response_promise();
-		current_behavior -> execute(rp,actor_id,caf::actor_cast<caf::actor>(this));
+		current_behavior -> execute(msg, rp, actor_id, caf::actor_cast<caf::actor>(this));
 	}	
 	else {	
-		current_behavior -> execute(actor_id,caf::actor_cast<caf::actor>(this));
+		current_behavior -> execute(msg, actor_id, caf::actor_cast<caf::actor>(this));
 	}
     }
 
