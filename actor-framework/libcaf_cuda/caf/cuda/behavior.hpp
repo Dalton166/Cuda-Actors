@@ -116,7 +116,8 @@ using behavior_ptr = std::shared_ptr<behavior_base>;
 //An abstract behavior that implements some of commonly used features by 
 //other behavior subclasses
 //all behavior subclasses should inherit from AbstractBehavior or 
-//one of its children and not behavior_base,behavior_base is just an interface 
+//one of its children and not behavior_base,behavior_base is just an interface
+//assuming of course the behavior only requires you to execute one kernel  
 template <class... Ts>
 class AbstractBehavior : public behavior_base {
 public:
@@ -142,7 +143,7 @@ AbstractBehavior(std::string name,
    virtual ~AbstractBehavior() = default;
 
   // Main entry point with response promise
-  virtual void execute(const caf::message& msg, int actor_id, caf::response_promise& rp) {
+  virtual void execute(const caf::message& msg, int actor_id, caf::response_promise& rp,caf::actor self) {
     auto tagged_msg = preprocess(msg);
     auto results = execute_command(tagged_msg, actor_id);
     postprocess(results);
@@ -151,7 +152,7 @@ AbstractBehavior(std::string name,
   }
 
   // Fire-and-forget entry point (no response promise)
-  virtual void execute(const caf::message& msg, int actor_id) {
+  virtual void execute(const caf::message& msg, int actor_id,caf::actor self) {
     auto tagged_msg = preprocess(msg);
     auto results = execute_command(tagged_msg, actor_id);
     postprocess(results);
@@ -218,7 +219,6 @@ protected:
   preprocess_fn preprocess_;
   std::vector<caf::actor> targets_;
   std::tuple<Ts...> args_;
-  caf::actor self_; // You might want to set this after construction or via a setter
 
 };
 
