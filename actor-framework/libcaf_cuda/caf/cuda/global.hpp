@@ -207,6 +207,32 @@ CAF_END_TYPE_ID_BLOCK(cuda)
 
 namespace caf::cuda {
 
+
+
+   /*
+    * A list of templated helper functions that should be in helpers.hpp
+    * but unfortunately the compiler gets mad if you try and do it 
+    * so they can sit in here 
+    */
+   template <typename... Ts>
+  std::vector<output_buffer> collect_output_buffers_helper(const std::tuple<Ts...>& args) {
+    std::vector<output_buffer> result;
+    std::apply([&](auto&&... mem) {
+      (([&] {
+        if (mem && (mem->access() == OUT || mem->access() == IN_OUT)) {
+          using T = typename std::decay_t<decltype(*mem)>::value_type;
+          result.emplace_back(output_buffer{buffer_variant{mem->copy_to_host()}});
+        }
+      })(), ...);
+    }, args);
+    return result;
+  }
+
+
+
+
+
+
 inline std::string opencl_error(int /*err*/) {
   return "CUDA support disabled";
 }
