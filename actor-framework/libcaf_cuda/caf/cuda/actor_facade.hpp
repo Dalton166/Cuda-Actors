@@ -106,7 +106,9 @@ static caf::actor create(
       "default",         
       program_,
       dims_,
-      actor_id,//techinically a race condition but this never gets used, should remove at some point              ,
+      actor_id,//techinically a race condition but this never gets used, should remove at some point,
+      nullptr,
+      nullptr,
       std::forward<Ts>(xs)...);
   } 
 
