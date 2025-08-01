@@ -7,33 +7,32 @@
 #include <stdexcept>
 #include <chrono>
 #include <iostream>
-#include "caf/cuda/global.hpp"
 #include "caf/cuda/types.hpp"
 #include "caf/cuda/utility.hpp"
+#include <cuda.h>
+
 
 namespace caf::cuda {
 
 
-// keep the old name
 template <class T>
 class mem_ref : public caf::ref_counted {
 public:
   using value_type = T;
 
-  // Buffer constructor (old behavior)
   mem_ref(size_t num_elements,
           CUdeviceptr memory,
           int access,
           int device_id    = 0,
           int context_id   = 0,
-	  CUcontext context,
+	  CUcontext context = nullptr,
           CUstream stream  = nullptr)
     : num_elements_(num_elements),
       memory_(memory),
       access_(access),
       device_id(device_id),
       context_id(context_id),
-      ctx(context);
+      ctx(context),
       stream_(stream),
       is_scalar_(false)
   {
@@ -46,7 +45,7 @@ public:
           int access,
           int device_id    = 0,
           int context_id   = 0,
-	  Cucontext context,
+	  CUcontext context = nullptr,
           CUstream stream  = nullptr)
     : num_elements_(1),
       memory_(0),                    // no device buffer
