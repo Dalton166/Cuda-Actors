@@ -98,12 +98,12 @@ class behavior_base {
 public:
   virtual ~behavior_base() = default;
 
-  virtual void execute(const caf::message& msg, int actor_id) = {};
-  virtual void execute(const caf::message& msg, int actor_id, caf::response_promise& rp) = {};
+  virtual void execute(const caf::message& msg, int actor_id) {}
+  virtual void execute(const caf::message& msg, int actor_id, caf::response_promise& rp) {}
 
   //same execute methods but with an actor handle for the actor if needed
-  virtual void execute(const caf::message& msg, int actor_id,caf::actor self) = {};
-  virtual void execute(const caf::message& msg, int actor_id, caf::response_promise& rp,caf::actor self) = {};
+  virtual void execute(const caf::message& msg, int actor_id,caf::actor self) {}
+  virtual void execute(const caf::message& msg, int actor_id, caf::response_promise& rp,caf::actor self) {}
 
   virtual const std::string& name() const = 0;
   virtual bool is_asynchronous() const = 0;
