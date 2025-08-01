@@ -101,6 +101,10 @@ public:
   virtual void execute(const caf::message& msg, int actor_id) = 0;
   virtual void execute(const caf::message& msg, int actor_id, caf::response_promise& rp) = 0;
 
+  //same execute methods but with an actor handle for the actor if needed
+  virtual void execute(const caf::message& msg, int actor_id,caf::actor self) = 0;
+  virtual void execute(const caf::message& msg, int actor_id, caf::response_promise& rp,caf::actor self) = 0;
+
   virtual const std::string& name() const = 0;
   virtual bool is_asynchronous() const = 0;
 };
