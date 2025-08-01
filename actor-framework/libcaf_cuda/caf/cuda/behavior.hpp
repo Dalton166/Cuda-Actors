@@ -112,59 +112,67 @@ public:
 
 using behavior_ptr = std::shared_ptr<behavior_base>;
 
-
-//An abstract behavior that implements some of commonly used features by 
-//other behavior subclasses
-//all behavior subclasses should inherit from AbstractBehavior or 
-//one of its children and not behavior_base,behavior_base is just an interface
-//assuming of course the behavior only requires you to execute one kernel  
+// An abstract behavior that implements some of the commonly used features 
+// by other behavior subclasses.
+// All behavior subclasses should inherit from AbstractBehavior or 
+// one of its children and not behavior_base. behavior_base is just an interface.
+// (Assuming, of course, the behavior only requires you to execute one kernel.)
 template <class... Ts>
 class AbstractBehavior : public behavior_base {
 public:
+  using preprocess_fn = std::function<caf::message(const caf::message&)>;
+  using postprocess_fn = std::function<caf::message(const std::vector<output_buffer>&)>;
 
-     using preprocess_fn = std::function<caf::message(const caf::message&)>;
+  AbstractBehavior(std::string name,
+                   program_ptr program,
+                   nd_range dims,
+                   int actor_id,
+                   preprocess_fn preprocess,
+                   std::vector<caf::actor> targets,
+                   postprocess_fn postprocessor,
+                   Ts&&... xs)
+    : name_(std::move(name)),
+      program_(std::move(program)),
+      dims_(std::move(dims)),
+      actor_id_(actor_id),
+      preprocess_(std::move(preprocess)),
+      targets_(std::move(targets)),
+      postprocessor_(std::move(postprocessor)),
+      args_(std::forward<Ts>(xs)...) {}
 
-
-AbstractBehavior(std::string name,
-                 program_ptr program,
-                 nd_range dims,
-                 int actor_id,
-                 preprocess_fn preprocess,
-                 std::vector<caf::actor> targets,
-                 Ts&&... xs)
-  : name_(std::move(name)),
-    program_(std::move(program)),
-    dims_(std::move(dims)),
-    actor_id_(actor_id),
-    preprocess_(std::move(preprocess)),
-    targets_(std::move(targets)),
-    args_(std::forward<Ts>(xs)...) {} 
-
-   virtual ~AbstractBehavior() = default;
+  virtual ~AbstractBehavior() = default;
 
   // Main entry point with response promise
-  virtual void execute(const caf::message& msg, int actor_id, caf::response_promise& rp,caf::actor self) {
+  virtual void execute(const caf::message& msg,
+                       int actor_id,
+                       caf::response_promise& rp,
+                       caf::actor self) {
     auto tagged_msg = preprocess(msg);
-    auto results = execute_command(tagged_msg, actor_id);
-    postprocess(results);
-    reply(results, rp);
+    auto output_buffers = execute_command(tagged_msg, actor_id);
+    auto processed_msg = postprocessor_ ? postprocessor_(output_buffers)
+                                        : caf::make_message(std::move(output_buffers));
+    reply(processed_msg, rp, self);
     cleanup();
   }
 
   // Fire-and-forget entry point (no response promise)
-  virtual void execute(const caf::message& msg, int actor_id,caf::actor self) {
+  virtual void execute(const caf::message& msg,
+                       int actor_id,
+                       caf::actor self) {
     auto tagged_msg = preprocess(msg);
-    auto results = execute_command(tagged_msg, actor_id);
-    postprocess(results);
-    reply(results);
+    auto output_buffers = execute_command(tagged_msg, actor_id);
+    auto processed_msg = postprocessor_ ? postprocessor_(output_buffers)
+                                        : caf::make_message(std::move(output_buffers));
+    reply(processed_msg, self);
     cleanup();
   }
+
   // Getters
   const std::string& name() const {
     return name_;
   }
 
-  bool is_asynchronous() const {
+  virtual bool is_asynchronous() const {
     return is_asynchronous_;
   }
 
@@ -177,32 +185,33 @@ protected:
   }
 
   // Virtual command execution, overridable by derived classes
-  virtual std::tuple<mem_ptr<raw_t<Ts>>...> execute_command(const caf::message& msg, int actor_id) {
+  virtual std::vector<output_buffer> execute_command(const caf::message& msg,
+                                                     int actor_id) {
     return execute_command_impl(msg, actor_id, std::make_index_sequence<sizeof...(Ts)>{});
   }
 
   template <std::size_t... Is>
-  std::tuple<mem_ptr<raw_t<Ts>>...> execute_command_impl(const caf::message& msg, int actor_id, std::index_sequence<Is...>) {
+  std::vector<output_buffer> execute_command_impl(const caf::message& msg,
+                                                  int actor_id,
+                                                  std::index_sequence<Is...>) {
     auto cmd = caf::make_counted<command<caf::actor, Ts...>>(
       msg,
       program_,
       dims_,
       actor_id,
       std::get<Is>(args_)...);
-   
-    return  cmd->enqueue();
+    return cmd->enqueue(); // returns vector<output_buffer>
   }
 
   // Virtual hooks — override as needed
-  virtual void postprocess(const std::tuple<mem_ptr<raw_t<Ts>>...>& /*results*/) {
+  virtual void reply(const caf::message& /*msg*/,
+                     caf::response_promise& /*rp*/,
+                     caf::actor /*self*/) {
     // Default no-op
   }
 
-  virtual void reply(const std::tuple<mem_ptr<raw_t<Ts>>...>& /*results*/, caf::response_promise& /*rp*/) {
-    // Default no-op
-  }
-
-  virtual void reply(const std::tuple<mem_ptr<raw_t<Ts>>...>& /*results*/) {
+  virtual void reply(const caf::message& /*msg*/,
+                     caf::actor /*self*/) {
     // Default no-op
   }
 
@@ -218,18 +227,18 @@ protected:
   int actor_id_;
   preprocess_fn preprocess_;
   std::vector<caf::actor> targets_;
+  postprocess_fn postprocessor_;
   std::tuple<Ts...> args_;
-
 };
 
-
-//represents a behavior where the actor replies to only 1 sender and 
-//does so using response promises
+// Represents a behavior where the actor replies to only 1 sender and 
+// does so using response promises.
 template <class... Ts>
 class AsynchronousUnicastBehavior : public AbstractBehavior<Ts...> {
 public:
   using super = AbstractBehavior<Ts...>;
   using preprocess_fn = typename super::preprocess_fn;
+  using postprocess_fn = typename super::postprocess_fn;
 
   AsynchronousUnicastBehavior(std::string name,
                               program_ptr program,
@@ -237,6 +246,7 @@ public:
                               int actor_id,
                               preprocess_fn preprocess,
                               caf::actor target,
+                              postprocess_fn postprocessor,
                               Ts&&... xs)
     : super(std::move(name),
             std::move(program),
@@ -244,6 +254,7 @@ public:
             actor_id,
             std::move(preprocess),
             std::vector<caf::actor>{std::move(target)},
+            std::move(postprocessor),
             std::forward<Ts>(xs)...) {
     this->is_asynchronous_ = true;
   }
@@ -258,22 +269,14 @@ protected:
                caf::response_promise& rp,
                caf::actor self) override {
     super::execute(msg, actor_id, rp, self);
-    anon_mail(kernel_done_atom_v).send(self); //notify actor that we are done execution 
+    anon_mail(kernel_done_atom_v).send(self); // Notify actor that kernel execution finished
   }
 
-  void reply(const std::tuple<mem_ptr<raw_t<Ts>>...>& results,
-             caf::response_promise& rp) override {
-    auto output_buffers = collect_output_buffers_helper(results);
-    rp.deliver(std::move(output_buffers));
-
-    // Cleanup: reset device buffers
-    // this is supposed to be in cleanup but for now it is in reply 
-    for_each_tuple(results, [](auto& mem) {
-      if (mem)
-        mem->reset();
-    });
+  void reply(const caf::message& msg,
+             caf::response_promise& rp,
+             caf::actor /*self*/) override {
+    rp.deliver(msg);
   }
-
 };
 
 } // namespace caf::cuda
