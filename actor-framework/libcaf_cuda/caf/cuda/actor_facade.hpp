@@ -111,6 +111,73 @@ private:
   }
 
 
+
+
+    bool handle_message(const message& msg) {
+    if (!msg.types().empty() && msg.types()[0] == caf::type_id_v<caf::actor>) {
+
+            return true;
+    }
+
+    if (!msg.types().empty()) {
+
+            //check if actor should become a new state
+            if (msg.match_element<become>(0)) {
+
+                    return true;
+            }
+
+            //are we executing a behavior
+            else if (msg.match_element<launch_behavior>(0)) {
+
+                    return true;
+            }
+
+            //update a behaviors state
+            else if (msg.match_element<update_behavior(0)) {
+
+                    return true;
+            }
+
+            else {
+                    //right here should be the place where we execute the current behavior
+                    return true;
+            }
+
+            return true
+    }
+    std::cout << "[WARNING], message format not recognized by actor facade, dropping message\n";
+
+     return false;
+  }
+
+
+
+
+ /*
+  * not in use just here for an example of how to handle messages
+  bool handle_message(const message& msg) {
+    if (!msg.types().empty() && msg.types()[0] == caf::type_id_v<caf::actor>) {
+      auto sender = msg.get_as<caf::actor>(0);
+      if (msg.match_elements<caf::actor, Ts...>()) {
+        return unpack_and_run_wrapped(sender, msg, std::index_sequence_for<Ts...>{});
+      }
+      if (msg.match_elements<caf::actor, raw_t<Ts>...>()) {
+        return unpack_and_run(sender, msg, std::index_sequence_for<Ts...>{});
+      }
+    }
+
+    if (!msg.types().empty()) {
+            return unpack_and_run_wrapped_async(msg, std::index_sequence_for<Ts...>{});
+    }
+    std::cout << "[WARNING], message format not recognized by actor facade, dropping message\n";
+
+     return false;
+  }
+  */
+
+
+
 void add_behavior(const behavior_ptr& behavior) {
   const std::string& key = behavior->name();
   behavior_table.emplace(key, behavior); // stored as behavior_base_ptr
@@ -123,26 +190,6 @@ void add_behavior(const behavior_ptr& behavior) {
   }
   throw std::runtime_error("Behavior not found: " + name);
 }
-
-
-  bool handle_message(const message& msg) {
-    if (!msg.types().empty() && msg.types()[0] == caf::type_id_v<caf::actor>) {
-      auto sender = msg.get_as<caf::actor>(0);
-      if (msg.match_elements<caf::actor, Ts...>()) {
-        return unpack_and_run_wrapped(sender, msg, std::index_sequence_for<Ts...>{});
-      }
-      if (msg.match_elements<caf::actor, raw_t<Ts>...>()) {
-        return unpack_and_run(sender, msg, std::index_sequence_for<Ts...>{});
-      }
-    }
-
-    if (!msg.types().empty()) { 
-	    return unpack_and_run_wrapped_async(msg, std::index_sequence_for<Ts...>{});
-    }
-    std::cout << "[WARNING], message format not recognized by actor facade, dropping message\n";
-    
-     return false;
-  }
 
   template <std::size_t... Is>
   bool unpack_and_run_wrapped(caf::actor sender, const message& msg, std::index_sequence<Is...>) {
