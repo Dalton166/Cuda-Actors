@@ -23,13 +23,6 @@
   #define CAF_CUDA_EXPORT __attribute__((visibility("default")))
 #endif
 
-//memory access flags, required for identifying which
-//gpu buffers are input and output buffers
-#define IN 0 
-#define IN_OUT 1
-#define OUT 2
-#define NOT_IN_USE -1
-
 //helper function to check errors
 void inline check(CUresult result, const char* msg) {
     if (result != CUDA_SUCCESS) {
