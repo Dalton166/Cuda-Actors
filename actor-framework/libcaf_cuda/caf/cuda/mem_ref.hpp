@@ -46,7 +46,7 @@ public:
           int access,
           int device_id    = 0,
           int context_id   = 0,
-	  Cucontext contextm
+	  Cucontext context,
           CUstream stream  = nullptr)
     : num_elements_(1),
       memory_(0),                    // no device buffer
