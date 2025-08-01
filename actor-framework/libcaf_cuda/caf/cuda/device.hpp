@@ -247,16 +247,7 @@ private:
 
   template <typename... Ts>
   std::vector<output_buffer> collect_output_buffers(const std::tuple<Ts...>& args) {
-    std::vector<output_buffer> result;
-    std::apply([&](auto&&... mem) {
-      (([&] {
-        if (mem && (mem->access() == OUT || mem->access() == IN_OUT)) {
-          using T = typename std::decay_t<decltype(*mem)>::value_type;
-          result.emplace_back(output_buffer{buffer_variant{mem->copy_to_host()}});
-        }
-      })(), ...);
-    }, args);
-    return result;
+   return collect_output_buffers_helper(args);
   }
 
   // === Legacy helper ===
