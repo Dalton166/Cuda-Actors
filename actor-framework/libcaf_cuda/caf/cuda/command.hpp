@@ -22,7 +22,6 @@
 #include <caf/send.hpp>
 #include <caf/message.hpp>
 
-
 namespace caf::cuda {
 
 //this class will always launch and schedule a kernel 
@@ -115,6 +114,20 @@ public:
     });
 
      return result;
+  }
+
+   template <typename... Xs>
+   std::vector<output_buffer>  collect_output_buffers_helper(const std::tuple<Xs...>& args) {
+    std::vector<output_buffer> result;
+    std::apply([&](auto&&... mem) {
+      (([&] {
+        if (mem && (mem->access() == OUT || mem->access() == IN_OUT)) {
+          using T = typename std::decay_t<decltype(*mem)>::value_type;
+          result.emplace_back(output_buffer{buffer_variant{mem->copy_to_host()}});
+        }
+      })(), ...);
+    }, args);
+    return result;
   }
 
 
