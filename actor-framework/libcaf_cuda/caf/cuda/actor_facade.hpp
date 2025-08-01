@@ -69,12 +69,52 @@ static caf::actor create(
       std::move(dims),
       std::forward<Ts>(xs)...);
   }
-  actor_facade(caf::actor_config&& cfg, program_ptr prog, nd_range nd, Ts&&... xs)
+
+  actor_facade(caf::actor_config&& cfg,
+               program_ptr prog,
+               nd_range nd,
+               typename AbstractBehavior<Ts...>::preprocess_fn pre,
+               typename AbstractBehavior<Ts...>::postprocess_fn post,
+               Ts&&... xs)
     : local_actor(cfg),
       config_(std::move(cfg)),
       program_(std::move(prog)),
       dims_(nd) {
-  }
+    
+    // Create the defaultBehavior and store as base class pointer
+    current_behavior = std::make_shared<defaultBehavior<Ts...>>(
+      "default",         
+      program_,
+      dims_,
+      actor_id,//techinically a race condition but this never gets used, should remove at some point              
+      std::move(pre),
+      std::move(target),
+      std::move(post),
+      std::forward<Ts>(xs)...);
+  } 
+
+  actor_facade(caf::actor_config&& cfg,
+               program_ptr prog,
+               nd_range nd,
+               Ts&&... xs)
+    : local_actor(cfg),
+      config_(std::move(cfg)),
+      program_(std::move(prog)),
+      dims_(nd) {
+    
+    // Create the defaultBehavior and store as base class pointer
+    current_behavior = std::make_shared<defaultBehavior<Ts...>>(
+      "default",         
+      program_,
+      dims_,
+      actor_id,//techinically a race condition but this never gets used, should remove at some point              
+      std::move(pre),
+      std::move(target),
+      std::move(post),
+      std::forward<Ts>(xs)...);
+  } 
+
+
 
   ~actor_facade() {
     auto plat = platform::create();
@@ -197,7 +237,7 @@ private:
  
   void add_behavior(const behavior_ptr& behavior) {
      const std::string& key = behavior->name();
-     behavior_table.emplace(key, behavior); // stored as behavior_base_ptr
+     behavior_table.emplace(key, behavior); // stored as behavior_ptr
     }
 
   behavior_ptr get_behavior(const std::string& name) {
