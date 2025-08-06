@@ -21,6 +21,7 @@
 #include "caf/cuda/device.hpp"
 #include <caf/send.hpp>
 #include <caf/message.hpp>
+#include "caf/cuda/mem_ref.hpp"
 
 namespace caf::cuda {
 
@@ -107,27 +108,13 @@ public:
     auto mem_refs = base::base_enqueue();
 
     // Convert mem_refs to output_buffers via helper
-    auto result = collect_output_buffers_helper(mem_refs);
+    auto result = base::dev_ -> collect_output_buffers(mem_refs);
      for_each_tuple(mem_refs, [](auto& mem) {
       if (mem)
         mem->reset();
     });
 
      return result;
-  }
-
-   template <typename... Xs>
-   std::vector<output_buffer>  collect_output_buffers_helper(const std::tuple<Xs...>& args) {
-    std::vector<output_buffer> result;
-    std::apply([&](auto&&... mem) {
-      (([&] {
-        if (mem && (mem->access() == OUT || mem->access() == IN_OUT)) {
-          using T = typename std::decay_t<decltype(*mem)>::value_type;
-          result.emplace_back(output_buffer{buffer_variant{mem->copy_to_host()}});
-        }
-      })(), ...);
-    }, args);
-    return result;
   }
 
 
