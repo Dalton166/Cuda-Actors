@@ -74,13 +74,12 @@ protected:
 // intrusive_ptr reference counting
 template <class Actor, class... Ts>
 inline void intrusive_ptr_add_ref(base_command<Actor, Ts...>* ptr) {
-  ++(ptr->ref_count);
+   ptr->ref();
 }
 
 template <class Actor, class... Ts>
 inline void intrusive_ptr_release(base_command<Actor, Ts...>* ptr) {
-  if (--(ptr->ref_count) == 0)
-    delete ptr;
+  ptr -> deref();
 }
 
 // This class really just returns an output buffer instead of a tuple of mem refs
