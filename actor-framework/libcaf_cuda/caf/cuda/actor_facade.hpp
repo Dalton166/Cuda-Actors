@@ -117,6 +117,7 @@ static caf::actor create(
 
   ~actor_facade() {
     auto plat = platform::create();
+    std::cout << "Deleting\n";
     plat->release_streams_for_actor(actor_id);
   }
 
@@ -165,10 +166,8 @@ private:
             return true;
     }*/
 
-    std::cout << "Handle message called\n";
     if (!msg.types().empty()) {
 
-	    std::cout << "CHECKING \n";
             //check if actor should become a new state
             if (msg.match_element<become>(0)) {
 
@@ -255,7 +254,6 @@ private:
  
     void execute_current_behavior(caf::message msg) {
 
-	    std::cout << "Looks like my plan didnt work out at all\n";
 	//if the behavior is asynchronous make a response promise 
 	if (current_behavior -> is_asynchronous()) {
 		caf::response_promise rp = make_response_promise();
@@ -315,7 +313,6 @@ private:
     auto msg = std::move(mailbox_.front());
     mailbox_.pop();
 
-    std::cout << "Processing message\n";
     if (!msg || !msg->content().ptr()) {
       std::cout << "[Thread " << std::this_thread::get_id()
                 << "] Dropping message with no content\n";
@@ -356,12 +353,14 @@ private:
     pending_promises_--;
     current_mailbox_element(nullptr);
     ++processed;
+    std::cout << "Done handling message\n";
   }
 
   // If there's still more work, return resume_later
   if (!mailbox_.empty())
     return resumable::resume_later;
 
+  std::cout << "Running it back\n";
   return shutdown_requested_ ? resumable::resume_later : resumable::done;
 }
 
@@ -402,7 +401,9 @@ private:
 
   void quit(exit_reason reason) {
     //force_close_mailbox();
-    current_mailbox_element(nullptr);
+    
+	  std::cout << "WEEEEEEEEEEEEEEEEEEEEEEEEEE\n";
+	  current_mailbox_element(nullptr);
   }
 };
 
