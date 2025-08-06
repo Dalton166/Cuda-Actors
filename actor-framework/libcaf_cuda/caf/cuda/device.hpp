@@ -95,7 +95,7 @@ public:
   //and returns a tuple of mem ref's that hold device memory 
   
   	  template <typename... Args>
-	  std::tuple<mem_ref<raw_t<Args>>...>
+	  std::tuple<mem_ptr<raw_t<Args>>...>
 	  launch_kernel_mem_ref(CUfunction kernel,
                       const nd_range& range,
                       std::tuple<Args...> args,
