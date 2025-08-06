@@ -9,13 +9,14 @@
 #include <random>
 #include <climits>
 #include <thread>
-
+#include <iostream>
 
 #include <caf/local_actor.hpp>
 #include <caf/actor.hpp>
 #include <caf/response_promise.hpp>
 #include <caf/scheduler.hpp>
 #include <caf/resumable.hpp>
+#include <caf/message.hpp>
 
 #include "caf/cuda/nd_range.hpp"
 #include "caf/cuda/global.hpp"
@@ -155,14 +156,19 @@ private:
 
 
 
-    bool handle_message(const message& msg) {
+    bool handle_message(const caf::message& msg) {
+
+	    /*
+	    std::cout << "Hello?\n";
     if (!msg.types().empty() && msg.types()[0] == caf::type_id_v<caf::actor>) {
 
             return true;
-    }
+    }*/
 
+    std::cout << "Handle message called\n";
     if (!msg.types().empty()) {
 
+	    std::cout << "CHECKING \n";
             //check if actor should become a new state
             if (msg.match_element<become>(0)) {
 
@@ -249,6 +255,7 @@ private:
  
     void execute_current_behavior(caf::message msg) {
 
+	    std::cout << "Looks like my plan didnt work out at all\n";
 	//if the behavior is asynchronous make a response promise 
 	if (current_behavior -> is_asynchronous()) {
 		caf::response_promise rp = make_response_promise();
@@ -308,6 +315,7 @@ private:
     auto msg = std::move(mailbox_.front());
     mailbox_.pop();
 
+    std::cout << "Processing message\n";
     if (!msg || !msg->content().ptr()) {
       std::cout << "[Thread " << std::this_thread::get_id()
                 << "] Dropping message with no content\n";
@@ -318,8 +326,10 @@ private:
     current_mailbox_element(msg.get());
 
     if (msg->content().match_elements<kernel_done_atom>()) {
+	    std::cout << "Received kernel done\n";
       if (--pending_promises_ == 0 && shutdown_requested_) {
         quit(exit_reason::user_shutdown);
+	std::cout << "Exiting\n";
         return resumable::done;
       }
       current_mailbox_element(nullptr);
@@ -328,10 +338,12 @@ private:
     }
 
     if (msg->content().match_elements<exit_msg>()) {
+	    std::cout << "Received exit message\n";
       auto exit = msg->content().get_as<exit_msg>(0);
       shutdown_requested_ = true;
       if (--pending_promises_ == 0) {
         quit(static_cast<exit_reason>(exit.reason.code()));
+	std::cout << "Exiting\n";
         return resumable::done;
       } else {
         current_mailbox_element(nullptr);
@@ -339,6 +351,7 @@ private:
       }
     }
 
+    std::cout << "Calling handle message\n";
     handle_message(msg->content());
     pending_promises_--;
     current_mailbox_element(nullptr);
