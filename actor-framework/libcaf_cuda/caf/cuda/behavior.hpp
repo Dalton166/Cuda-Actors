@@ -187,6 +187,7 @@ protected:
   // Virtual command execution, overridable by derived classes
   virtual std::vector<output_buffer> execute_command(const caf::message& msg,
                                                      int actor_id) {
+
     return execute_command_impl(msg, actor_id, std::make_index_sequence<sizeof...(Ts)>{});
   }
 
@@ -268,7 +269,7 @@ protected:
                caf::response_promise& rp,
                caf::actor self) override {
     super::execute(msg, actor_id, rp, self);
-    anon_mail(kernel_done_atom_v).send(self); // Notify actor that kernel execution finished
+//    anon_mail(kernel_done_atom_v).send(self); // Notify actor that kernel execution finished
   }
 
   void reply(const caf::message& msg,
