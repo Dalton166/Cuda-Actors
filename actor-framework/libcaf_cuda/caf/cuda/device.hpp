@@ -18,6 +18,7 @@
 #include "caf/cuda/global.hpp"
 #include "caf/cuda/types.hpp"
 #include "caf/cuda/StreamPool.hpp"
+#include "caf/cuda/mem_ref.hpp"
 
 namespace caf::cuda {
 
@@ -92,8 +93,6 @@ public:
 
   //launches a kernel using wrapper types, in, in_out and out as arguments
   //and returns a tuple of mem ref's that hold device memory 
-
-
   
   	  template <typename... Args>
 	  std::tuple<mem_ref<raw_t<Args>>...>
@@ -177,6 +176,14 @@ public:
     pack.allocated_device_ptrs.clear();
   }
 
+
+  template <typename... Ts>
+  std::vector<output_buffer> collect_output_buffers(const std::tuple<Ts...>& args) {
+   return collect_output_buffers_helper(args);
+  }
+
+
+
   // === Old method for legacy tests ===
   template <typename... Ts>
   std::vector<void*> extract_kernel_args(const std::tuple<Ts...>& t) {
@@ -258,12 +265,6 @@ private:
                                (err_name ? err_name : "unknown error"));
     }
   }
-
-  template <typename... Ts>
-  std::vector<output_buffer> collect_output_buffers(const std::tuple<Ts...>& args) {
-   return collect_output_buffers_helper(args);
-  }
-
   // === Legacy helper ===
   template <typename Tuple, std::size_t... Is>
   std::vector<void*> extract_kernel_args_impl(const Tuple& t,
