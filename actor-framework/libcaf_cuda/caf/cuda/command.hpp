@@ -48,9 +48,12 @@ public:
 
   // Unpacks a caf message and calls launch_kernel_mem_ref and returns its result  
   virtual std::tuple<mem_ptr<raw_t<Ts>>...> base_enqueue() {
+    
+    std::cout << "Unpacking message\n";
     // Step 1: Unpack message
-    auto unpacked = msg_.template get_as<std::tuple<Ts...>>(0);
+      auto unpacked = unpack_args(std::index_sequence_for<Ts...>{});
 
+    std::cout << "Launching kernel\n";
     // Step 2: Launch kernel via centralized utility
     CUfunction kernel = program_->get_kernel(dev_->getId());
     return dev_->launch_kernel_mem_ref(kernel, dims_, unpacked, actor_id);
@@ -63,6 +66,14 @@ public:
   template <class A, class... S>
   friend void intrusive_ptr_release(base_command<A, S...>* ptr);
 
+
+  template <size_t... Is>
+auto unpack_args(std::index_sequence<Is...>) {
+  return std::make_tuple(msg_.get_as<Ts>(Is)...);
+}
+
+
+
 protected:
   program_ptr program_;
   nd_range dims_;
@@ -74,7 +85,7 @@ protected:
 // intrusive_ptr reference counting
 template <class Actor, class... Ts>
 inline void intrusive_ptr_add_ref(base_command<Actor, Ts...>* ptr) {
-   ptr->ref();
+  ptr->ref();
 }
 
 template <class Actor, class... Ts>
