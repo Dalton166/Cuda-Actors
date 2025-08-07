@@ -126,7 +126,6 @@ public:
   AbstractBehavior(std::string name,
                    program_ptr program,
                    nd_range dims,
-                   int actor_id,
                    preprocess_fn preprocess,
                    postprocess_fn postprocessor,
                    std::vector<caf::actor> targets,
@@ -134,7 +133,6 @@ public:
     : name_(std::move(name)),
       program_(std::move(program)),
       dims_(std::move(dims)),
-      actor_id_(actor_id),
       preprocess_(std::move(preprocess)),
       targets_(std::move(targets)),
       postprocessor_(std::move(postprocessor)),
@@ -225,7 +223,6 @@ protected:
   bool is_asynchronous_ = false;
   program_ptr program_;
   nd_range dims_;
-  int actor_id_;
   preprocess_fn preprocess_;
   postprocess_fn postprocessor_;
   std::vector<caf::actor> targets_;
@@ -244,14 +241,12 @@ public:
   AsynchronousUnicastBehavior(std::string name,
                               program_ptr program,
                               nd_range dims,
-                              int actor_id,
                               preprocess_fn preprocess,
                               postprocess_fn postprocessor,
                               Ts&&... xs)
     : super(std::move(name),
             std::move(program),
             std::move(dims),
-            actor_id,
             std::move(preprocess),
             std::move(postprocessor),
             std::vector<caf::actor>{}, //  send empty list, since Unicast doesn't need it
@@ -269,7 +264,7 @@ protected:
                caf::response_promise& rp,
                caf::actor self) override {
     super::execute(msg, actor_id, rp, self);
-//    anon_mail(kernel_done_atom_v).send(self); // Notify actor that kernel execution finished
+    //anon_mail(kernel_done_atom_v).send(self); // Notify actor that kernel execution finished
   }
 
   void reply(const caf::message& msg,
@@ -278,6 +273,55 @@ protected:
     rp.deliver(msg);
   }
 };
+
+
+// Represents a behavior where the actor sends the result to one fixed target
+// using a regular CAF send (synchronous fire-and-forget).
+template <class... Ts>
+class SynchronousUnicastBehavior : public AbstractBehavior<Ts...> {
+public:
+  using super = AbstractBehavior<Ts...>;
+  using preprocess_fn = typename super::preprocess_fn;
+  using postprocess_fn = typename super::postprocess_fn;
+
+  SynchronousUnicastBehavior(std::string name,
+                             program_ptr program,
+                             nd_range dims,
+                             preprocess_fn preprocess,
+                             postprocess_fn postprocessor,
+                             caf::actor target,
+                             Ts&&... xs)
+    : super(std::move(name),
+            std::move(program),
+            std::move(dims),
+            std::move(preprocess),
+            std::move(postprocessor),
+            std::vector<caf::actor>{target}, // Wrap single target in a vector
+            std::forward<Ts>(xs)...) {
+    this->is_asynchronous_ = false;
+  }
+
+protected:
+  void execute(const caf::message& msg,
+               int actor_id,
+               caf::actor self) override {
+    super::execute(msg, actor_id, self);
+  }
+
+  //will send the message to the target if there is one 
+  //otherwise sends the message back to the actor
+  void reply(const caf::message& msg,
+             caf::actor self) override {
+    if (!this->targets_.empty()) {
+      anon_mail(msg).send(this->targets_.front());
+    } else {
+      anon_mail(msg).send(self);
+    }
+  }
+};
+
+
+
 
 } // namespace caf::cuda
 
