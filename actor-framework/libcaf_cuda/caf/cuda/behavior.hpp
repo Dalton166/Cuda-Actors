@@ -109,6 +109,7 @@ public:
 
   virtual const std::string& name() const = 0;
   virtual bool is_asynchronous() const = 0;
+  virtual std::unique_ptr<behavior_base> clone() const = 0;
 };
 
 
@@ -266,6 +267,11 @@ public:
     return true;
   }
 
+   std::unique_ptr<behavior_base> clone() const override {
+    return std::make_unique<MyBehavior>(*this);  // <-- this copies the subclass!
+  }
+
+
 protected:
   void execute(const caf::message& msg,
                int actor_id,
@@ -280,6 +286,10 @@ protected:
              caf::actor /*self*/) override {
     rp.deliver(msg);
   }
+
+
+  
+
 };
 
 
@@ -307,6 +317,11 @@ public:
             std::vector<caf::actor>{target}, // Wrap single target in a vector
             std::forward<Ts>(xs)...) {
     this->is_asynchronous_ = false;
+  }
+
+
+   std::unique_ptr<behavior_base> clone() const override {
+    return std::make_unique<MyBehavior>(*this); 
   }
 
 protected:
