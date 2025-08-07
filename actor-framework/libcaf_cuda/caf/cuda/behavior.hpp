@@ -3,6 +3,7 @@
 #include "caf/cuda/global.hpp"
 #include "caf/cuda/command.hpp"
 #include <caf/message.hpp>
+#include <iostream>
 
 namespace caf::cuda {
 
@@ -111,7 +112,7 @@ public:
 };
 
 
-using behavior_ptr = std::shared_ptr<behavior_base>;
+using behavior_ptr = std::unique_ptr<behavior_base>;
 
 // An abstract behavior that implements some of the commonly used features 
 // by other behavior subclasses.
@@ -123,6 +124,10 @@ class AbstractBehavior : public behavior_base {
 public:
   using preprocess_fn = std::function<caf::message(const caf::message&)>;
   using postprocess_fn = std::function<caf::message(const std::vector<output_buffer>&)>;
+
+  ~AbstractBehavior() {
+	  std::cout << "Destroying behavior\n";
+  }
 
   AbstractBehavior(std::string name,
                    program_ptr program,
@@ -139,7 +144,7 @@ public:
       postprocessor_(std::move(postprocessor)),
       args_(std::forward<Ts>(xs)...) {}
 
-  virtual ~AbstractBehavior() = default;
+  //virtual ~AbstractBehavior() = default;
 
   // Main entry point with response promise
   virtual void execute(const caf::message& msg,
@@ -158,6 +163,7 @@ public:
   virtual void execute(const caf::message& msg,
                        int actor_id,
                        caf::actor self) {
+	  std::cout << "Executing behavior\n";
     auto tagged_msg = preprocess(msg);
     auto output_buffers = execute_command(tagged_msg, actor_id);
     auto processed_msg = postprocessor_ ? postprocessor_(output_buffers)
@@ -238,6 +244,7 @@ public:
   using super = AbstractBehavior<Ts...>;
   using preprocess_fn = typename super::preprocess_fn;
   using postprocess_fn = typename super::postprocess_fn;
+
 
   AsynchronousUnicastBehavior(std::string name,
                               program_ptr program,
