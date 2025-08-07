@@ -20,6 +20,8 @@
 #include "caf/cuda/program.hpp"
 #include "caf/cuda/actor_facade.hpp"
 #include "caf/cuda/platform.hpp"
+#include "caf/cuda/behavior.hpp"
+
 
 namespace caf::cuda {
 
@@ -160,6 +162,19 @@ public:
 
     return f(&system_, std::move(cfg), std::move(prog),dims,std::forward<Ts>(xs)...);
   }
+
+  template <class... Ts>
+  caf::actor spawnFromBehavior(
+		   behavior_ptr behavior,
+                   Ts&&... xs) {
+    caf::detail::cuda_spawn_helper<false, Ts...> f;
+    caf::actor_config cfg;
+
+    return f(&system_, std::move(cfg),behavior,std::forward<Ts>(xs)...);
+  }
+
+
+
 
 
   caf::actor_system& system() { return system_; }
