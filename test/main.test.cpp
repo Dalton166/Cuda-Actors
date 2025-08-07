@@ -356,8 +356,8 @@ void test_mmul_from_cubin(caf::actor_system& sys, int N) {
   sys.spawn([=](caf::event_based_actor* self_actor) {
     auto start = std::chrono::high_resolution_clock::now();
 
-    self_actor->mail(gpuActor, arg1, arg2, arg3, arg4)
-      .request(gpuActor, std::chrono::seconds(10))
+    self_actor->mail(arg1, arg2, arg3, arg4)
+      .request(gpuActor, std::chrono::seconds(100))
       .then([=](const std::vector<output_buffer>& outputs) {
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = end - start;
@@ -379,7 +379,11 @@ void test_mmul_from_cubin(caf::actor_system& sys, int N) {
 
         self_actor->send_exit(gpuActor, caf::exit_reason::user_shutdown);
         self_actor->quit();
-      });
+      },
+      [=](caf::error err) {
+	      std::cerr << "[ERROR] Kernel execution failed: " << caf::to_string(err) << std::endl;
+      }  
+	    );
   });
 
   sys.await_all_actors_done();
@@ -563,7 +567,7 @@ caf::behavior supervisor_fun(caf::stateful_actor<supervisor_state>* self, int id
 
     auto kernel_start = Clock::now();
 
-    self->mail(st_ref.gpu_actor, arg1, arg2, arg3, arg4)
+    self->mail(arg1, arg2, arg3, arg4)
       .request(st_ref.gpu_actor, std::chrono::seconds(100))
       .then(
         [self, iteration_start, kernel_start](const std::vector<output_buffer>&) {
@@ -1466,16 +1470,24 @@ struct mmul_sync_state {
 void test_mmul_sync(caf::actor_system& sys, int N) {
   std::cout << "[TEST] Starting test_mmul_sync\n";
 
+
   caf::cuda::manager& mgr = caf::cuda::manager::get();
+  auto program = mgr.create_program_from_cubin("../mmul.cubin","matrixMul");
+  sys.spawn([&](caf::stateful_actor<mmul_sync_state>* self_actor) {
+
+
 
   int THREADS = 32;
   int BLOCKS = (N + THREADS - 1) / THREADS;
 
   caf::cuda::nd_range dim(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
 
-  auto gpuActor = mgr.spawnFromCUBIN(
-    "../mmul.cubin", "matrixMul", dim,
-    in<int>{}, in<int>{}, out<int>{}, in<int>{}
+
+  caf::cuda::SynchronousUnicastBehavior<in<int>,in<int>,out<int>,in<int>> behavior("mmulBehavior",program,dim,nullptr,nullptr,self_actor,in<int>{},in<int>{} ,out<int>{},in<int>{});
+
+  caf::cuda::behavior_ptr ptr = std::make_shared<decltype(behavior)>(std::move(behavior));
+  auto gpuActor = mgr.spawnFromBehavior(
+    ptr,in<int>{}, in<int>{}, out<int>{}, in<int>{}
   );
 
   std::vector<int> h_a(N * N);
@@ -1494,7 +1506,6 @@ void test_mmul_sync(caf::actor_system& sys, int N) {
   auto arg3 = caf::cuda::create_out_arg(h_c);
   auto arg4 = caf::cuda::create_in_arg(N);
 
-  sys.spawn([=](caf::stateful_actor<mmul_sync_state>* self_actor) {
     auto& st = self_actor->state();
     st.gpu_actor = gpuActor;
 
@@ -1517,7 +1528,7 @@ void test_mmul_sync(caf::actor_system& sys, int N) {
 
     // Send synchronous message
     st.start_time = Clock::now();
-    self_actor->send(st.gpu_actor, self_actor, arg1, arg2, arg3, arg4);
+    self_actor->mail(arg1, arg2, arg3, arg4).send(gpuActor);
 
     return caf::behavior{
       [=](const std::vector<output_buffer>& outputs) {
@@ -2222,7 +2233,7 @@ void caf_main(caf::actor_system& sys) {
   //actor_facade_launch_kernel_test(sys);
    //test_mmul(sys,1024);
    //test_mmul_from_ptx(sys,1024);
-   //test_mmul_from_cubin(sys,1024);
+    //test_mmul_from_cubin(sys,50);
    //test_mmul_plain(sys,1024);
   //test_mmul_large(sys);
   //run_concurrent_serial_mmul_test_global_with_worker(sys,1,1024);
@@ -2230,20 +2241,25 @@ void caf_main(caf::actor_system& sys) {
    //run_all_concurrent_tests(sys);
 
   //run_concurrent_mmul_test_shared_gpu(sys,2,50);
-  //test_mmul_sync(sys,50);
 //  run_concurrent_mmul_test_global_sync(sys,20,1024);
   //run_concurrent_mmul_test_sync(sys,50,1024);
 
    //test_mmul_from_cubin(sys,50);
    //test_mmul_from_cubin(sys,1024);
    //run_concurrent_mmul_test_global(sys,50,1024);
-  //run_concurrent_mmul_test(sys,1,50);
+  //run_concurrent_mmul_test(sys,1,500);
 
   //run_concurrent_mmul_validate_test(sys,100,60);
 
  // run_gpu_batch_tests(sys);
 
-  run_global_gpu_batch_tests(sys);
+  //run_global_gpu_batch_tests(sys);
+  
+
+   //test_mmul_from_cubin(sys,50);
+  test_mmul_sync(sys,50);
+
+
 }
 
 
