@@ -71,6 +71,24 @@ static caf::actor create(
       std::forward<Ts>(xs)...);
   }
 
+static caf::actor create(
+    caf::actor_system* sys,
+    caf::actor_config&& actor_conf,
+    behavior_ptr behavior,
+    Ts&&... xs
+  ) {
+    return caf::make_actor<actor_facade<PassConfig, std::decay_t<Ts>...>, caf::actor>(
+      sys->next_actor_id(),
+      sys->node(),
+      sys,
+      std::move(actor_conf),
+      behavior,
+      std::forward<Ts>(xs)...);
+  }
+
+
+
+
   actor_facade(caf::actor_config&& cfg,
                program_ptr prog,
                nd_range nd,
@@ -106,13 +124,23 @@ static caf::actor create(
       "default",         
       program_,
       dims_,
-      actor_id,//techinically a race condition but this never gets used, should remove at some point,
       nullptr,
       nullptr,
       std::forward<Ts>(xs)...);
   } 
 
-
+ actor_facade(caf::actor_config&& cfg,
+                behavior_ptr behavior,
+		Ts&&... xs)
+    : local_actor(cfg),
+      config_(std::move(cfg)),
+      program_(std::move(prog)),
+      dims_(nd) {
+    
+    //store the behavior and assign current behavior to it 
+    add_behavior(behavior);
+    current_behavior = behavior;
+  } 
 
   ~actor_facade() {
     auto plat = platform::create();
