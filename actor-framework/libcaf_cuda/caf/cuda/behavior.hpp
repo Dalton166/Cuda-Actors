@@ -4,6 +4,7 @@
 #include "caf/cuda/command.hpp"
 #include <caf/message.hpp>
 #include <iostream>
+#include "caf/cuda/helpers.hpp"
 
 namespace caf::cuda {
 
@@ -125,10 +126,9 @@ class AbstractBehavior : public behavior_base {
 public:
   using preprocess_fn = std::function<caf::message(const caf::message&)>;
   using postprocess_fn = std::function<caf::message(const std::vector<output_buffer>&)>;
-
-  ~AbstractBehavior() {
-	  std::cout << "Destroying behavior\n";
-  }
+~AbstractBehavior() override {
+  std::cout << "Destroying behavior with id " << id << " at " << this << "\n";
+}
 
   AbstractBehavior(std::string name,
                    program_ptr program,
@@ -235,6 +235,7 @@ protected:
   postprocess_fn postprocessor_;
   std::vector<caf::actor> targets_;
   std::tuple<Ts...> args_;
+  int id = random_number();
 };
 
 // Represents a behavior where the actor replies to only 1 sender and 
@@ -320,6 +321,7 @@ public:
 
 
 std::shared_ptr<behavior_base> clone() const override {
+	std::cout << "Clone called\n";
   return std::make_shared<SynchronousUnicastBehavior<Ts...>>(*this);
 }
 
