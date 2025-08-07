@@ -101,7 +101,7 @@ static caf::actor create(
       dims_(nd) {
     
     // Create the defaultBehavior and store as base class pointer
-    current_behavior = std::make_unique<defaultBehavior<Ts...>>(
+    current_behavior = std::make_shared<defaultBehavior<Ts...>>(
       "default",         
       program_,
       dims_,
@@ -120,7 +120,7 @@ static caf::actor create(
       dims_(nd) {
     
     // Create the defaultBehavior and store as base class pointer
-    current_behavior = std::make_unique<defaultBehavior<Ts...>>(
+    current_behavior = std::make_shared<defaultBehavior<Ts...>>(
       "default",         
       program_,
       dims_,
@@ -137,9 +137,9 @@ static caf::actor create(
       {
     
     //store the behavior and assign current behavior to it 
-    add_behavior(behavior);
-    current_behavior = behavior;
-  
+    behavior_ptr ptr = behavior->clone();
+    add_behavior(ptr);
+    current_behavior = ptr; 
       } 
 
   ~actor_facade() {

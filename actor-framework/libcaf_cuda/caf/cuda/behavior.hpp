@@ -267,10 +267,9 @@ public:
     return true;
   }
 
-   std::unique_ptr<behavior_base> clone() const override {
-    return std::make_shared<MyBehavior>(*this);  // <-- this copies the subclass!
-  }
-
+std::shared_ptr<behavior_base> clone() const override {
+  return std::make_shared<AsynchronousUnicastBehavior<Ts...>>(*this);
+}
 
 protected:
   void execute(const caf::message& msg,
@@ -320,9 +319,9 @@ public:
   }
 
 
-   std::unique_ptr<behavior_base> clone() const override {
-    return std::make_shared<MyBehavior>(*this); 
-  }
+std::shared_ptr<behavior_base> clone() const override {
+  return std::make_shared<SynchronousUnicastBehavior<Ts...>>(*this);
+}
 
 protected:
   void execute(const caf::message& msg,
