@@ -97,6 +97,24 @@ program_ptr manager::create_program_from_cubin(const std::string& filename,
 }
 
 
+program_ptr manager::create_program_from_cubin(const std::string& filename,
+                                               const char* kernel_name) {
+  // Open the cubin file in binary mode
+  std::ifstream in(filename, std::ios::binary);
+  if (!in)
+    throw std::runtime_error("Failed to open CUBIN file: " + filename);
+
+  // Read file contents into memory
+  std::vector<char> cubin((std::istreambuf_iterator<char>(in)),
+                          std::istreambuf_iterator<char>());
+
+   // Reuse the same constructor as PTX (program class doesn't care)
+  program_ptr prog = make_counted<program>(kernel_name, std::move(cubin));
+  return prog;
+}
+
+
+
 
 
 program_ptr manager::create_program_from_file(const std::string&,
