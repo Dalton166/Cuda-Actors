@@ -147,7 +147,7 @@ static caf::actor create(
 
     if (!shutdown_requested_) {
     
-	    //throw std::invalid_argument("gpu actor shutting down before it was requested");
+	  throw std::invalid_argument("gpu actor shutting down before it was requested");
     }
 
     std::cout << "Deleting\n";
@@ -376,7 +376,7 @@ if (resuming_flag_.test_and_set(std::memory_order_acquire)) {
   if (!mailbox_.empty())
     return resumable::resume_later;
 
-  std::cout << "Running it back\n";
+  std::cout << "Running it back with shutdown = " << shutdown_requested_ << "\n" ;
   return shutdown_requested_ ? resumable::resume_later : resumable::done;
 }
 
