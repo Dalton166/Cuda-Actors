@@ -10,6 +10,101 @@
 #include "caf/actor_registry.hpp"
 
 
+//behavior that can generate 2 random matrices and launch the broadcast the results to other actors
+//expects a message of size N and generates 2 N^2 matrices and broadcasts them out 
+
+//note that the template corrosponds the the command parameters and not the message types
+class randomMatrixBehavior : caf::cuda::SynchronousMulticastBehavior<in_out<int> in<int>,in<int>,in<int>> {
+
+	randomMatrixBehavior(std::vector<caf::actor> targets) {	
+        caf::cuda::manager& mgr = caf::cuda::manager::get();
+
+	auto program = mgr.create_program_from_cubin("../mmul.cu","generate_random_matrix");
+	//create a junk dim vec to pass to the superclass we wont be using this anyways
+        caf::cuda::nd_range dim(1, 1, 1, 1,1, 1);
+
+
+	//may need to forward the templates here 
+	super::("randomMatrix",
+			std::move(program),
+			std::move(dim),
+			nullptr,
+			nullptr,
+			targets);
+	}
+
+	protected:
+
+	//expects the message to be in format of an int N and will generate 2 
+	//N *N matrices 
+	void execute(const caf::message& msg,
+               int actor_id,
+               caf::actor self) override {
+		int N = msg.get_as<int>(0);
+
+		//create a new message with the correct wrappers and call
+		//execute_command_impl twice 
+		
+		//TODO maybe give an option to generate an std::vector of a size
+
+		auto arg1 = caf::cuda::create_out_arg(N*N); //output buffer indicate its size, caf::cuda will handle the rest
+		auto arg2 = caf::cuda::create_in_arg(N*N); //matrix size 
+		auto arg3 = caf::cuda::create_in_arg(1234); //seed
+		auto arg4 = caf::cuda::create_in_arg(9999); //max value
+	        caf::message random_kernel_message = caf::make_message(arg1,arg2,arg3,arg4);
+
+
+		//generate the 2 random matrices
+		std::vector<output_buffer> output1 = super::execute_command(random_kernel_message,actor_id);
+  
+		std::vector<output_buffer> output2 = super::execute_command(random_kernel_message,actor_id);
+
+		//collect their outputs 	
+	 std::vector<int> matrixA;
+          for (const auto& out : outputs1) {
+            std::visit([&](const auto& vec) {
+              if constexpr (std::is_same_v<std::decay_t<decltype(vec)>, std::vector<int>>) {
+                matrixA = vec;
+              }
+            }, out.data);
+          }	
+	
+	  std::vector<int> matrixB;
+          for (const auto& out : outputs2) {
+            std::visit([&](const auto& vec) {
+              if constexpr (std::is_same_v<std::decay_t<decltype(vec)>, std::vector<int>>) {
+                matrixB = vec;
+              }
+            }, out.data);
+          }
+
+	//package them into a message and broadcast the result
+	auto matrix1 = caf::cuda::create_in_arg(matrixA);
+	auto matrix2 = caf::cuda::create_in_arg(matrixB);
+	auto matrix3 = caf::cuda::create_out_arg(N*N);
+	auto size = caf::cuda::create_in_arg(N);
+	caf::message multicast_msg = make_message(matrix1,matrix2,matrix3,size);
+
+	//get the multicast behavior to broadcast this out for us
+	super::reply(multicast_msg,self);
+
+	}
+
+}	
+
+
+
+
+
+
+ //helper function to create a mmul behavior for actors 
+ auto createMMulBehavior() {
+  caf::cuda::manager& mgr = caf::cuda::manager::get();
+  auto program = mgr.create_program_from_cubin("../mmul.cubin","matrixMul"); 
+  caf::cuda::SynchronousUnicastBehavior<in<int>,in<int>,out<int>,in<int>> behavior("mmulBehavior",program,dim,nullptr,nullptr,self_actor,in<int>{},in<int>{} ,out<int>{},in<int>{});
+  return behavior;
+ }
+
 
 
 void test_mmul_sync(caf::actor_system& sys, int N) {
