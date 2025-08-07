@@ -87,7 +87,6 @@ static caf::actor create(
       "default",         
       program_,
       dims_,
-      actor_id,//techinically a race condition but this never gets used, should remove at some point              
       std::move(pre),
       std::move(post),
       std::forward<Ts>(xs)...);
@@ -117,6 +116,12 @@ static caf::actor create(
 
   ~actor_facade() {
     auto plat = platform::create();
+
+    if (!shutdown_requested_) {
+    
+	    //throw std::invalid_argument("gpu actor shutting down before it was requested");
+    }
+
     std::cout << "Deleting\n";
     plat->release_streams_for_actor(actor_id);
   }
@@ -196,9 +201,20 @@ private:
             }
 
             else {
-                    //right here should be the place where we execute the current behavior
-                    execute_current_behavior(msg);
-		    return true;
+         
+		  try {
+  // right here should be the place where we execute the current behavior
+  execute_current_behavior(msg);
+  return true;
+} catch (const std::exception& e) {
+  std::cerr << "[actor_facade] Exception caught during behavior execution: "
+            << e.what() << std::endl;
+  return false;
+} catch (...) {
+  std::cerr << "[actor_facade] Unknown exception caught during behavior execution"
+            << std::endl;
+  return false;
+}
             }
 
             return true;
@@ -207,37 +223,7 @@ private:
 
      return false;
   }
-
-
-
-
- /*
-  * not in use just here for an example of how to handle messages
-  bool handle_message(const message& msg) {
-    if (!msg.types().empty() && msg.types()[0] == caf::type_id_v<caf::actor>) {
-      auto sender = msg.get_as<caf::actor>(0);
-      if (msg.match_elements<caf::actor, Ts...>()) {
-        return unpack_and_run_wrapped(sender, msg, std::index_sequence_for<Ts...>{});
-      }
-      if (msg.match_elements<caf::actor, raw_t<Ts>...>()) {
-        return unpack_and_run(sender, msg, std::index_sequence_for<Ts...>{});
-      }
-    }
-
-    if (!msg.types().empty()) {
-            return unpack_and_run_wrapped_async(msg, std::index_sequence_for<Ts...>{});
-    }
-    std::cout << "[WARNING], message format not recognized by actor facade, dropping message\n";
-
-     return false;
-  }
-  */
-
-
-
-
- 
- 
+  
   void add_behavior(const behavior_ptr& behavior) {
      const std::string& key = behavior->name();
      behavior_table.emplace(key, behavior); // stored as behavior_ptr
