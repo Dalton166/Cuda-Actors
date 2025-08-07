@@ -345,6 +345,60 @@ protected:
 };
 
 
+// Represents a behavior where the actor sends the result to many fixed targets
+// using a regular CAF send (synchronous fire-and-forget).
+template <class... Ts>
+class SynchronousMulticastBehavior : public AbstractBehavior<Ts...> {
+public:
+  using super = AbstractBehavior<Ts...>;
+  using preprocess_fn = typename super::preprocess_fn;
+  using postprocess_fn = typename super::postprocess_fn;
+
+  SynchronousMulticastBehavior(std::string name,
+                             program_ptr program,
+                             nd_range dims,
+                             preprocess_fn preprocess,
+                             postprocess_fn postprocessor,
+                             std::vector<caf::actor> targets,
+                             Ts&&... xs)
+    : super(std::move(name),
+            std::move(program),
+            std::move(dims),
+            std::move(preprocess),
+            std::move(postprocessor),
+            targets,
+            std::forward<Ts>(xs)...) {
+    this->is_asynchronous_ = false;
+  }
+
+
+std::shared_ptr<behavior_base> clone() const override {
+	std::cout << "Clone called\n";
+  return std::make_shared<SynchronousUnicastBehavior<Ts...>>(*this);
+}
+
+protected:
+  void execute(const caf::message& msg,
+               int actor_id,
+               caf::actor self) override {
+    super::execute(msg, actor_id, self);
+  }
+
+  //will send the message to the targets if there is one 
+  //otherwise sends the message back to the actor who issued the command
+ void reply(const caf::message& msg, caf::actor self) override {
+  if (!this->targets_.empty()) {
+    for (auto& target : this->targets_) {
+      anon_mail(msg).send(target);
+    }
+  } else {
+    anon_mail(msg).send(self);
+  }
+}
+
+};
+
+
 
 
 } // namespace caf::cuda
