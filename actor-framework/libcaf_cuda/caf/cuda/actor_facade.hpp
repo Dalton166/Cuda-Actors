@@ -101,7 +101,7 @@ static caf::actor create(
       dims_(nd) {
     
     // Create the defaultBehavior and store as base class pointer
-    current_behavior = std::make_shared<defaultBehavior<Ts...>>(
+    current_behavior = std::make_unique<defaultBehavior<Ts...>>(
       "default",         
       program_,
       dims_,
@@ -120,7 +120,7 @@ static caf::actor create(
       dims_(nd) {
     
     // Create the defaultBehavior and store as base class pointer
-    current_behavior = std::make_shared<defaultBehavior<Ts...>>(
+    current_behavior = std::make_unique<defaultBehavior<Ts...>>(
       "default",         
       program_,
       dims_,
@@ -139,7 +139,8 @@ static caf::actor create(
     //store the behavior and assign current behavior to it 
     add_behavior(behavior);
     current_behavior = behavior;
-  } 
+  
+      } 
 
   ~actor_facade() {
     auto plat = platform::create();
@@ -310,7 +311,9 @@ private:
 
  //schedules an actor for execution 
  resumable::resume_result resume(::caf::scheduler* sched, size_t max_throughput) override {
-  if (resuming_flag_.test_and_set(std::memory_order_acquire)) {
+
+	 std::cout << "Actor with id " << actor_id << "Is calling resume\n";	 
+if (resuming_flag_.test_and_set(std::memory_order_acquire)) {
     return resumable::resume_later;
   }
 
@@ -361,12 +364,12 @@ private:
       }
     }
 
-    std::cout << "Calling handle message\n";
+    std::cout << "actor with id "  << actor_id  <<  " Calling handle message\n";
     handle_message(msg->content());
     pending_promises_--;
     current_mailbox_element(nullptr);
     ++processed;
-    std::cout << "Done handling message\n";
+    std::cout << "actor with id " << actor_id <<  " Done handling message\n";
   }
 
   // If there's still more work, return resume_later
@@ -390,12 +393,15 @@ private:
     if (was_empty && sched) {
       sched->schedule(this);
     }
+    std::cout << "actor with id " << actor_id <<  "Enqueuing message\n";
     return true;
   }
 
   void launch(::caf::scheduler* sched, bool lazy, [[maybe_unused]] bool interruptible) override {
     if (!lazy && sched) {
       sched->schedule(this);
+
+    std::cout << "actor with id " << actor_id <<  "scheduling\n";
     }
   }
 
@@ -406,6 +412,8 @@ private:
   }
 
   void force_close_mailbox() override  {
+    
+    std::cout << "actor with id " << actor_id <<  "Closing mailbox\n";
     while (!mailbox_.empty()) {
       mailbox_.pop();
     }

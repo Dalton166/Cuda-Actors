@@ -109,11 +109,11 @@ public:
 
   virtual const std::string& name() const = 0;
   virtual bool is_asynchronous() const = 0;
-  virtual std::unique_ptr<behavior_base> clone() const = 0;
+  virtual std::shared_ptr<behavior_base> clone() const = 0;
 };
 
 
-using behavior_ptr = std::unique_ptr<behavior_base>;
+using behavior_ptr = std::shared_ptr<behavior_base>;
 
 // An abstract behavior that implements some of the commonly used features 
 // by other behavior subclasses.
@@ -268,7 +268,7 @@ public:
   }
 
    std::unique_ptr<behavior_base> clone() const override {
-    return std::make_unique<MyBehavior>(*this);  // <-- this copies the subclass!
+    return std::make_shared<MyBehavior>(*this);  // <-- this copies the subclass!
   }
 
 
@@ -321,7 +321,7 @@ public:
 
 
    std::unique_ptr<behavior_base> clone() const override {
-    return std::make_unique<MyBehavior>(*this); 
+    return std::make_shared<MyBehavior>(*this); 
   }
 
 protected:
