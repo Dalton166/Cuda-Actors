@@ -1,3 +1,4 @@
+#pragma once
 #include <stdexcept>
 #include "caf/cuda/global.hpp"
 #include "caf/cuda/command.hpp"
