@@ -56,7 +56,7 @@ struct cuda_spawn_helper {
    actor operator()(
 		  actor_system * sys,
 		  actor_config&& cfg,
-		  behavior_ptr behavior,
+		  caf::cuda::behavior_ptr behavior,
                    Ts&&... xs) const {
     return actor_cast<actor>(impl::create(
 			    sys,

@@ -133,9 +133,8 @@ static caf::actor create(
                 behavior_ptr behavior,
 		Ts&&... xs)
     : local_actor(cfg),
-      config_(std::move(cfg)),
-      program_(std::move(prog)),
-      dims_(nd) {
+      config_(std::move(cfg))
+      {
     
     //store the behavior and assign current behavior to it 
     add_behavior(behavior);
