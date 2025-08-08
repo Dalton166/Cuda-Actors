@@ -85,6 +85,7 @@ caf::message strip_launch_behavior_prefix(const caf::message& msg) {
     return tag_message_impl<Tuple>(msg, std::make_index_sequence<N>{}, 2);
   }
   return msg;
+
 }
 
 template <typename... Args>
