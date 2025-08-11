@@ -198,4 +198,8 @@ CAF_BEGIN_TYPE_ID_BLOCK(cuda, caf::first_custom_type_id)
 
 CAF_END_TYPE_ID_BLOCK(cuda)
 
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(caf::cuda::mem_ptr<int>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(caf::cuda::mem_ptr<float>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(caf::cuda::mem_ptr<double>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(caf::cuda::mem_ptr<char>)
 
