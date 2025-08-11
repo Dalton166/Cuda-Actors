@@ -61,10 +61,10 @@ void matrixMul(const int* a, const int* b, int* c, int N) {
 
 //commands classes used to launch kernels 
 using mmulCommand = caf::cuda::command_runner<in<int>,in<int>,out<int>,in<int>>;
-using matrixGenCommand = caf::cuda::command_runner<out<int>,in<int>,in<int>,in<int>>;
+//using matrixGenCommand = caf::cuda::command_runner<out<int>,in<int>,in<int>,in<int>>;
 
 mmulCommand mmul;
-matrixGenCommand randomMatrix;
+//matrixGenCommand randomMatrix;
 
 
 
@@ -135,7 +135,7 @@ caf::behavior mmul_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
 	  std::vector<int> matrixB(N*N);
 
 	   std::generate(matrixA.begin(), matrixA.end(), []() { return rand() % 10; });
-	   std::generate(matrixB.begin(), h_b.end(), []() { return rand() % 10; });
+	   std::generate(matrixB.begin(), matrixB.end(), []() { return rand() % 10; });
 
 
 	  //broadcast the result out to receviers.
@@ -154,7 +154,7 @@ caf::behavior mmul_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
   caf::cuda::manager& mgr = caf::cuda::manager::get();
 
   //create program and dims   
-  auto program = mgr.create_program_from_cubin("../mmul.cu","matrixMul");
+  auto program = mgr.create_program_from_cubin("../mmul.cubin","matrixMul");
   const int THREADS = 32;
   const int BLOCKS = (N + THREADS - 1) / THREADS;
   caf::cuda::nd_range dims(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
@@ -177,7 +177,7 @@ caf::behavior mmul_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
     [=](const std::vector<int>& matrixA,
         const std::vector<int>& matrixB, const std::vector<int> matrixC, int N) {
        
-	 std::vector<int> result;
+	 std::vector<int> result(N*N);
 
 	 serial_matrix_multiply(matrixA,matrixB,result,N);
 
