@@ -50,14 +50,13 @@ public:
                nd_range dims,
                int id,
                Us&&... xs)
-    : msg_(std::move(msg)),
-      program_(std::move(program)),
+    : program_(std::move(program)),
       dims_(std::move(dims)),
       actor_id(id),
-      kernel_args(std::make_tuple(std::forward<Us..>(xs)),
+      kernel_args(std::make_tuple(std::forward<Us>(xs)...))
        	{
-    dev_ = platform::create()->schedule(id);
     
+	dev_ = platform::create()->schedule(id);
     static_assert(sizeof...(Us) == sizeof...(Ts), "Argument count mismatch");
   }
 
@@ -70,7 +69,7 @@ public:
     
     //std::cout << "Unpacking message\n";
     // Step 1: Unpack message
-     if (using_msg) {
+     if (using_message) {
      auto unpacked = unpack_args(std::index_sequence_for<Ts...>{});
     
     //std::cout << "Launching kernel\n";
