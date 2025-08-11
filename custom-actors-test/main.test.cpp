@@ -61,6 +61,52 @@ void matrixMul(const int* a, const int* b, int* c, int N) {
 )";
 
 
+//commands classes used to launch kernels 
+using mmulCommand = caf::cuda::command_runner<in<int>,in<int>,out<int>,int<int>>;
+using mmulGenCommand = caf::cuda::command_runner<in_out<int>,in<int>,in<int>,in<int>>;
+
+
+
+// Define atoms for CPU and GPU
+using cpu_atom = caf::atom_constant<caf::atom("cpu")>;
+using gpu_atom = caf::atom_constant<caf::atom("gpu")>;
+
+// Actor state
+struct my_actor_state {
+  static inline const char* name = "my_actor";
+  int last_N = 0; // example state variable
+};
+
+// Stateful actor behavior
+caf::behavior my_actor_fun(caf::stateful_actor<my_actor_state>* self) {
+  return {
+    // 1st handler: Just int N
+    [=](int N) {
+      self->state.last_N = N;
+      aout(self) << "[my_actor] Received N = " << N << "\n";
+    },
+
+    // 2nd handler: GPU atom + matrices + N
+    [=](gpu_atom, const std::vector<int>& matrixA,
+        const std::vector<int>& matrixB, int N) {
+      aout(self) << "[my_actor] GPU task: N = " << N
+                 << ", matrixA size = " << matrixA.size()
+                 << ", matrixB size = " << matrixB.size() << "\n";
+      // TODO: implement GPU logic here
+    },
+
+    // 3rd handler: CPU atom + matrices + N
+    [=](cpu_atom, const std::vector<int>& matrixA,
+        const std::vector<int>& matrixB, int N) {
+      aout(self) << "[my_actor] CPU task: N = " << N
+                 << ", matrixA size = " << matrixA.size()
+                 << ", matrixB size = " << matrixB.size() << "\n";
+      // TODO: implement CPU logic here
+    }
+  };
+}
+
+
 
 
 
