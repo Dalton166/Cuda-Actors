@@ -104,6 +104,9 @@ caf::behavior mmul_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
     // 1st handler: Just int N, and who to send the matrices to
     [=](int N, std::vector<caf::actor> receivers) {
 
+	/*
+	 * Unfortuanley libraries such as curand cannot be linked with cubins 
+	 * making it incompatable with this software for right now
         caf::cuda::manager& mgr = caf::cuda::manager::get();
         //create the program and configure the dimesnions of the kernel
         auto program = mgr.create_program_from_cubin("../mmul.cu","generate_random_matrix");
@@ -124,6 +127,16 @@ caf::behavior mmul_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
 	  auto tempB = randomMatrix.run(program,dim, self -> state().id,arg1,arg2,arg3,arg4);
 	  std::vector<int> matrixA =  caf::cuda::extract_vector<int>(tempA);
 	  std::vector<int> matrixB = caf::cuda::extract_vector<int>(tempB);
+
+	  */
+
+
+	  std::vector<int> matrixA(N*N);
+	  std::vector<int> matrixB(N*N);
+
+	   std::generate(matrixA.begin(), matrixA.end(), []() { return rand() % 10; });
+	   std::generate(matrixB.begin(), h_b.end(), []() { return rand() % 10; });
+
 
 	  //broadcast the result out to receviers.
 	  for (auto actor: receivers) {
