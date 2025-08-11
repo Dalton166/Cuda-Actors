@@ -24,3 +24,5 @@
 #include "caf/cuda/behavior.hpp"
 #include "caf/cuda/nd_range.hpp"
 #include "caf/cuda/program.hpp"
+#include "caf/cuda/command_runner.hpp"
+
