@@ -185,9 +185,31 @@ caf::behavior mmul_actor_fun(caf::stateful_actor<my_actor_state>* self) {
 	    std::cout << "actor with id " <<  self->state.id << " references did not match\n";
 	 }
 
-      // TODO: implement CPU logic here
+	 self-> quit();
+
     }
   };
+}
+
+
+
+void run_mmul_test(caf::actor_system& system, int matrix_size, int num_actors) {
+  if (num_actors < 1) {
+    std::cerr << "[ERROR] Number of actors must be >= 1\n";
+    return;
+  }
+
+  // Spawn num_actors actors running the mmul behavior
+  std::vector<caf::actor> actors;
+  actors.reserve(num_actors);
+  for (int i = 0; i < num_actors; ++i) {
+    actors.push_back(system.spawn(mmul_actor_fun));
+  }
+
+  // Actor 0 generates matrices and broadcasts to others 
+  caf::anon_mail(matrix_size, actors).send(actors[0]);
+
+   sys.await_all_actors_done();
 }
 
 
