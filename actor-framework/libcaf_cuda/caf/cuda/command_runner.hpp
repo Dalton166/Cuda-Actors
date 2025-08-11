@@ -3,6 +3,7 @@
 #include "caf/cuda/program.hpp"
 #include "caf/cuda/nd_range.hpp"
 
+namespace caf::cuda {
 template <class... Ts>
 class command_runner {
 public:
@@ -21,3 +22,5 @@ public:
     return cmd->enqueue();
   }
 };
+
+} //namespace caf::cuda
