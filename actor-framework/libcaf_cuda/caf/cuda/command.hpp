@@ -62,6 +62,27 @@ public:
 
 
 
+  template <typename... Us>
+  base_command(
+               program_ptr program,
+               nd_range dims,
+               int id,
+	       int device_number,
+               Us&&... xs)
+    : program_(std::move(program)),
+      dims_(std::move(dims)),
+      actor_id(id),
+      kernel_args(std::make_tuple(std::forward<Us>(xs)...))
+       	{
+    
+	dev_ = platform::create()->schedule(id,device_number);
+    static_assert(sizeof...(Us) == sizeof...(Ts), "Argument count mismatch");
+  }
+
+
+
+
+
   virtual ~base_command() = default;
 
   // Unpacks a caf message and calls launch_kernel_mem_ref and returns its result  
@@ -156,6 +177,23 @@ public:
            std::move(dims),
            id,
            std::forward<Us>(xs)...) {}
+
+
+ template <typename... Us>
+  command(
+          program_ptr program,
+          nd_range dims,
+          int id,
+	  int device_number,
+          Us&&... xs)
+    : base(
+           std::move(program),
+           std::move(dims),
+           id,
+           std::forward<Us>(xs)...) {}
+
+
+
 
   // Override enqueue to return collected output_buffers instead of mem_refs tuple
   std::vector<output_buffer> enqueue() {
