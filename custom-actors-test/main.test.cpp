@@ -97,19 +97,21 @@ void serial_matrix_multiply(const std::vector<int>& a,
 
 
 // Actor state
-struct my_actor_state {
+struct mmul_actor_state {
   static inline const char* name = "my_actor";
   int last_N = 0; // example state variable
   int id = rand(); //an actors id 
 };
 
 // Stateful actor behavior
-caf::behavior my_actor_fun(caf::stateful_actor<my_actor_state>* self) {
+caf::behavior mmul_actor_fun(caf::stateful_actor<my_actor_state>* self) {
   return {
     // 1st handler: Just int N, and who to send the matrices to
     [=](int N, std::vector<caf::actor> receivers) {
       self->state.last_N = N;
 
+
+        caf::cuda::manager& mgr = caf::cuda::manager:::get();
         //create the program and configure the dimesnions of the kernel
         auto program = mgr.create_program_from_cubin("../mmul.cu","generate_random_matrix");
 	int THREADS = 256;
@@ -138,18 +140,51 @@ caf::behavior my_actor_fun(caf::stateful_actor<my_actor_state>* self) {
 
     },
 
-    // 2nd handler: GPU atom + matrices + N
+    // 2nd handler: GPU atom + matrices + N, launches a kenrel and sends its result to itself for verification
     [=](gpu_atom, const std::vector<int> matrixA,
         const std::vector<int> matrixB, int N) {
-      // TODO: implement GPU logic here
+ 
+
+  caf::cuda::manager mgr& = caf::cuda::manager::get();
+
+  //create program and dims   
+  auto program = mgr.create_program_from_cubin("../mmul.cu","matrixMul");
+  const int THREADS = 32;
+  const int BLOCKS = (N + THREADS - 1) / THREADS;
+  caf::cuda::nd_range dims(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
+
+    //create args
+    auto arg1 = caf::cuda::create_in_arg(matrixA);
+    auto arg2 = caf::cuda::create_in_arg(matrixB);
+    auto arg3 = caf::cuda::create_out_arg(N*N);
+    auto arg4 = caf::cuda::create_in_arg(N);
+
+    auto tempC = mmulCommand(program,dim,self -> state.id,arg1,arg2,arg3,arg4);
+    std::vector<int> matrixC = caf::cuda::collect_vector(tempC);
+
+    //verify its own result 
+    self -> mail(cpu_atom,,matrixA,matrixB,matrixC,N).send(self);
+
     },
 
     // 3rd handler: CPU atom + matrices + N
     [=](cpu_atom, const std::vector<int>& matrixA,
-        const std::vector<int>& matrixB, int N) {
-      aout(self) << "[my_actor] CPU task: N = " << N
-                 << ", matrixA size = " << matrixA.size()
-                 << ", matrixB size = " << matrixB.size() << "\n";
+        const std::vector<int>& matrixB, const std::vector<int> matrixC, int N) {
+       
+	 std::vector<int> result;
+
+	 serial_matrix_multiply(matrixA,matrixB,result,N);
+
+	 if (result == matrixC) {
+	 
+		 std::cout << "actor with id " <<  self->state.id << " references match\n";
+	 
+	 }
+
+	 else {
+	    std::cout << "actor with id " <<  self->state.id << " references did not match\n";
+	 }
+
       // TODO: implement CPU logic here
     }
   };
