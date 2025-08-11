@@ -26,6 +26,26 @@ public:
   }
 
 
+
+  //same thing as above just with device number, enabling a user to select
+  //what device they want, without actually having to worry about having it
+  //on the same device
+  template <class... Us>
+  auto run(program_ptr program, nd_range dims, int actor_id,int device_number, Us&&... xs) {
+    static_assert(sizeof...(Us) == sizeof...(Ts),
+                  "Number of arguments must match Ts...");
+    auto cmd = caf::make_counted<command_t>(
+        std::move(program),
+        std::move(dims),
+        actor_id,
+	device_number,
+        std::forward<Us>(xs)...);
+    return cmd->enqueue();
+  }
+
+
+
+
   //this is the asynchronous version of command, it returns a tuple of mem_ptr's
   //the data can then be copied back to host or sent to other actors
  template <class... Us>
