@@ -67,6 +67,7 @@ void matrixMul(const int* a, const int* b, int* c, int N) {
 void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
 
+
 }
 
 
