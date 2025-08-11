@@ -61,10 +61,10 @@ void matrixMul(const int* a, const int* b, int* c, int N) {
 
 //commands classes used to launch kernels 
 using mmulCommand = caf::cuda::command_runner<in<int>,in<int>,out<int>,in<int>>;
-//using matrixGenCommand = caf::cuda::command_runner<out<int>,in<int>,in<int>,in<int>>;
+using matrixGenCommand = caf::cuda::command_runner<out<int>,in<int>,in<int>,in<int>>;
 
 mmulCommand mmul;
-//matrixGenCommand randomMatrix;
+matrixGenCommand randomMatrix;
 
 
 
@@ -107,9 +107,11 @@ caf::behavior mmul_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
 	/*
 	 * Unfortuanley libraries such as curand cannot be linked with cubins 
 	 * making it incompatable with this software for right now
+	 * its not really random, just a matrix filled with 5's
+	 */
         caf::cuda::manager& mgr = caf::cuda::manager::get();
         //create the program and configure the dimesnions of the kernel
-        auto program = mgr.create_program_from_cubin("../mmul.cu","generate_random_matrix");
+        auto program = mgr.create_program_from_cubin("../mmul.cubin","generate_random_matrix");
 	int THREADS = 256;
 	int BLOCKS = (N*N + THREADS - 1) / THREADS;
   	caf::cuda::nd_range dim(BLOCKS,1, 1, THREADS,1, 1);
@@ -128,14 +130,14 @@ caf::behavior mmul_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
 	  std::vector<int> matrixA =  caf::cuda::extract_vector<int>(tempA);
 	  std::vector<int> matrixB = caf::cuda::extract_vector<int>(tempB);
 
-	  */
 
 
-	  std::vector<int> matrixA(N*N);
-	  std::vector<int> matrixB(N*N);
+	  //cpu code
+	  //std::vector<int> matrixA(N*N);
+	  //std::vector<int> matrixB(N*N);
 
-	   std::generate(matrixA.begin(), matrixA.end(), []() { return rand() % 10; });
-	   std::generate(matrixB.begin(), matrixB.end(), []() { return rand() % 10; });
+	  // std::generate(matrixA.begin(), matrixA.end(), []() { return rand() % 10; });
+	   //std::generate(matrixB.begin(), matrixB.end(), []() { return rand() % 10; });
 
 
 	  //broadcast the result out to receviers.
