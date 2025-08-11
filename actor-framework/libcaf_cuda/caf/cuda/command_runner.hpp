@@ -81,7 +81,7 @@ public:
  void release_stream_for_actor(int actor_id) {
  
 	 auto plat = platform::create();
-	 platform.release_stream_for_actor(id);
+	 plat -> release_streams_for_actor(actor_id);
  }
   
 };
