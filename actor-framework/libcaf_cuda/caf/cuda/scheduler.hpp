@@ -106,6 +106,16 @@ public:
     }
     return devices_[0];
   }
+  
+  device_ptr schedule(int actor_id,int device_number) override {
+    if (devices_.empty()) {
+      throw std::runtime_error("No devices available");
+    }
+    return devices_[0];
+  }
+
+
+
 
   void getStreamAndContext(int actor_id, CUcontext* context, CUstream* stream) override {
     auto dev = schedule(actor_id);
@@ -144,6 +154,21 @@ public:
     //std::cout << "picking device with id of " << devices_[device_index] -> getId() << " \n";
     return devices_[device_index];
   }
+
+
+
+
+  device_ptr schedule(int actor_id,int device_number) override {
+    if (devices_.empty()) {
+      throw std::runtime_error("No devices available");
+    }
+    size_t num_devices = devices_.size();
+    size_t device_index = static_cast<size_t>(device_number) % num_devices;
+    //std::cout << "picking device with id of " << devices_[device_index] -> getId() << " \n";
+    return devices_[device_index];
+  
+  } 
+
 
   void getStreamAndContext(int actor_id, CUcontext* context, CUstream* stream) override {
     auto dev = schedule(actor_id);
