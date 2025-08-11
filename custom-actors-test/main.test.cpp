@@ -1,6 +1,3 @@
-
-#include "main.test.hpp"
-
 #include <caf/all.hpp>
 #include <caf/cuda/all.hpp>
 #include <iostream>
@@ -63,13 +60,11 @@ void matrixMul(const int* a, const int* b, int* c, int N) {
 
 
 //commands classes used to launch kernels 
-using mmulCommand = caf::cuda::command_runner<in<int>,in<int>,out<int>,int<int>>;
-using mmulGenCommand = caf::cuda::command_runner<out<int>,in<int>,in<int>,in<int>>;
+using mmulCommand = caf::cuda::command_runner<in<int>,in<int>,out<int>,in<int>>;
+using matrixGenCommand = caf::cuda::command_runner<out<int>,in<int>,in<int>,in<int>>;
 
-
-// Define atoms for CPU and GPU
-using cpu_atom = caf::atom_constant<caf::atom("cpu")>;
-using gpu_atom = caf::atom_constant<caf::atom("gpu")>;
+mmulCommand mmul;
+matrixGenCommand randomMatrix;
 
 
 
@@ -104,14 +99,12 @@ struct mmul_actor_state {
 };
 
 // Stateful actor behavior
-caf::behavior mmul_actor_fun(caf::stateful_actor<my_actor_state>* self) {
+caf::behavior mmul_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
   return {
     // 1st handler: Just int N, and who to send the matrices to
     [=](int N, std::vector<caf::actor> receivers) {
-      self->state.last_N = N;
 
-
-        caf::cuda::manager& mgr = caf::cuda::manager:::get();
+        caf::cuda::manager& mgr = caf::cuda::manager::get();
         //create the program and configure the dimesnions of the kernel
         auto program = mgr.create_program_from_cubin("../mmul.cu","generate_random_matrix");
 	int THREADS = 256;
@@ -127,25 +120,25 @@ caf::behavior mmul_actor_fun(caf::stateful_actor<my_actor_state>* self) {
 
 
 	  //launch kernels and collect their outputs
-	  auto tempA = matrixGenCommand(program,dim, self -> state.id,arg1,arg2,arg3,arg4);
-	  auto tempB = matrixGenCommand(program,dim, self -> state.id,arg1,arg2,arg3,arg4);
-	  std::vector<int> matrixA =  caf::cuda::collect_vector(tempA);
-	  std::vector<int> matrixB = caf::cuda::collect_vector(tempB);
+	  auto tempA = randomMatrix.run(program,dim, self -> state().id,arg1,arg2,arg3,arg4);
+	  auto tempB = randomMatrix.run(program,dim, self -> state().id,arg1,arg2,arg3,arg4);
+	  std::vector<int> matrixA =  caf::cuda::extract_vector<int>(tempA);
+	  std::vector<int> matrixB = caf::cuda::extract_vector<int>(tempB);
 
 	  //broadcast the result out to receviers.
 	  for (auto actor: receivers) {
 	  
-		  self->mail(gpu_atom,matrixA,matrixB,N).send(actor);
+		  self->mail(matrixA,matrixB,N).send(actor);
 	  }
 
     },
 
     // 2nd handler: GPU atom + matrices + N, launches a kenrel and sends its result to itself for verification
-    [=](gpu_atom, const std::vector<int> matrixA,
+    [=](const std::vector<int> matrixA,
         const std::vector<int> matrixB, int N) {
  
 
-  caf::cuda::manager mgr& = caf::cuda::manager::get();
+  caf::cuda::manager& mgr = caf::cuda::manager::get();
 
   //create program and dims   
   auto program = mgr.create_program_from_cubin("../mmul.cu","matrixMul");
@@ -159,16 +152,16 @@ caf::behavior mmul_actor_fun(caf::stateful_actor<my_actor_state>* self) {
     auto arg3 = caf::cuda::create_out_arg(N*N);
     auto arg4 = caf::cuda::create_in_arg(N);
 
-    auto tempC = mmulCommand(program,dim,self -> state.id,arg1,arg2,arg3,arg4);
-    std::vector<int> matrixC = caf::cuda::collect_vector(tempC);
+    auto tempC = mmul.run(program,dims,self -> state().id,arg1,arg2,arg3,arg4);
+    std::vector<int> matrixC = caf::cuda::extract_vector<int>(tempC);
 
     //verify its own result 
-    self -> mail(cpu_atom,,matrixA,matrixB,matrixC,N).send(self);
+    self -> mail(matrixA,matrixB,matrixC,N).send(self);
 
     },
 
     // 3rd handler: CPU atom + matrices + N
-    [=](cpu_atom, const std::vector<int>& matrixA,
+    [=](const std::vector<int>& matrixA,
         const std::vector<int>& matrixB, const std::vector<int> matrixC, int N) {
        
 	 std::vector<int> result;
@@ -177,12 +170,12 @@ caf::behavior mmul_actor_fun(caf::stateful_actor<my_actor_state>* self) {
 
 	 if (result == matrixC) {
 	 
-		 std::cout << "actor with id " <<  self->state.id << " references match\n";
+		 std::cout << "actor with id " <<  self->state().id << " references match\n";
 	 
 	 }
 
 	 else {
-	    std::cout << "actor with id " <<  self->state.id << " references did not match\n";
+	    std::cout << "actor with id " <<  self->state().id << " references did not match\n";
 	 }
 
 	 self-> quit();
@@ -193,7 +186,7 @@ caf::behavior mmul_actor_fun(caf::stateful_actor<my_actor_state>* self) {
 
 
 
-void run_mmul_test(caf::actor_system& system, int matrix_size, int num_actors) {
+void run_mmul_test(caf::actor_system& sys, int matrix_size, int num_actors) {
   if (num_actors < 1) {
     std::cerr << "[ERROR] Number of actors must be >= 1\n";
     return;
@@ -203,7 +196,7 @@ void run_mmul_test(caf::actor_system& system, int matrix_size, int num_actors) {
   std::vector<caf::actor> actors;
   actors.reserve(num_actors);
   for (int i = 0; i < num_actors; ++i) {
-    actors.push_back(system.spawn(mmul_actor_fun));
+    actors.push_back(sys.spawn(mmul_actor_fun));
   }
 
   // Actor 0 generates matrices and broadcasts to others 
@@ -219,6 +212,7 @@ void run_mmul_test(caf::actor_system& system, int matrix_size, int num_actors) {
 void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
 
+  run_mmul_test(sys,100,2);
 
 }
 
