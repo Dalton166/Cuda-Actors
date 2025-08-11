@@ -1,0 +1,260 @@
+INFO] [GPU GLOBAL] Supervisor 149 Iteration 18 Kernel round-trip: 1.28058 s, Full iteration time: 1.28059 s
+[INFO] [GPU GLOBAL] Supervisor 67 Iteration 19 Kernel round-trip: 1.73585 s, Full iteration time: 1.73586 s
+[INFO] [GPU GLOBAL] Supervisor 67 Kernel average: 175.673 s, Full iteration average: 175.673 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 56 Iteration 18 Kernel round-trip: 1.08088 s, Full iteration time: 1.08089 s
+[INFO] [GPU GLOBAL] Supervisor 149 Iteration 19 Kernel round-trip: 1.37097 s, Full iteration time: 1.37098 s
+[INFO] [GPU GLOBAL] Supervisor 149 Kernel average: 144.757 s, Full iteration average: 144.757 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 200 Iteration 19 Kernel round-trip: 3.0575 s, Full iteration time: 3.05751 s
+[INFO] [GPU GLOBAL] Supervisor 200 Kernel average: 153.116 s, Full iteration average: 153.116 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 184 Iteration 12 Kernel round-trip: 2.18024 s, Full iteration time: 2.18025 s
+[INFO] [GPU GLOBAL] Supervisor 77 Iteration 16 Kernel round-trip: 110.613 s, Full iteration time: 110.613 s
+[INFO] [GPU GLOBAL] Supervisor 496 Iteration 9 Kernel round-trip: 63.761 s, Full iteration time: 63.7611 s
+[INFO] [GPU GLOBAL] Supervisor 56 Iteration 19 Kernel round-trip: 2.01259 s, Full iteration time: 2.01262 s
+[INFO] [GPU GLOBAL] Supervisor 56 Kernel average: 164.139 s, Full iteration average: 164.139 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 77 Iteration 17 Kernel round-trip: 1.37101 s, Full iteration time: 1.37102 s
+[INFO] [GPU GLOBAL] Supervisor 293 Iteration 18 Kernel round-trip: 33.9342 s, Full iteration time: 33.9342 s
+[INFO] [GPU GLOBAL] Supervisor 437 Iteration 19 Kernel round-trip: 126.302 s, Full iteration time: 126.302 s
+[INFO] [GPU GLOBAL] Supervisor 437 Kernel average: 137.736 s, Full iteration average: 137.736 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 31 Iteration 11 Kernel round-trip: 112.154 s, Full iteration time: 112.154 s
+[INFO] [GPU GLOBAL] Supervisor 77 Iteration 18 Kernel round-trip: 1.4011 s, Full iteration time: 1.40111 s
+[INFO] [GPU GLOBAL] Supervisor 31 Iteration 12 Kernel round-trip: 1.177 s, Full iteration time: 1.17701 s
+[INFO] [GPU GLOBAL] Supervisor 106 Iteration 14 Kernel round-trip: 121.941 s, Full iteration time: 121.941 s
+[INFO] [GPU GLOBAL] Supervisor 77 Iteration 19 Kernel round-trip: 0.887173 s, Full iteration time: 0.887197 s
+[INFO] [GPU GLOBAL] Supervisor 77 Kernel average: 138.276 s, Full iteration average: 138.276 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 184 Iteration 13 Kernel round-trip: 4.1094 s, Full iteration time: 4.10941 s
+[INFO] [GPU GLOBAL] Supervisor 496 Iteration 10 Kernel round-trip: 3.49594 s, Full iteration time: 3.49596 s
+[INFO] [GPU GLOBAL] Supervisor 404 Iteration 17 Kernel round-trip: 46.1043 s, Full iteration time: 46.1043 s
+[INFO] [GPU GLOBAL] Supervisor 496 Iteration 11 Kernel round-trip: 1.32581 s, Full iteration time: 1.32582 s
+[INFO] [GPU GLOBAL] Supervisor 184 Iteration 14 Kernel round-trip: 1.92208 s, Full iteration time: 1.92209 s
+[INFO] [GPU GLOBAL] Supervisor 31 Iteration 13 Kernel round-trip: 2.9214 s, Full iteration time: 2.92142 s
+[INFO] [GPU GLOBAL] Supervisor 496 Iteration 12 Kernel round-trip: 1.56218 s, Full iteration time: 1.56219 s
+[INFO] [GPU GLOBAL] Supervisor 184 Iteration 15 Kernel round-trip: 1.48257 s, Full iteration time: 1.48258 s
+[INFO] [GPU GLOBAL] Supervisor 131 Iteration 12 Kernel round-trip: 176.649 s, Full iteration time: 176.65 s
+[INFO] [GPU GLOBAL] Supervisor 31 Iteration 14 Kernel round-trip: 1.84135 s, Full iteration time: 1.84136 s
+[INFO] [GPU GLOBAL] Supervisor 404 Iteration 18 Kernel round-trip: 2.48124 s, Full iteration time: 2.48125 s
+[INFO] [GPU GLOBAL] Supervisor 184 Iteration 16 Kernel round-trip: 1.2018 s, Full iteration time: 1.2018 s
+[INFO] [GPU GLOBAL] Supervisor 106 Iteration 15 Kernel round-trip: 5.33479 s, Full iteration time: 5.33481 s
+[INFO] [GPU GLOBAL] Supervisor 131 Iteration 13 Kernel round-trip: 1.08854 s, Full iteration time: 1.08855 s
+[INFO] [GPU GLOBAL] Supervisor 496 Iteration 13 Kernel round-trip: 3.17845 s, Full iteration time: 3.17846 s
+[INFO] [GPU GLOBAL] Supervisor 31 Iteration 15 Kernel round-trip: 2.58744 s, Full iteration time: 2.58745 s
+[INFO] [GPU GLOBAL] Supervisor 293 Iteration 19 Kernel round-trip: 9.57891 s, Full iteration time: 9.57893 s
+[INFO] [GPU GLOBAL] Supervisor 293 Kernel average: 28.4364 s, Full iteration average: 28.4385 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 71 Iteration 14 Kernel round-trip: 198.125 s, Full iteration time: 198.125 s
+[INFO] [GPU GLOBAL] Supervisor 302 Iteration 5 Kernel round-trip: 335.993 s, Full iteration time: 335.993 s
+[INFO] [GPU GLOBAL] Supervisor 184 Iteration 17 Kernel round-trip: 3.53016 s, Full iteration time: 3.53018 s
+[INFO] [GPU GLOBAL] Supervisor 131 Iteration 14 Kernel round-trip: 2.84986 s, Full iteration time: 2.84988 s
+[INFO] [GPU GLOBAL] Supervisor 71 Iteration 15 Kernel round-trip: 1.54476 s, Full iteration time: 1.54477 s
+[INFO] [GPU GLOBAL] Supervisor 302 Iteration 6 Kernel round-trip: 1.91493 s, Full iteration time: 1.91494 s
+[INFO] [GPU GLOBAL] Supervisor 106 Iteration 16 Kernel round-trip: 5.05198 s, Full iteration time: 5.05199 s
+[INFO] [GPU GLOBAL] Supervisor 496 Iteration 14 Kernel round-trip: 3.1731 s, Full iteration time: 3.17311 s
+[INFO] [GPU GLOBAL] Supervisor 31 Iteration 16 Kernel round-trip: 4.15516 s, Full iteration time: 4.15517 s
+[INFO] [GPU GLOBAL] Supervisor 496 Iteration 15 Kernel round-trip: 1.78619 s, Full iteration time: 1.7862 s
+[INFO] [GPU GLOBAL] Supervisor 106 Iteration 17 Kernel round-trip: 1.95842 s, Full iteration time: 1.95843 s
+[INFO] [GPU GLOBAL] Supervisor 429 Iteration 15 Kernel round-trip: 140.49 s, Full iteration time: 140.49 s
+[INFO] [GPU GLOBAL] Supervisor 3 Iteration 12 Kernel round-trip: 141.667 s, Full iteration time: 141.667 s
+[INFO] [GPU GLOBAL] Supervisor 477 Iteration 14 Kernel round-trip: 212.402 s, Full iteration time: 212.402 s
+[INFO] [GPU GLOBAL] Supervisor 31 Iteration 17 Kernel round-trip: 2.21279 s, Full iteration time: 2.2128 s
+[INFO] [GPU GLOBAL] Supervisor 106 Iteration 18 Kernel round-trip: 1.77289 s, Full iteration time: 1.7729 s
+[INFO] [GPU GLOBAL] Supervisor 496 Iteration 16 Kernel round-trip: 2.33502 s, Full iteration time: 2.33504 s
+[INFO] [GPU GLOBAL] Supervisor 106 Iteration 19 Kernel round-trip: 1.25154 s, Full iteration time: 1.25156 s
+[INFO] [GPU GLOBAL] Supervisor 106 Kernel average: 155.579 s, Full iteration average: 155.581 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 31 Iteration 18 Kernel round-trip: 2.18396 s, Full iteration time: 2.18397 s
+[INFO] [GPU GLOBAL] Supervisor 496 Iteration 17 Kernel round-trip: 1.34148 s, Full iteration time: 1.34149 s
+[INFO] [GPU GLOBAL] Supervisor 31 Iteration 19 Kernel round-trip: 1.327 s, Full iteration time: 1.32701 s
+[INFO] [GPU GLOBAL] Supervisor 31 Kernel average: 83.0723 s, Full iteration average: 83.0723 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 496 Iteration 18 Kernel round-trip: 1.06408 s, Full iteration time: 1.0641 s
+[INFO] [GPU GLOBAL] Supervisor 3 Iteration 13 Kernel round-trip: 4.05703 s, Full iteration time: 4.05704 s
+[INFO] [GPU GLOBAL] Supervisor 187 Iteration 14 Kernel round-trip: 208.614 s, Full iteration time: 208.614 s
+[INFO] [GPU GLOBAL] Supervisor 426 Iteration 14 Kernel round-trip: 208.667 s, Full iteration time: 208.667 s
+[INFO] [GPU GLOBAL] Supervisor 28 Iteration 18 Kernel round-trip: 88.8564 s, Full iteration time: 88.8564 s
+[INFO] [GPU GLOBAL] Supervisor 172 Iteration 15 Kernel round-trip: 346.796 s, Full iteration time: 346.796 s
+[INFO] [GPU GLOBAL] Supervisor 254 Iteration 19 Kernel round-trip: 345.101 s, Full iteration time: 345.101 s
+[INFO] [GPU GLOBAL] Supervisor 254 Kernel average: 129.747 s, Full iteration average: 129.747 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 429 Iteration 16 Kernel round-trip: 7.68888 s, Full iteration time: 7.68889 s
+[INFO] [GPU GLOBAL] Supervisor 71 Iteration 16 Kernel round-trip: 11.1081 s, Full iteration time: 11.1081 s
+[INFO] [GPU GLOBAL] Supervisor 329 Iteration 15 Kernel round-trip: 220.089 s, Full iteration time: 220.089 s
+[INFO] [GPU GLOBAL] Supervisor 302 Iteration 7 Kernel round-trip: 10.6525 s, Full iteration time: 10.6525 s
+[INFO] [GPU GLOBAL] Supervisor 496 Iteration 19 Kernel round-trip: 4.26892 s, Full iteration time: 4.26893 s
+[INFO] [GPU GLOBAL] Supervisor 496 Kernel average: 22.6016 s, Full iteration average: 22.6016 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 187 Iteration 15 Kernel round-trip: 3.35415 s, Full iteration time: 3.35416 s
+[INFO] [GPU GLOBAL] Supervisor 302 Iteration 8 Kernel round-trip: 1.40076 s, Full iteration time: 1.40077 s
+[INFO] [GPU GLOBAL] Supervisor 426 Iteration 15 Kernel round-trip: 4.18848 s, Full iteration time: 4.18849 s
+[INFO] [GPU GLOBAL] Supervisor 172 Iteration 16 Kernel round-trip: 3.68848 s, Full iteration time: 3.68849 s
+[INFO] [GPU GLOBAL] Supervisor 131 Iteration 15 Kernel round-trip: 14.3271 s, Full iteration time: 14.3271 s
+[INFO] [GPU GLOBAL] Supervisor 380 Iteration 3 Kernel round-trip: 140.652 s, Full iteration time: 140.652 s
+[INFO] [GPU GLOBAL] Supervisor 51 Iteration 10 Kernel round-trip: 318.18 s, Full iteration time: 318.18 s
+[INFO] [GPU GLOBAL] Supervisor 71 Iteration 17 Kernel round-trip: 3.10765 s, Full iteration time: 3.10766 s
+[INFO] [GPU GLOBAL] Supervisor 131 Iteration 16 Kernel round-trip: 1.61267 s, Full iteration time: 1.61268 s
+[INFO] [GPU GLOBAL] Supervisor 172 Iteration 17 Kernel round-trip: 2.08019 s, Full iteration time: 2.0802 s
+[INFO] [GPU GLOBAL] Supervisor 426 Iteration 16 Kernel round-trip: 3.59384 s, Full iteration time: 3.59386 s
+[INFO] [GPU GLOBAL] Supervisor 71 Iteration 18 Kernel round-trip: 2.88016 s, Full iteration time: 2.88017 s
+[INFO] [GPU GLOBAL] Supervisor 329 Iteration 16 Kernel round-trip: 6.36824 s, Full iteration time: 6.36826 s
+[INFO] [GPU GLOBAL] Supervisor 426 Iteration 17 Kernel round-trip: 1.12925 s, Full iteration time: 1.12927 s
+[INFO] [GPU GLOBAL] Supervisor 164 Iteration 19 Kernel round-trip: 205.302 s, Full iteration time: 205.302 s
+[INFO] [GPU GLOBAL] Supervisor 164 Kernel average: 145.964 s, Full iteration average: 145.964 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 329 Iteration 17 Kernel round-trip: 1.7043 s, Full iteration time: 1.70431 s
+[INFO] [GPU GLOBAL] Supervisor 426 Iteration 18 Kernel round-trip: 1.48564 s, Full iteration time: 1.48565 s
+[INFO] [GPU GLOBAL] Supervisor 426 Iteration 19 Kernel round-trip: 1.04204 s, Full iteration time: 1.04205 s
+[INFO] [GPU GLOBAL] Supervisor 426 Kernel average: 71.6485 s, Full iteration average: 71.6485 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 329 Iteration 18 Kernel round-trip: 1.37576 s, Full iteration time: 1.37577 s
+[INFO] [GPU GLOBAL] Supervisor 172 Iteration 18 Kernel round-trip: 5.22954 s, Full iteration time: 5.22955 s
+[INFO] [GPU GLOBAL] Supervisor 380 Iteration 4 Kernel round-trip: 7.81754 s, Full iteration time: 7.81755 s
+[INFO] [GPU GLOBAL] Supervisor 329 Iteration 19 Kernel round-trip: 1.06669 s, Full iteration time: 1.06671 s
+[INFO] [GPU GLOBAL] Supervisor 329 Kernel average: 91.4744 s, Full iteration average: 91.4744 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 172 Iteration 19 Kernel round-trip: 1.11474 s, Full iteration time: 1.11476 s
+[INFO] [GPU GLOBAL] Supervisor 172 Kernel average: 120.469 s, Full iteration average: 120.471 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 131 Iteration 17 Kernel round-trip: 6.70691 s, Full iteration time: 6.70692 s
+[INFO] [GPU GLOBAL] Supervisor 110 Iteration 3 Kernel round-trip: 159.053 s, Full iteration time: 159.053 s
+[INFO] [GPU GLOBAL] Supervisor 380 Iteration 5 Kernel round-trip: 1.32556 s, Full iteration time: 1.32557 s
+[INFO] [GPU GLOBAL] Supervisor 131 Iteration 18 Kernel round-trip: 1.35223 s, Full iteration time: 1.35224 s
+[INFO] [GPU GLOBAL] Supervisor 404 Iteration 19 Kernel round-trip: 28.3896 s, Full iteration time: 28.3897 s
+[INFO] [GPU GLOBAL] Supervisor 404 Kernel average: 26.2204 s, Full iteration average: 26.2205 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 71 Iteration 19 Kernel round-trip: 6.16731 s, Full iteration time: 6.16732 s
+[INFO] [GPU GLOBAL] Supervisor 71 Kernel average: 174 s, Full iteration average: 174 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 110 Iteration 4 Kernel round-trip: 1.40979 s, Full iteration time: 1.4098 s
+[INFO] [GPU GLOBAL] Supervisor 184 Iteration 18 Kernel round-trip: 25.0763 s, Full iteration time: 25.0763 s
+[INFO] [GPU GLOBAL] Supervisor 131 Iteration 19 Kernel round-trip: 1.15139 s, Full iteration time: 1.1514 s
+[INFO] [GPU GLOBAL] Supervisor 131 Kernel average: 73.9408 s, Full iteration average: 73.9408 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 28 Iteration 19 Kernel round-trip: 15.5529 s, Full iteration time: 15.5529 s
+[INFO] [GPU GLOBAL] Supervisor 28 Kernel average: 175.349 s, Full iteration average: 175.351 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 86 Iteration 12 Kernel round-trip: 60.7984 s, Full iteration time: 60.7984 s
+[INFO] [GPU GLOBAL] Supervisor 432 Iteration 15 Kernel round-trip: 234.822 s, Full iteration time: 234.822 s
+[INFO] [GPU GLOBAL] Supervisor 184 Iteration 19 Kernel round-trip: 2.17822 s, Full iteration time: 2.17824 s
+[INFO] [GPU GLOBAL] Supervisor 184 Kernel average: 167.037 s, Full iteration average: 167.037 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 477 Iteration 15 Kernel round-trip: 23.4931 s, Full iteration time: 23.4931 s
+[INFO] [GPU GLOBAL] Supervisor 434 Iteration 15 Kernel round-trip: 164.579 s, Full iteration time: 164.579 s
+[INFO] [GPU GLOBAL] Supervisor 127 Iteration 4 Kernel round-trip: 154.002 s, Full iteration time: 154.002 s
+[INFO] [GPU GLOBAL] Supervisor 253 Iteration 13 Kernel round-trip: 236.546 s, Full iteration time: 236.546 s
+[INFO] [GPU GLOBAL] Supervisor 384 Iteration 6 Kernel round-trip: 164.353 s, Full iteration time: 164.353 s
+[INFO] [GPU GLOBAL] Supervisor 86 Iteration 13 Kernel round-trip: 4.15824 s, Full iteration time: 4.15825 s
+[INFO] [GPU GLOBAL] Supervisor 477 Iteration 16 Kernel round-trip: 2.48168 s, Full iteration time: 2.48169 s
+[INFO] [GPU GLOBAL] Supervisor 432 Iteration 16 Kernel round-trip: 3.68771 s, Full iteration time: 3.68772 s
+[INFO] [GPU GLOBAL] Supervisor 429 Iteration 17 Kernel round-trip: 19.3134 s, Full iteration time: 19.3134 s
+[INFO] [GPU GLOBAL] Supervisor 477 Iteration 17 Kernel round-trip: 1.64357 s, Full iteration time: 1.64358 s
+[INFO] [GPU GLOBAL] Supervisor 429 Iteration 18 Kernel round-trip: 1.07195 s, Full iteration time: 1.07196 s
+[INFO] [GPU GLOBAL] Supervisor 432 Iteration 17 Kernel round-trip: 2.13801 s, Full iteration time: 2.13802 s
+[INFO] [GPU GLOBAL] Supervisor 86 Iteration 14 Kernel round-trip: 2.91474 s, Full iteration time: 2.91475 s
+[INFO] [GPU GLOBAL] Supervisor 429 Iteration 19 Kernel round-trip: 1.35428 s, Full iteration time: 1.35429 s
+[INFO] [GPU GLOBAL] Supervisor 429 Kernel average: 64.4889 s, Full iteration average: 64.491 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 302 Iteration 9 Kernel round-trip: 20.1691 s, Full iteration time: 20.1692 s
+[INFO] [GPU GLOBAL] Supervisor 477 Iteration 18 Kernel round-trip: 2.82676 s, Full iteration time: 2.82677 s
+[INFO] [GPU GLOBAL] Supervisor 86 Iteration 15 Kernel round-trip: 1.96474 s, Full iteration time: 1.96476 s
+[INFO] [GPU GLOBAL] Supervisor 432 Iteration 18 Kernel round-trip: 2.63843 s, Full iteration time: 2.63844 s
+[INFO] [GPU GLOBAL] Supervisor 302 Iteration 10 Kernel round-trip: 2.63486 s, Full iteration time: 2.63488 s
+[INFO] [GPU GLOBAL] Supervisor 477 Iteration 19 Kernel round-trip: 1.72039 s, Full iteration time: 1.7204 s
+[INFO] [GPU GLOBAL] Supervisor 477 Kernel average: 170.38 s, Full iteration average: 170.38 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 432 Iteration 19 Kernel round-trip: 1.62231 s, Full iteration time: 1.62232 s
+[INFO] [GPU GLOBAL] Supervisor 432 Kernel average: 94.7171 s, Full iteration average: 94.7172 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 86 Iteration 16 Kernel round-trip: 2.06392 s, Full iteration time: 2.06393 s
+[INFO] [GPU GLOBAL] Supervisor 302 Iteration 11 Kernel round-trip: 1.32215 s, Full iteration time: 1.32217 s
+[INFO] [GPU GLOBAL] Supervisor 253 Iteration 14 Kernel round-trip: 9.46369 s, Full iteration time: 9.4637 s
+[INFO] [GPU GLOBAL] Supervisor 86 Iteration 17 Kernel round-trip: 1.52407 s, Full iteration time: 1.52408 s
+[INFO] [GPU GLOBAL] Supervisor 253 Iteration 15 Kernel round-trip: 1.24519 s, Full iteration time: 1.2452 s
+[INFO] [GPU GLOBAL] Supervisor 302 Iteration 12 Kernel round-trip: 1.46068 s, Full iteration time: 1.46069 s
+[INFO] [GPU GLOBAL] Supervisor 86 Iteration 18 Kernel round-trip: 1.04648 s, Full iteration time: 1.0465 s
+[INFO] [GPU GLOBAL] Supervisor 127 Iteration 5 Kernel round-trip: 11.8905 s, Full iteration time: 11.8906 s
+[INFO] [GPU GLOBAL] Supervisor 187 Iteration 16 Kernel round-trip: 27.4952 s, Full iteration time: 27.4952 s
+[INFO] [GPU GLOBAL] Supervisor 3 Iteration 14 Kernel round-trip: 32.2983 s, Full iteration time: 32.2983 s
+[INFO] [GPU GLOBAL] Supervisor 86 Iteration 19 Kernel round-trip: 1.06555 s, Full iteration time: 1.06556 s
+[INFO] [GPU GLOBAL] Supervisor 86 Kernel average: 43.3153 s, Full iteration average: 43.3154 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 434 Iteration 16 Kernel round-trip: 13.3006 s, Full iteration time: 13.3006 s
+[INFO] [GPU GLOBAL] Supervisor 380 Iteration 6 Kernel round-trip: 17.4693 s, Full iteration time: 17.4693 s
+[INFO] [GPU GLOBAL] Supervisor 3 Iteration 15 Kernel round-trip: 1.0651 s, Full iteration time: 1.0651 s
+[INFO] [GPU GLOBAL] Supervisor 3 Iteration 16 Kernel round-trip: 1.0371 s, Full iteration time: 1.03712 s
+[INFO] [GPU GLOBAL] Supervisor 380 Iteration 7 Kernel round-trip: 1.69816 s, Full iteration time: 1.69818 s
+[INFO] [GPU GLOBAL] Supervisor 380 Iteration 8 Kernel round-trip: 1.02901 s, Full iteration time: 1.02902 s
+[INFO] [GPU GLOBAL] Supervisor 302 Iteration 13 Kernel round-trip: 4.92484 s, Full iteration time: 4.92485 s
+[INFO] [GPU GLOBAL] Supervisor 380 Iteration 9 Kernel round-trip: 1.18802 s, Full iteration time: 1.18804 s
+[INFO] [GPU GLOBAL] Supervisor 302 Iteration 14 Kernel round-trip: 1.02181 s, Full iteration time: 1.02182 s
+[INFO] [GPU GLOBAL] Supervisor 434 Iteration 17 Kernel round-trip: 4.65624 s, Full iteration time: 4.65626 s
+[INFO] [GPU GLOBAL] Supervisor 302 Iteration 15 Kernel round-trip: 1.1263 s, Full iteration time: 1.12631 s
+[INFO] [GPU GLOBAL] Supervisor 380 Iteration 10 Kernel round-trip: 2.18728 s, Full iteration time: 2.1873 s
+[INFO] [GPU GLOBAL] Supervisor 434 Iteration 18 Kernel round-trip: 1.56871 s, Full iteration time: 1.56872 s
+[INFO] [GPU GLOBAL] Supervisor 3 Iteration 17 Kernel round-trip: 4.74433 s, Full iteration time: 4.74434 s
+[INFO] [GPU GLOBAL] Supervisor 3 Iteration 18 Kernel round-trip: 0.94723 s, Full iteration time: 0.947244 s
+[INFO] [GPU GLOBAL] Supervisor 302 Iteration 16 Kernel round-trip: 2.17496 s, Full iteration time: 2.17498 s
+[INFO] [GPU GLOBAL] Supervisor 434 Iteration 19 Kernel round-trip: 1.47356 s, Full iteration time: 1.47359 s
+[INFO] [GPU GLOBAL] Supervisor 434 Kernel average: 80.0219 s, Full iteration average: 80.0219 s
+Exit message received
+[INFO] [GPU GLOBAL] Supervisor 3 Iteration 19 Kernel round-trip: 1.15174 s, Full iteration time: 1.15175 s
+[INFO] [GPU GLOBAL] Supervisor 3 Kernel average: 96.2881 s, Full iteration average: 96.2881 s
+Exit message received
+
+Thread 45 "caf.worker" received signal SIGSEGV, Segmentation fault.
+[Switching to Thread 0x7fff557fa640 (LWP 3647938)]
+0x000055555558667e in caf::intrusive_ptr<caf::detail::message_data>::~intrusive_ptr (
+    this=0x6d79732e0062618c, __in_chrg=<optimized out>)
+    at /student/nqr159/gpu-actors-develop-gpufarm/cuda-actors/test/../actor-framework/libcaf_core/caf/intrusive_ptr.hpp:94
+94          if (ptr_)
+(cuda-gdb) backtrace
+#0  0x000055555558667e in caf::intrusive_ptr<caf::detail::message_data>::~intrusive_ptr (
+    this=0x6d79732e0062618c, __in_chrg=<optimized out>)
+    at /student/nqr159/gpu-actors-develop-gpufarm/cuda-actors/test/../actor-framework/libcaf_core/caf/intrusive_ptr.hpp:94
+#1  0x0000555555580930 in caf::intrusive_cow_ptr<caf::detail::message_data>::~intrusive_cow_ptr (this=0x6d79732e0062618c, __in_chrg=<optimized out>)
+    at /student/nqr159/gpu-actors-develop-gpufarm/cuda-actors/test/../actor-framework/libcaf_core/caf/intrusive_cow_ptr.hpp:37
+#2  0x0000555555580a6a in caf::message::~message (this=0x6d79732e0062618c, 
+    __in_chrg=<optimized out>)
+    at /student/nqr159/gpu-actors-develop-gpufarm/cuda-actors/test/../actor-framework/libcaf_core/caf/message.hpp:32
+#3  0x000055555558c324 in caf::mailbox_element::~mailbox_element (
+    this=0x6d79732e00626174, __in_chrg=<optimized out>)
+    at /student/nqr159/gpu-actors-develop-gpufarm/cuda-actors/test/../actor-framework/libcaf_core/caf/mailbox_element.hpp:19
+#4  0x000055555558c35e in std::default_delete<caf::mailbox_element>::operator() (
+    this=0x7fffcc0031d8, __ptr=0x6d79732e00626174)
+    at /usr/include/c++/11/bits/unique_ptr.h:85
+#5  0x0000555555587124 in std::unique_ptr<caf::mailbox_element, std::default_delete<caf::mailbox_element> >::~unique_ptr (this=0x7fffcc0031d8, __in_chrg=<optimized out>)
+    at /usr/include/c++/11/bits/unique_ptr.h:361
+--Type <RET> for more, q to quit, c to continue without paging--c
+#6  0x00005555555b62c2 in __gnu_cxx::new_allocator<std::unique_ptr<caf::mailbox_element, std::default_delete<caf::mailbox_element> > >::destroy<std::unique_ptr<caf::mailbox_element, std::default_delete<caf::mailbox_element> > > (this=0x7fffcc012ba8, __p=0x7fffcc0031d8)
+    at /usr/include/c++/11/ext/new_allocator.h:168
+#7  0x00005555555b570e in std::allocator_traits<std::allocator<std::unique_ptr<caf::mailbox_element, std::default_delete<caf::mailbox_element> > > >::destroy<std::unique_ptr<caf::mailbox_element, std::default_delete<caf::mailbox_element> > > (__a=..., 
+    __p=0x7fffcc0031d8) at /usr/include/c++/11/bits/alloc_traits.h:535
+#8  0x00005555555b4851 in std::deque<std::unique_ptr<caf::mailbox_element, std::default_delete<caf::mailbox_element> >, std::allocator<std::unique_ptr<caf::mailbox_element, std::default_delete<caf::mailbox_element> > > >::pop_front (this=0x7fffcc012ba8)
+    at /usr/include/c++/11/bits/stl_deque.h:1538
+#9  0x00005555555b3a8a in std::queue<std::unique_ptr<caf::mailbox_element, std::default_delete<caf::mailbox_element> >, std::deque<std::unique_ptr<caf::mailbox_element, std::default_delete<caf::mailbox_element> >, std::allocator<std::unique_ptr<caf::mailbox_element, std::default_delete<caf::mailbox_element> > > > >::pop (this=0x7fffcc012ba8)
+    at /usr/include/c++/11/bits/stl_queue.h:301
+#10 0x00005555555b2ae7 in caf::cuda::actor_facade<false, in_impl<int>, in_impl<int>, out_impl<int>, in_impl<int> >::resume (this=0x7fffcc012a80, sched=0x555555691030)
+    at /student/nqr159/gpu-actors-develop-gpufarm/cuda-actors/test/../actor-framework/libcaf_cuda/caf/cuda/actor_facade.hpp:182
+#11 0x00007ffff7e1f2c8 in run<caf::(anonymous namespace)::work_stealing::scheduler_impl>
+    (this=0x555555691030, parent=0x55555568e130)
+    at /student/nqr159/gpu-actors-develop-gpufarm/cuda-actors/actor-framework/libcaf_core/caf/scheduler.cpp:209
+#12 0x00007ffff7e1de14 in operator() (__closure=0x555555696958)
+    at /student/nqr159/gpu-actors-develop-gpufarm/cuda-actors/actor-framework/libcaf_core/caf/scheduler.cpp:116
+#13 0x00007ffff7e20b49 in operator()<caf::intrusive_ptr<caf::ref_counted> > (
+    __closure=0x555555696940)
+    at /student/nqr159/gpu-actors-develop-gpufarm/cuda-actors/actor-framework/libcaf_core/caf/actor_system.hpp:502
+#14 0x00007ffff7e24be9 in __invoke_impl<void, caf::actor_system::launch_thread<caf::(anonymous namespace)::work_stealing::worker::start<caf::(anonymous namespace)::work_stealing::scheduler_impl>(caf::(anonymous namespace)::work_stealing::scheduler_impl*)::<lambda()> >(char const*, caf::thread_owner, caf::(anonymous namespace)::work_stealing::worker::start<caf::(anonymous namespace)::work_stealing::scheduler_impl>(caf::(anonymous namespace)::work_stealing::scheduler_impl*)::<lambda()>)::<lambda(auto:35)>, caf::intrusive_ptr<caf::ref_counted> > (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#15 0x00007ffff7e24aaf in __invoke<caf::actor_system::launch_thread<caf::(anonymous namespace)::work_stealing::worker::start<caf::(anonymous namespace)::work_stealing::scheduler_impl>(caf::(anonymous namespace)::work_stealing::scheduler_impl*)::<lambda()> >(char const*, caf::thread_owner, caf::(anonymous namespace)::work_stealing::worker::start<caf::(anonymous namespace)::work_stealing::scheduler_impl>(caf::(anonymous namespace)::work_stealing::scheduler_impl*)::<lambda()>)::<lambda(auto:35)>, caf::intrusive_ptr<caf::ref_counted> > (
+    __fn=...) at /usr/include/c++/11/bits/invoke.h:96
+#16 0x00007ffff7e2498f in _M_invoke<0, 1> (this=0x555555696938)
+    at /usr/include/c++/11/bits/std_thread.h:259
+#17 0x00007ffff7e248fe in operator() (this=0x555555696938)
+    at /usr/include/c++/11/bits/std_thread.h:266
+#18 0x00007ffff7e24878 in _M_run (this=0x555555696930)
+    at /usr/include/c++/11/bits/std_thread.h:211
+#19 0x00007ffff49b6253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#20 0x00007ffff4725ac3 in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#21 0x00007ffff47b7850 in ?? () from /lib/x86_64-linux-gnu/libc.so.6

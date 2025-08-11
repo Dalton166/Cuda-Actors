@@ -1,0 +1,246 @@
+==980594== NVPROF is profiling process 980594, command: ./test
+[INFO] Supervisor 3 Iteration 0 Round-trip: 0.0173396 s
+[INFO] Supervisor 4 Iteration 0 Round-trip: 3.33215 s
+[INFO] Supervisor 6 Iteration 0 Round-trip: 0.0241882 s
+[INFO] Supervisor 3 Iteration 1 Round-trip: 2.33731 s
+[INFO] Supervisor 5 Iteration 0 Round-trip: 0.079959 s
+[INFO] Supervisor 0 Iteration 0 Round-trip: 0.588031 s
+[INFO] Supervisor 1 Iteration 0 Round-trip: 0.296003 s
+[INFO] Supervisor 7 Iteration 0 Round-trip: 0.275708 s
+[INFO] Supervisor 8 Iteration 0 Round-trip: 0.0215461 s
+[INFO] Supervisor 9 Iteration 0 Round-trip: 2.32462 s
+[INFO] Supervisor 4 Iteration 1 Round-trip: 0.414807 s
+[INFO] Supervisor 6 Iteration 1 Round-trip: 1.20586 s
+[INFO] Supervisor 5 Iteration 1 Round-trip: 0.0223851 s
+[INFO] Supervisor 2 Iteration 0 Round-trip: 7.20996 s
+[INFO] Supervisor 1 Iteration 1 Round-trip: 0.0218166 s
+[INFO] Supervisor 7 Iteration 1 Round-trip: 0.0222399 s
+[INFO] Supervisor 8 Iteration 1 Round-trip: 0.022136 s
+[INFO] Supervisor 9 Iteration 1 Round-trip: 0.0171986 s
+[INFO] Supervisor 0 Iteration 1 Round-trip: 3.3385 s
+[INFO] Supervisor 4 Iteration 2 Round-trip: 1.09678 s
+[INFO] Supervisor 6 Iteration 2 Round-trip: 0.574961 s
+[INFO] Supervisor 2 Iteration 1 Round-trip: 0.022196 s
+[INFO] Supervisor 5 Iteration 2 Round-trip: 0.512461 s
+[INFO] Supervisor 7 Iteration 2 Round-trip: 0.0222699 s
+[INFO] Supervisor 8 Iteration 2 Round-trip: 0.0218082 s
+[INFO] Supervisor 1 Iteration 2 Round-trip: 2.7034 s
+[INFO] Supervisor 3 Iteration 2 Round-trip: 9.16908 s
+[INFO] Supervisor 4 Iteration 3 Round-trip: 0.0164206 s
+[INFO] Supervisor 9 Iteration 2 Round-trip: 2.26782 s
+[INFO] Supervisor 6 Iteration 3 Round-trip: 0.0217883 s
+[INFO] Supervisor 2 Iteration 2 Round-trip: 0.228208 s
+[INFO] Supervisor 7 Iteration 3 Round-trip: 0.0798428 s
+[INFO] Supervisor 5 Iteration 3 Round-trip: 2.06115 s
+[INFO] Supervisor 0 Iteration 2 Round-trip: 4.87893 s
+[INFO] Supervisor 3 Iteration 3 Round-trip: 0.0234649 s
+[INFO] Supervisor 4 Iteration 4 Round-trip: 0.0217077 s
+[INFO] Supervisor 9 Iteration 3 Round-trip: 0.0250804 s
+[INFO] Supervisor 8 Iteration 3 Round-trip: 3.09851 s
+[INFO] Supervisor 6 Iteration 4 Round-trip: 0.106006 s
+[INFO] Supervisor 7 Iteration 4 Round-trip: 0.0235457 s
+[INFO] Supervisor 2 Iteration 3 Round-trip: 2.17076 s
+[INFO] Supervisor 5 Iteration 4 Round-trip: 0.811745 s
+[INFO] Supervisor 1 Iteration 3 Round-trip: 5.60905 s
+[INFO] Supervisor 3 Iteration 4 Round-trip: 0.860593 s
+[INFO] Supervisor 9 Iteration 4 Round-trip: 0.0228809 s
+[INFO] Supervisor 6 Iteration 5 Round-trip: 0.0219688 s
+[INFO] Supervisor 8 Iteration 4 Round-trip: 0.0220388 s
+[INFO] Supervisor 7 Iteration 5 Round-trip: 0.0515932 s
+[INFO] Supervisor 2 Iteration 4 Round-trip: 0.0218511 s
+[INFO] Supervisor 4 Iteration 5 Round-trip: 4.17179 s
+[INFO] Supervisor 0 Iteration 3 Round-trip: 5.57608 s
+[INFO] Supervisor 1 Iteration 4 Round-trip: 0.785356 s
+[INFO] Supervisor 9 Iteration 5 Round-trip: 0.02323 s
+[INFO] Supervisor 6 Iteration 6 Round-trip: 0.021678 s
+[INFO] Supervisor 8 Iteration 5 Round-trip: 0.0215512 s
+[INFO] Supervisor 7 Iteration 6 Round-trip: 0.0243931 s
+[INFO] Supervisor 3 Iteration 5 Round-trip: 3.53451 s
+[INFO] Supervisor 2 Iteration 5 Round-trip: 0.784565 s
+[INFO] Supervisor 0 Iteration 4 Round-trip: 0.0235316 s
+[INFO] Supervisor 5 Iteration 5 Round-trip: 6.21659 s
+[INFO] Supervisor 9 Iteration 6 Round-trip: 0.0238467 s
+[INFO] Supervisor 1 Iteration 5 Round-trip: 1.28553 s
+[INFO] Supervisor 6 Iteration 7 Round-trip: 0.202466 s
+[INFO] Supervisor 7 Iteration 7 Round-trip: 0.0224835 s
+[INFO] Supervisor 3 Iteration 6 Round-trip: 0.0239624 s
+[INFO] Supervisor 4 Iteration 6 Round-trip: 5.32168 s
+[INFO] Supervisor 8 Iteration 6 Round-trip: 3.12258 s
+[INFO] Supervisor 0 Iteration 5 Round-trip: 0.676144 s
+[INFO] Supervisor 9 Iteration 7 Round-trip: 0.0221874 s
+[INFO] Supervisor 2 Iteration 6 Round-trip: 2.13586 s
+[INFO] Supervisor 6 Iteration 8 Round-trip: 0.0216723 s
+[INFO] Supervisor 1 Iteration 6 Round-trip: 1.40406 s
+[INFO] Supervisor 3 Iteration 7 Round-trip: 0.0218512 s
+[INFO] Supervisor 4 Iteration 7 Round-trip: 0.02176 s
+[INFO] Supervisor 7 Iteration 8 Round-trip: 1.98351 s
+[INFO] Supervisor 8 Iteration 7 Round-trip: 0.542894 s
+[INFO] Supervisor 9 Iteration 8 Round-trip: 0.0212573 s
+[INFO] Supervisor 2 Iteration 7 Round-trip: 0.0228 s
+[INFO] Supervisor 6 Iteration 9 Round-trip: 0.0476246 s
+[INFO] Supervisor 0 Iteration 6 Round-trip: 2.875 s
+[INFO] Supervisor 1 Iteration 7 Round-trip: 1.00177 s
+[INFO] Supervisor 5 Iteration 6 Round-trip: 9.87217 s
+[INFO] Supervisor 7 Iteration 9 Round-trip: 0.0220074 s
+[INFO] Supervisor 3 Iteration 8 Round-trip: 1.31873 s
+[INFO] Supervisor 9 Iteration 9 Round-trip: 0.0220852 s
+[INFO] Supervisor 2 Iteration 8 Round-trip: 0.0223666 s
+[INFO] Supervisor 6 Iteration 10 Round-trip: 0.0231565 s
+[INFO] Supervisor 4 Iteration 8 Round-trip: 3.47912 s
+[INFO] Supervisor 0 Iteration 7 Round-trip: 1.02378 s
+[INFO] Supervisor 1 Iteration 8 Round-trip: 0.900339 s
+[INFO] Supervisor 7 Iteration 10 Round-trip: 0.0230376 s
+[INFO] Supervisor 8 Iteration 8 Round-trip: 5.20198 s
+[INFO] Supervisor 9 Iteration 10 Round-trip: 0.0222646 s
+[INFO] Supervisor 5 Iteration 7 Round-trip: 1.95663 s
+[INFO] Supervisor 2 Iteration 9 Round-trip: 0.506021 s
+[INFO] Supervisor 4 Iteration 9 Round-trip: 0.0506432 s
+[INFO] Supervisor 6 Iteration 11 Round-trip: 2.03506 s
+[INFO] Supervisor 3 Iteration 9 Round-trip: 4.95311 s
+[INFO] Supervisor 0 Iteration 8 Round-trip: 0.915043 s
+[INFO] Supervisor 1 Iteration 9 Round-trip: 0.236808 s
+[INFO] Supervisor 5 Iteration 8 Round-trip: 0.0228857 s
+[INFO] Supervisor 9 Iteration 11 Round-trip: 0.033023 s
+[INFO] Supervisor 8 Iteration 9 Round-trip: 2.19836 s
+[INFO] Supervisor 7 Iteration 11 Round-trip: 3.54971 s
+[INFO] Supervisor 4 Iteration 10 Round-trip: 0.949529 s
+[INFO] Supervisor 2 Iteration 10 Round-trip: 2.82449 s
+[INFO] Supervisor 0 Iteration 9 Round-trip: 0.0227736 s
+[INFO] Supervisor 3 Iteration 10 Round-trip: 0.189436 s
+[INFO] Supervisor 5 Iteration 9 Round-trip: 0.0228389 s
+[INFO] Supervisor 9 Iteration 12 Round-trip: 0.0517391 s
+[INFO] Supervisor 8 Iteration 10 Round-trip: 0.0265586 s
+[INFO] Supervisor 6 Iteration 12 Round-trip: 4.40455 s
+[INFO] Supervisor 4 Iteration 11 Round-trip: 0.0222045 s
+[INFO] Supervisor 1 Iteration 10 Round-trip: 5.12341 s
+[INFO] Supervisor 3 Iteration 11 Round-trip: 0.0218688 s
+[INFO] Supervisor 0 Iteration 10 Round-trip: 0.023211 s
+[INFO] Supervisor 2 Iteration 11 Round-trip: 1.69418 s
+[INFO] Supervisor 5 Iteration 10 Round-trip: 0.304047 s
+[INFO] Supervisor 8 Iteration 11 Round-trip: 0.0225229 s
+[INFO] Supervisor 7 Iteration 12 Round-trip: 5.29409 s
+[INFO] Supervisor 4 Iteration 12 Round-trip: 0.0219244 s
+[INFO] Supervisor 6 Iteration 13 Round-trip: 1.70105 s
+[INFO] Supervisor 3 Iteration 12 Round-trip: 0.0215853 s
+[INFO] Supervisor 0 Iteration 11 Round-trip: 0.0230109 s
+[INFO] Supervisor 2 Iteration 12 Round-trip: 0.0226516 s
+[INFO] Supervisor 5 Iteration 11 Round-trip: 0.0298054 s
+[INFO] Supervisor 9 Iteration 13 Round-trip: 5.84651 s
+[INFO] Supervisor 1 Iteration 11 Round-trip: 3.64556 s
+[INFO] Supervisor 8 Iteration 12 Round-trip: 2.13772 s
+[INFO] Supervisor 4 Iteration 13 Round-trip: 0.649986 s
+[INFO] Supervisor 3 Iteration 13 Round-trip: 0.0485815 s
+[INFO] Supervisor 6 Iteration 14 Round-trip: 0.185036 s
+[INFO] Supervisor 0 Iteration 12 Round-trip: 1.40398 s
+[INFO] Supervisor 2 Iteration 13 Round-trip: 0.503464 s
+[INFO] Supervisor 7 Iteration 13 Round-trip: 4.20263 s
+[INFO] Supervisor 1 Iteration 12 Round-trip: 0.0499755 s
+[INFO] Supervisor 8 Iteration 13 Round-trip: 0.0217812 s
+[INFO] Supervisor 5 Iteration 12 Round-trip: 3.18628 s
+[INFO] Supervisor 4 Iteration 14 Round-trip: 0.118164 s
+[INFO] Supervisor 6 Iteration 15 Round-trip: 0.0221994 s
+[INFO] Supervisor 3 Iteration 14 Round-trip: 1.48605 s
+[INFO] Supervisor 0 Iteration 13 Round-trip: 0.590323 s
+[INFO] Supervisor 9 Iteration 14 Round-trip: 5.29514 s
+[INFO] Supervisor 7 Iteration 14 Round-trip: 1.22658 s
+[INFO] Supervisor 8 Iteration 14 Round-trip: 0.0219945 s
+[INFO] Supervisor 1 Iteration 13 Round-trip: 1.38198 s
+[INFO] Supervisor 4 Iteration 15 Round-trip: 0.0229337 s
+[INFO] Supervisor 6 Iteration 16 Round-trip: 0.0227215 s
+[INFO] Supervisor 3 Iteration 15 Round-trip: 0.0275358 s
+[INFO] Supervisor 0 Iteration 14 Round-trip: 0.0304317 s
+[INFO] Supervisor 2 Iteration 14 Round-trip: 5.81198 s
+[INFO] Supervisor 5 Iteration 13 Round-trip: 3.95368 s
+[INFO] Supervisor 7 Iteration 15 Round-trip: 1.10937 s
+[INFO] Supervisor 8 Iteration 15 Round-trip: 0.211744 s
+[INFO] Supervisor 1 Iteration 14 Round-trip: 0.257059 s
+[INFO] Supervisor 4 Iteration 16 Round-trip: 0.29784 s
+[INFO] Supervisor 3 Iteration 16 Round-trip: 0.0227208 s
+[INFO] Supervisor 6 Iteration 17 Round-trip: 1.87272 s
+[INFO] Supervisor 0 Iteration 15 Round-trip: 0.477361 s
+[INFO] Supervisor 5 Iteration 14 Round-trip: 0.0221686 s
+[INFO] Supervisor 7 Iteration 16 Round-trip: 0.0216584 s
+[INFO] Supervisor 9 Iteration 15 Round-trip: 7.67772 s
+[INFO] Supervisor 8 Iteration 16 Round-trip: 0.334252 s
+[INFO] Supervisor 2 Iteration 15 Round-trip: 3.0387 s
+[INFO] Supervisor 3 Iteration 17 Round-trip: 0.0226718 s
+[INFO] Supervisor 6 Iteration 18 Round-trip: 0.023721 s
+[INFO] Supervisor 4 Iteration 17 Round-trip: 2.28925 s
+[INFO] Supervisor 5 Iteration 15 Round-trip: 0.0236572 s
+[INFO] Supervisor 1 Iteration 15 Round-trip: 4.89036 s
+[INFO] Supervisor 7 Iteration 17 Round-trip: 0.0519062 s
+[INFO] Supervisor 8 Iteration 17 Round-trip: 0.02225 s
+[INFO] Supervisor 0 Iteration 16 Round-trip: 3.05998 s
+[INFO] Supervisor 2 Iteration 16 Round-trip: 0.861486 s
+[INFO] Supervisor 3 Iteration 18 Round-trip: 1.04898 s
+[INFO] Supervisor 9 Iteration 16 Round-trip: 2.98954 s
+[INFO] Supervisor 4 Iteration 18 Round-trip: 1.31856 s
+[INFO] Supervisor 5 Iteration 16 Round-trip: 0.963293 s
+[INFO] Supervisor 1 Iteration 16 Round-trip: 0.254964 s
+[INFO] Supervisor 7 Iteration 18 Round-trip: 0.254783 s
+[INFO] Supervisor 6 Iteration 19 Round-trip: 3.43873 s
+[INFO] Supervisor 6 Average time: 0.798858 s
+Exit message received
+[INFO] Supervisor 8 Iteration 18 Round-trip: 0.398431 s
+[INFO] Supervisor 0 Iteration 17 Round-trip: 0.769405 s
+[INFO] Supervisor 2 Iteration 17 Round-trip: 1.1174 s
+[INFO] Supervisor 3 Iteration 19 Round-trip: 0.452013 s
+[INFO] Supervisor 3 Average time: 1.28007 s
+Exit message received
+[INFO] Supervisor 9 Iteration 17 Round-trip: 0.0272685 s
+[INFO] Supervisor 4 Iteration 19 Round-trip: 0.0236883 s
+[INFO] Supervisor 4 Average time: 1.18205 s
+Exit message received
+[INFO] Supervisor 5 Iteration 17 Round-trip: 0.0184744 s
+[INFO] Supervisor 1 Iteration 17 Round-trip: 0.0189244 s
+[INFO] Supervisor 7 Iteration 19 Round-trip: 0.0218193 s
+[INFO] Supervisor 7 Average time: 0.91416 s
+Exit message received
+[INFO] Supervisor 8 Iteration 19 Round-trip: 0.0265513 s
+[INFO] Supervisor 8 Average time: 0.874861 s
+Exit message received
+[INFO] Supervisor 0 Iteration 18 Round-trip: 0.0247419 s
+[INFO] Supervisor 2 Iteration 18 Round-trip: 0.0188177 s
+[INFO] Supervisor 9 Iteration 18 Round-trip: 0.0148253 s
+[INFO] Supervisor 1 Iteration 18 Round-trip: 0.0147952 s
+[INFO] Supervisor 5 Iteration 18 Round-trip: 0.0155972 s
+[INFO] Supervisor 0 Iteration 19 Round-trip: 0.0176528 s
+[INFO] Supervisor 0 Average time: 1.3169 s
+Exit message received
+[INFO] Supervisor 2 Iteration 19 Round-trip: 0.0145931 s
+[INFO] Supervisor 2 Average time: 1.45162 s
+Exit message received
+[INFO] Supervisor 9 Iteration 19 Round-trip: 0.014969 s
+[INFO] Supervisor 9 Average time: 1.33716 s
+Exit message received
+[INFO] Supervisor 1 Iteration 19 Round-trip: 0.0156016 s
+[INFO] Supervisor 1 Average time: 1.49484 s
+Exit message received
+[INFO] Supervisor 5 Iteration 19 Round-trip: 0.0154919 s
+[INFO] Supervisor 5 Average time: 1.50556 s
+Exit message received
+==980594== Profiling application: ./test
+==980594== Profiling result:
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+ GPU activities:   40.67%  237.41ms       600  395.68us  1.5030us  637.12us  [CUDA memcpy HtoD]
+                   39.27%  229.23ms       200  1.1461ms  1.1418ms  1.1558ms  matrixMul
+                   20.06%  117.10ms       200  585.51us  496.45us  672.76us  [CUDA memcpy DtoH]
+      API calls:   25.24%  256.04ms       600  426.74us  16.125us  677.15us  cuMemcpyHtoD
+                   24.21%  245.51ms       200  1.2276ms  1.1428ms  1.2727ms  cuCtxSynchronize
+                   15.71%  159.31ms       200  796.55us  635.98us  968.34us  cuMemcpyDtoH
+                   12.11%  122.80ms         1  122.80ms  122.80ms  122.80ms  cuCtxCreate
+                   11.86%  120.27ms       800  150.34us  93.691us  372.43us  cuMemAlloc
+                    7.04%  71.366ms       800  89.206us  45.631us  169.73us  cuMemFree
+                    3.01%  30.486ms        10  3.0486ms  2.7799ms  3.4733ms  cuModuleLoadData
+                    0.59%  5.9800ms       200  29.899us  20.068us  52.162us  cuLaunchKernel
+                    0.15%  1.4786ms      1210  1.2220us     223ns  4.0790us  cuCtxPushCurrent
+                    0.07%  726.82us      1210     600ns     154ns  1.3130us  cuCtxPopCurrent
+                    0.02%  158.38us       202     784ns     338ns  14.559us  cuCtxGetCurrent
+                    0.01%  79.666us        23  3.4630us     313ns  10.337us  cuDeviceGetAttribute
+                    0.00%  20.693us         1  20.693us  20.693us  20.693us  cuStreamCreate
+                    0.00%  19.896us         1  19.896us  19.896us  19.896us  cuDeviceGetName
+                    0.00%  13.024us        10  1.3020us     796ns  1.7950us  cuModuleGetFunction
+                    0.00%  8.3650us         1  8.3650us  8.3650us  8.3650us  cuDeviceGetPCIBusId
+                    0.00%  2.2630us         3     754ns     332ns  1.2270us  cuDeviceGetCount
+                    0.00%  1.2360us         2     618ns     291ns     945ns  cuDeviceGet
+                    0.00%     571ns         1     571ns     571ns     571ns  cuCtxSetCurrent
