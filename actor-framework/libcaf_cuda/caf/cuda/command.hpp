@@ -41,22 +41,53 @@ public:
       dims_(std::move(dims)),
       actor_id(id) {
     dev_ = platform::create()->schedule(id);
+    using_message = true; 
     static_assert(sizeof...(Us) == sizeof...(Ts), "Argument count mismatch");
   }
+  template <typename... Us>
+  base_command(
+               program_ptr program,
+               nd_range dims,
+               int id,
+               Us&&... xs)
+    : msg_(std::move(msg)),
+      program_(std::move(program)),
+      dims_(std::move(dims)),
+      actor_id(id),
+      kernel_args(std::make_tuple(std::forward<Us..>(xs)),
+       	{
+    dev_ = platform::create()->schedule(id);
+    
+    static_assert(sizeof...(Us) == sizeof...(Ts), "Argument count mismatch");
+  }
+
+
 
   virtual ~base_command() = default;
 
   // Unpacks a caf message and calls launch_kernel_mem_ref and returns its result  
   virtual std::tuple<mem_ptr<raw_t<Ts>>...> base_enqueue() {
     
-    std::cout << "Unpacking message\n";
+    //std::cout << "Unpacking message\n";
     // Step 1: Unpack message
-      auto unpacked = unpack_args(std::index_sequence_for<Ts...>{});
-
-    std::cout << "Launching kernel\n";
+     if (using_msg) {
+     auto unpacked = unpack_args(std::index_sequence_for<Ts...>{});
+    
+    //std::cout << "Launching kernel\n";
     // Step 2: Launch kernel via centralized utility
     CUfunction kernel = program_->get_kernel(dev_->getId());
     return dev_->launch_kernel_mem_ref(kernel, dims_, unpacked, actor_id);
+     }
+     else {
+     //Launch kernel via centralized utility
+    CUfunction kernel = program_->get_kernel(dev_->getId());
+    return dev_->launch_kernel_mem_ref(kernel, dims_, kernel_args, actor_id);
+     
+     
+     }
+
+
+     
   }
 
   // intrusive_ptr ref counting friends
@@ -80,6 +111,9 @@ protected:
   int actor_id;
   device_ptr dev_;
   caf::message msg_;
+  std::tuple<Ts ...> kernel_args;
+  bool using_message = false;
+
 };
 
 // intrusive_ptr reference counting
@@ -107,6 +141,18 @@ public:
           int id,
           Us&&... xs)
     : base(std::move(msg),
+           std::move(program),
+           std::move(dims),
+           id,
+           std::forward<Us>(xs)...) {}
+ 
+  template <typename... Us>
+  command(
+          program_ptr program,
+          nd_range dims,
+          int id,
+          Us&&... xs)
+    : base(
            std::move(program),
            std::move(dims),
            id,
