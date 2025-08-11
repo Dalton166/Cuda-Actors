@@ -10,6 +10,7 @@
 #include <thread>
 #include <algorithm>
 #include <numeric>
+#include <random>
 #include "caf/actor_registry.hpp"
 
 
@@ -63,35 +64,83 @@ void matrixMul(const int* a, const int* b, int* c, int N) {
 
 //commands classes used to launch kernels 
 using mmulCommand = caf::cuda::command_runner<in<int>,in<int>,out<int>,int<int>>;
-using mmulGenCommand = caf::cuda::command_runner<in_out<int>,in<int>,in<int>,in<int>>;
-
+using mmulGenCommand = caf::cuda::command_runner<out<int>,in<int>,in<int>,in<int>>;
 
 
 // Define atoms for CPU and GPU
 using cpu_atom = caf::atom_constant<caf::atom("cpu")>;
 using gpu_atom = caf::atom_constant<caf::atom("gpu")>;
 
+
+
+void serial_matrix_multiply(const std::vector<int>& a,
+                            const std::vector<int>& b,
+                            std::vector<int>& c,
+                            int N) {
+  
+
+ for (int i = 0; i < N; ++i) {
+    for (int j = 0; j < N; ++j) {
+      int sum = 0;
+      for (int k = 0; k < N; ++k) {
+        sum += a[i * N + k] * b[k * N + j];
+      }
+      c[i * N + j] = sum;
+    }
+  }
+}
+
+
+
+
+
+
+
 // Actor state
 struct my_actor_state {
   static inline const char* name = "my_actor";
   int last_N = 0; // example state variable
+  int id = rand(); //an actors id 
 };
 
 // Stateful actor behavior
 caf::behavior my_actor_fun(caf::stateful_actor<my_actor_state>* self) {
   return {
-    // 1st handler: Just int N
-    [=](int N) {
+    // 1st handler: Just int N, and who to send the matrices to
+    [=](int N, std::vector<caf::actor> receivers) {
       self->state.last_N = N;
-      aout(self) << "[my_actor] Received N = " << N << "\n";
+
+        //create the program and configure the dimesnions of the kernel
+        auto program = mgr.create_program_from_cubin("../mmul.cu","generate_random_matrix");
+	int THREADS = 256;
+	int BLOCKS = (N*N + THREADS - 1) / THREADS;
+  	caf::cuda::nd_range dim(BLOCKS,1, 1, THREADS,1, 1);
+
+	//tag the arguments so that caf::cuda knows what to do with them	
+         auto arg1 = caf::cuda::create_out_arg(N*N); //output buffer indicate its size, caf::cuda will handle the rest
+          auto arg2 = caf::cuda::create_in_arg(N*N); //matrix size
+          auto arg3 = caf::cuda::create_in_arg(1234); //seed
+	  auto arg4 = caf::cuda::create_in_arg(9999); //max valux
+	  
+
+
+	  //launch kernels and collect their outputs
+	  auto tempA = matrixGenCommand(program,dim, self -> state.id,arg1,arg2,arg3,arg4);
+	  auto tempB = matrixGenCommand(program,dim, self -> state.id,arg1,arg2,arg3,arg4);
+	  std::vector<int> matrixA =  caf::cuda::collect_vector(tempA);
+	  std::vector<int> matrixB = caf::cuda::collect_vector(tempB);
+
+	  //broadcast the result out to receviers.
+	  for (auto actor: receivers) {
+	  
+		  self->mail(gpu_atom,matrixA,matrixB,N).send(actor);
+	  }
+
     },
 
     // 2nd handler: GPU atom + matrices + N
-    [=](gpu_atom, const std::vector<int>& matrixA,
-        const std::vector<int>& matrixB, int N) {
-      aout(self) << "[my_actor] GPU task: N = " << N
-                 << ", matrixA size = " << matrixA.size()
-                 << ", matrixB size = " << matrixB.size() << "\n";
+    [=](gpu_atom, const std::vector<int> matrixA,
+        const std::vector<int> matrixB, int N) {
       // TODO: implement GPU logic here
     },
 
