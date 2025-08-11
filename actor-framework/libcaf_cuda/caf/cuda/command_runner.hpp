@@ -2,6 +2,7 @@
 #include "caf/cuda/command.hpp"
 #include "caf/cuda/program.hpp"
 #include "caf/cuda/nd_range.hpp"
+#include "caf/cuda/platform.hpp"
 
 namespace caf::cuda {
 template <class... Ts>
@@ -76,6 +77,12 @@ public:
   }
 
 
+ //destroys a stream for an actor given its id
+ void release_stream_for_actor(int actor_id) {
+ 
+	 auto plat = platform::create();
+	 platform.release_stream_for_actor(id);
+ }
   
 };
 
