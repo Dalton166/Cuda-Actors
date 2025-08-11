@@ -82,6 +82,18 @@ public:
   int access()  const noexcept { return access_; }
   CUstream stream() const noexcept { return stream_; }
   int deviceID() const noexcept { return device_id;}
+ 
+ //if it is ever needed, you can force synchronization on a mem_ptr
+ //to ensure data on the device that the mem_ptr points to
+ //is not in the middle of being operated on
+ //mostly here to avoid race conditions that can occur between streams 
+  void synchronize()  {
+    CHECK_CUDA(cuCtxPushCurrent(ctx));
+    CUstream s = stream_ ? stream_ : nullptr;
+    if (s) CHECK_CUDA(cuStreamSynchronize(s));
+    else  CHECK_CUDA(cuCtxSynchronize());
+    CHECK_CUDA(cuCtxPopCurrent(nullptr)); 
+  } 
 
   void reset() {
     if (!is_scalar_ && memory_) {
