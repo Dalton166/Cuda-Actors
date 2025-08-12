@@ -10,7 +10,7 @@
 #include "caf/cuda/types.hpp"
 #include "caf/cuda/utility.hpp"
 #include <cuda.h>
-
+#include <atomic>
 
 namespace caf::cuda {
 
@@ -97,6 +97,7 @@ public:
   } 
 
   void reset() {
+	  std::cout << "Resting\n"; 
     if (!is_scalar_ && memory_) {
       CHECK_CUDA(cuMemFree(memory_));
       memory_ = 0;
@@ -126,6 +127,17 @@ public:
     return host_data;
   }
 
+    friend void intrusive_ptr_add_ref(const mem_ref<T>* p) noexcept {
+        p->ref_count_.fetch_add(1, std::memory_order_relaxed);
+    }
+
+    friend void intrusive_ptr_release(const mem_ref<T>* p) noexcept {
+        if (p->ref_count_.fetch_sub(1, std::memory_order_acq_rel) == 1)
+            delete p;
+    }
+
+
+
 private:
   size_t      num_elements_{0};
   CUdeviceptr memory_{0};
@@ -134,6 +146,7 @@ private:
   int         context_id{0};
   CUstream    stream_{nullptr};
   CUcontext ctx;
+  mutable std::atomic<size_t> ref_count_{0};
 
   bool is_scalar_{false};
   T    host_scalar_{};
