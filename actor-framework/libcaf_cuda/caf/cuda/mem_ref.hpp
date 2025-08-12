@@ -82,7 +82,8 @@ public:
   int access()  const noexcept { return access_; }
   CUstream stream() const noexcept { return stream_; }
   int deviceID() const noexcept { return device_id;}
- 
+  int deviceNumber() const noexcept { return device_id;}
+
  //if it is ever needed, you can force synchronization on a mem_ptr
  //to ensure data on the device that the mem_ptr points to
  //is not in the middle of being operated on
