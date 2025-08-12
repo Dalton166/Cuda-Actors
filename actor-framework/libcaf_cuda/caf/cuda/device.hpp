@@ -98,6 +98,24 @@ public:
 
 
 
+  //handling the case that a mem_ref is passed in
+  //should I force synchronization onto the same stream always?
+  template <typename T>
+  mem_ptr<T> make_arg(mem_ptr<T> arg, CUstream stream) {
+  
+	  if (arg -> deviceID() != id_) {
+	  
+	throw std::runtime_error("Error memory on device " + std::to_string(arg->deviceID()) +
+                         " attempted to be used on a different device, device id was " + std::to_string(id_) + "\n");
+
+	  }
+	  //just return the arg back
+	  return arg; 
+  }
+
+
+
+
   template <typename... Ts>
   std::vector<output_buffer>  collect_output_buffers_helper(const std::tuple<Ts...>& args) {
     std::vector<output_buffer> result;
