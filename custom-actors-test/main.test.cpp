@@ -271,6 +271,7 @@ caf::behavior mmul_async_actor_fun(caf::stateful_actor<mmul_actor_state>* self) 
 	   //std::generate(matrixB.begin(), matrixB.end(), []() { return rand() % 10; });
 
 
+	  std::cout << "Broadcasting\n";
 	  //broadcast the result out to receviers.
 	  for (auto actor: receivers) {
 	  
@@ -300,34 +301,49 @@ caf::behavior mmul_async_actor_fun(caf::stateful_actor<mmul_actor_state>* self) 
 
 
     auto tempC = mmulAsync.run(program,dims,self -> state().id,device_number,arg1,arg2,arg3,arg4);
-    
-    std::vector<int> matrixC = caf::cuda::extract_vector<int>(tempC);
+
+    std::vector<int> matrix1 = matrixA -> copy_to_host();
+    std::vector<int> matrix2 = matrixB -> copy_to_host();    
+    std::vector<int> matrixC = caf::cuda::extract_vector<int>(tempC,2);
 
     //verify its own result 
-    self -> mail(matrixA,matrixB,matrixC,N).send(self);
+    self -> mail(matrix1,matrix2,matrixC,N).send(self);
 
     },
 
     // 3rd handler: CPU atom + matrices + N
     [=](const std::vector<int>& matrixA,
-        const std::vector<int>& matrixB, const std::vector<int> matrixC, int N) {
-       
-	 std::vector<int> result(N*N);
+    const std::vector<int> &matrixB,
+    const std::vector<int> &matrixC, int N) {
 
-	 serial_matrix_multiply(matrixA,matrixB,result,N);
+    std::vector<int> result(N * N);
 
-	 if (result == matrixC) {
-	 
-		 std::cout << "actor with id " <<  self->state().id << " references match\n";
-	 
-	 }
+    serial_matrix_multiply(matrixA, matrixB, result, N);
 
-	 else {
-	    std::cout << "actor with id " <<  self->state().id << " references did not match\n";
-	 }
+    if (result == matrixC) {
+        std::cout << "actor with id " << self->state().id << " references match\n";
+    }
+    else {
+        std::cout << "actor with id " << self->state().id << " references did not match\n";
 
-	 self-> quit();
+        auto print_matrix = [N](const std::vector<int>& mat, const std::string& name) {
+            std::cout << name << ":\n";
+            for (int i = 0; i < N; ++i) {
+                for (int j = 0; j < N; ++j) {
+                    std::cout << mat[i * N + j] << " ";
+                }
+                std::cout << "\n";
+            }
+            std::cout << std::endl;
+        };
 
+        print_matrix(matrixA, "Matrix A");
+        print_matrix(matrixB, "Matrix B");
+        print_matrix(result, "Result Matrix");
+        print_matrix(matrixC, "GPU Result Matrix");
+    }
+
+    self->quit();
     }
   };
 }
@@ -363,8 +379,8 @@ void run_async_mmul_test(caf::actor_system& sys, int matrix_size, int num_actors
 void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
 
-  run_mmul_test(sys,100,200);
-  run_async_mmul_test(sys,100,2);
+  //run_mmul_test(sys,100,200);
+  run_async_mmul_test(sys,5,200);
 
 }
 
