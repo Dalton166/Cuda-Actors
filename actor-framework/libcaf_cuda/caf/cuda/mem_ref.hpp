@@ -97,7 +97,7 @@ public:
   } 
 
   void reset() {
-	  std::cout << "Resting\n"; 
+	  //std::cout << "Resting\n"; 
     if (!is_scalar_ && memory_) {
       CHECK_CUDA(cuMemFree(memory_));
       memory_ = 0;
