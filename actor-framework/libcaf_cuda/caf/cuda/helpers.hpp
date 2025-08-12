@@ -36,6 +36,18 @@ std::vector<T> extract_vector(const std::vector<output_buffer>& outputs) {
     return {}; // no matching vector found, return empty vector
 }
 
+// Extract vector<T> from outputs[index], or return empty vector if not matching or out of range
+template <typename T>
+std::vector<T> extract_vector(const std::vector<output_buffer>& outputs, size_t index) {
+    if (index >= outputs.size()) {
+        return {}; // index out of bounds
+    }
+    if (auto ptr = std::get_if<std::vector<T>>(&outputs[index].data)) {
+        return *ptr;  // copy and return the vector
+    }
+    return {}; // no matching type at this index
+}
+
 
 
 
