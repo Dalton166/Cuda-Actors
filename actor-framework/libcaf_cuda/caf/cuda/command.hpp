@@ -190,6 +190,7 @@ public:
            std::move(program),
            std::move(dims),
            id,
+	   device_number,
            std::forward<Us>(xs)...) {}
 
 
