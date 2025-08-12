@@ -203,10 +203,16 @@ public:
 
     // Convert mem_refs to output_buffers via helper
     auto result = base::dev_ -> collect_output_buffers(mem_refs);
-     for_each_tuple(mem_refs, [](auto& mem) {
+    /*
+     * We shouldnt need to manually free the mem refs
+     * since they are intrusive pointers caf can handle this automatically
+     * 
+    for_each_tuple(mem_refs, [](auto& mem) {
       if (mem)
         mem->reset();
     });
+
+    */
 
      return result;
   }
