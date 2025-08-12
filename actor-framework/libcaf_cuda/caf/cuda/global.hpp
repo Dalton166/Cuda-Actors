@@ -189,6 +189,10 @@ CAF_BEGIN_TYPE_ID_BLOCK(cuda, caf::first_custom_type_id)
   CAF_ADD_TYPE_ID(cuda, (buffer_variant))
   CAF_ADD_TYPE_ID(cuda, (output_buffer))
   CAF_ADD_TYPE_ID(cuda, (std::vector<output_buffer>))
+  CAF_ADD_TYPE_ID(cuda,(caf::cuda::mem_ptr<int>))  
+  CAF_ADD_TYPE_ID(cuda,(caf::cuda::mem_ptr<float>))  
+  CAF_ADD_TYPE_ID(cuda,(caf::cuda::mem_ptr<double>))  
+  CAF_ADD_TYPE_ID(cuda,(caf::cuda::mem_ptr<char>))  
   
   //atoms 
   CAF_ADD_ATOM(cuda, kernel_done_atom)
