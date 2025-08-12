@@ -291,6 +291,14 @@ struct raw_type<in_out<T>> {
 };
 
 template <typename T>
+struct raw_type<caf::cuda::mem_ptr<T>> {
+  using type = T;
+};
+
+
+
+
+template <typename T>
 using raw_t = typename raw_type<T>::type;
 
 
