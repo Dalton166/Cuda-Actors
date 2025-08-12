@@ -8,6 +8,7 @@
 #include <iostream>
 #include <unordered_map>
 #include <shared_mutex>
+#include <tuple>
 #include <mutex>
 
 #include <caf/intrusive_ptr.hpp>
