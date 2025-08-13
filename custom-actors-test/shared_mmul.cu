@@ -6,8 +6,8 @@ void matrixMul(const int *a, const int *b, int *c,int N) {
   int col = blockIdx.x * blockDim.x + threadIdx.x;
 
   // Statically allocated shared memory
-  __shared__ int s_a[SHMEM_SIZE];
-  __shared__ int s_b[SHMEM_SIZE];
+  __shared__ int s_a[32*32];
+  __shared__ int s_b[32*32];
 
   // Accumulate in temporary variable
   int tmp = 0;
@@ -16,10 +16,9 @@ void matrixMul(const int *a, const int *b, int *c,int N) {
   for (int i = 0; i < N; i += blockDim.x) {
     // Load in elements for this tile
     s_a[threadIdx.y * blockDim.x + threadIdx.x] = a[row * N + i + threadIdx.x];
-    s_b[threadIdx.y * blockDim.x + threadIdx.x] =
-        b[i * N + threadIdx.y * N + col];
+    s_b[threadIdx.y * blockDim.x + threadIdx.x] = b[(i + threadIdx.y) * N + col];
 
-    // Wait for both tiles to be loaded in before doing computation
+// Wait for both tiles to be loaded in before doing computation
     __syncthreads();
 
     // Do matrix multiplication on the small matrix
