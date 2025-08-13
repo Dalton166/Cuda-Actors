@@ -141,7 +141,8 @@ public:
 	  launch_kernel_mem_ref(CUfunction kernel,
                       const nd_range& range,
                       std::tuple<Args...> args,
-                      int actor_id) {
+                      int actor_id,
+		      int shared_mem //in bytes) {
   // Step 1: Allocate mem_ref<T> for each wrapper type
   
    CUstream stream = get_stream_for_actor(actor_id);
@@ -154,7 +155,7 @@ public:
 
   // Step 3: Launch kernel
   CHECK_CUDA(cuCtxPushCurrent(getContext()));
-  launch_kernel_internal(kernel, range, stream, kernel_args.ptrs.data());
+  launch_kernel_internal(kernel, range, stream, kernel_args.ptrs.data(),shared_mem);
   CHECK_CUDA(cuCtxPopCurrent(nullptr));
 
   // Step 4: Clean up kernel argument pointers
@@ -322,11 +323,12 @@ mem_ptr<T> scratch_argument(const out<T>& arg, CUstream stream, int access) {
   void launch_kernel_internal(CUfunction kernel,
                               const nd_range& range,
                               CUstream stream,
-                              void** args) {
+                              void** args,
+			      int shared_mem = 0) {
     CUresult result = cuLaunchKernel(kernel,
                                      range.getGridDimX(), range.getGridDimY(), range.getGridDimZ(),
                                      range.getBlockDimX(), range.getBlockDimY(), range.getBlockDimZ(),
-                                     0, stream, args, nullptr);
+                                     shared_mem, stream, args, nullptr);
     if (result != CUDA_SUCCESS) {
       const char* err_name = nullptr;
       cuGetErrorName(result, &err_name);
