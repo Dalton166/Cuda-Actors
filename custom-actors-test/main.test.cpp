@@ -229,11 +229,6 @@ caf::behavior mmul_async_actor_fun(caf::stateful_actor<mmul_actor_state>* self) 
     // 1st handler: Just int N, and who to send the matrices to
     [=](int N, std::vector<caf::actor> receivers) {
 
-	/*
-	 * Unfortuanley libraries such as curand cannot be linked with cubins 
-	 * making it incompatable with this software for right now
-	 * its not really random, just a matrix filled with 5's
-	 */
         caf::cuda::manager& mgr = caf::cuda::manager::get();
         //create the program and configure the dimesnions of the kernel
         auto program = mgr.create_program_from_fatbin("../generate_random_matrix.fatbin","generate_random_matrix");
@@ -247,12 +242,13 @@ caf::behavior mmul_async_actor_fun(caf::stateful_actor<mmul_actor_state>* self) 
           auto arg3 = caf::cuda::create_in_arg(rand()); //seed
 	  auto arg4 = caf::cuda::create_in_arg(9999); //max valux
 	  
+          auto arg3B = caf::cuda::create_in_arg(rand()); //seed
 	  int device_number= 0;
 
 
 	  //launch kernels and collect their outputs
 	  auto tempA = randomMatrix.run_async(program,dim, self -> state().id,device_number,arg1,arg2,arg3,arg4);
-	  auto tempB = randomMatrix.run_async(program,dim, self -> state().id,device_number,arg1,arg2,arg3,arg4);
+	  auto tempB = randomMatrix.run_async(program,dim, self -> state().id,device_number,arg1,arg2,arg3B,arg4);
 	  caf::cuda::mem_ptr<int> matrixA =  std::get<0>(tempA);
 	  caf::cuda::mem_ptr<int> matrixB = std::get<0>(tempB);
 
