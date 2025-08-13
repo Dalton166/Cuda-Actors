@@ -677,14 +677,76 @@ void run_shared_mmul_perf_test(caf::actor_system& sys, int matrix_size, int num_
 }
 
 
+//-----------------------------------BenchMark Tests
+
+
+// Benchmark driver for the "async (no-shared)" perf test
+void benchmark_async_perf_all(caf::actor_system& sys) {
+  const std::vector<int> actor_counts = {1, 50, 200};
+  const std::vector<int> matrix_sizes = {1024, 2048, 4096};
+
+  std::cout << "=== Async (no-shared) benchmark ===\n";
+  for (int size : matrix_sizes) {
+    for (int num_actors : actor_counts) {
+      std::cout << "[RUN] matrix_size=" << size
+                << " actors=" << num_actors
+                << "  -- starting\n" << std::flush;
+
+      auto t0 = std::chrono::high_resolution_clock::now();
+      // This function blocks until all actors finish and prints per-actor latencies.
+      run_async_mmul_perf_test(sys, size, num_actors);
+      auto t1 = std::chrono::high_resolution_clock::now();
+
+      double total_ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
+      std::cout << "[RESULT] async  matrix_size=" << size
+                << " actors=" << num_actors
+                << " total_time_ms=" << total_ms << "\n\n" << std::flush;
+    }
+  }
+  std::cout << "=== Async (no-shared) benchmark complete ===\n\n";
+}
+
+// Benchmark driver for the "shared-memory" perf test
+void benchmark_shared_perf_all(caf::actor_system& sys) {
+  const std::vector<int> actor_counts = {1, 50, 200};
+  const std::vector<int> matrix_sizes = {1024, 2048, 4096};
+
+  std::cout << "=== Shared-memory benchmark ===\n";
+  for (int size : matrix_sizes) {
+    for (int num_actors : actor_counts) {
+      std::cout << "[RUN] matrix_size=" << size
+                << " actors=" << num_actors
+                << "  -- starting\n" << std::flush;
+
+      auto t0 = std::chrono::high_resolution_clock::now();
+      // This function blocks until all actors finish and prints per-actor latencies.
+      run_shared_mmul_perf_test(sys, size, num_actors);
+      auto t1 = std::chrono::high_resolution_clock::now();
+
+      double total_ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
+      std::cout << "[RESULT] shared matrix_size=" << size
+                << " actors=" << num_actors
+                << " total_time_ms=" << total_ms << "\n\n" << std::flush;
+    }
+  }
+  std::cout << "=== Shared-memory benchmark complete ===\n\n";
+}
+
+
+
 
 void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
 
   //run_mmul_test(sys,100,200);
   //run_async_mmul_test(sys,100,1);
-  run_async_mmul_perf_test(sys,1024,200);
+  //run_async_mmul_perf_test(sys,1024,200);
 
+  // run the async (no-shared) suite:
+  benchmark_async_perf_all(sys);
+
+  // run the shared-memory suite:
+  benchmark_shared_perf_all(sys);
 }
 
 
