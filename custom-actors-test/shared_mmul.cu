@@ -1,37 +1,51 @@
+extern "C" __global__
+void matrixMul(const int* __restrict__ a,
+               const int* __restrict__ b,
+               int* __restrict__ c,
+               int N)
+{
+    const int TILE = 32;
+    int row = blockIdx.y * blockDim.y + threadIdx.y; // global row in C
+    int col = blockIdx.x * blockDim.x + threadIdx.x; // global col in C
 
-extern "C" __global__ 
-void matrixMul(const int *a, const int *b, int *c,int N) {
-  // Compute each thread's global row and column index
-  int row = blockIdx.y * blockDim.y + threadIdx.y;
-  int col = blockIdx.x * blockDim.x + threadIdx.x;
+    __shared__ int s_a[TILE * TILE];
+    __shared__ int s_b[TILE * TILE];
 
-  // Statically allocated shared memory
-  __shared__ int s_a[32*32];
-  __shared__ int s_b[32*32];
+    int acc = 0;
 
-  // Accumulate in temporary variable
-  int tmp = 0;
+    // Sweep tiles across the K dimension
+    for (int i = 0; i < N; i += TILE) {
 
-  // Sweep tile across matrix
-  for (int i = 0; i < N; i += blockDim.x) {
-    // Load in elements for this tile
-    s_a[threadIdx.y * blockDim.x + threadIdx.x] = a[row * N + i + threadIdx.x];
-    s_b[threadIdx.y * blockDim.x + threadIdx.x] = b[(i + threadIdx.y) * N + col];
+        // Each thread loads one element into shared memory (with bounds checks)
+        int aCol = i + threadIdx.x;
+        int bRow = i + threadIdx.y;
 
-// Wait for both tiles to be loaded in before doing computation
-    __syncthreads();
+        // s_a[y, x] = a[row, aCol] if in range, else 0
+        if (row < N && aCol < N)
+            s_a[threadIdx.y * TILE + threadIdx.x] = a[row * N + aCol];
+        else
+            s_a[threadIdx.y * TILE + threadIdx.x] = 0;
 
-    // Do matrix multiplication on the small matrix
-    for (int j = 0; j < blockDim.x; j++) {
-      tmp +=
-          s_a[threadIdx.y * blockDim.x + j] * s_b[j * blockDim.x + threadIdx.x];
+        // s_b[y, x] = b[bRow, col] if in range, else 0
+        if (bRow < N && col < N)
+            s_b[threadIdx.y * TILE + threadIdx.x] = b[bRow * N + col];
+        else
+            s_b[threadIdx.y * TILE + threadIdx.x] = 0;
+
+        __syncthreads();
+
+        // Compute partial dot product for this tile
+        #pragma unroll
+        for (int k = 0; k < TILE; ++k) {
+            acc += s_a[threadIdx.y * TILE + k] *
+                   s_b[k * TILE + threadIdx.x];
+        }
+
+        __syncthreads();
     }
 
-    // Wait for all threads to finish using current tiles before loading in new
-    // ones
-    __syncthreads();
-  }
-
-  // Write back results
-  c[row * N + col] = tmp;
+    // Final write (guarded)
+    if (row < N && col < N)
+        c[row * N + col] = acc;
 }
+
