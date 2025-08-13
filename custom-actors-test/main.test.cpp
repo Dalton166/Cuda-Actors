@@ -65,6 +65,23 @@ void matrixMul(const int* a, const int* b, int* c, int N) {
 )";
 
 
+
+
+#include <chrono>
+#include <iostream>
+
+// Extend your actor state to keep the start time
+struct mmul_actor_state {
+  static inline const char* name = "my_actor";
+  int last_N = 0; // example state variable
+  int id = rand(); // an actor id
+  // per-actor timing start
+  std::chrono::high_resolution_clock::time_point start_time;
+};
+
+
+
+
 //commands classes used to launch kernels 
 using mmulCommand = caf::cuda::command_runner<in<int>,in<int>,out<int>,in<int>>;
 using matrixGenCommand = caf::cuda::command_runner<out<int>,in<int>,in<int>,in<int>>;
@@ -95,16 +112,6 @@ void serial_matrix_multiply(const std::vector<int>& a,
 
 
 
-
-
-
-
-// Actor state
-struct mmul_actor_state {
-  static inline const char* name = "my_actor";
-  int last_N = 0; // example state variable
-  int id = rand(); //an actors id 
-};
 
 // Stateful actor behavior
 caf::behavior mmul_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
@@ -366,6 +373,7 @@ caf::behavior mmul_async_actor_fun(caf::stateful_actor<mmul_actor_state>* self) 
 
     }
 
+
     /*
     auto print_matrix = [N](const std::vector<int>& mat, const std::string& name) {
             std::cout << name << ":\n";
@@ -382,16 +390,11 @@ caf::behavior mmul_async_actor_fun(caf::stateful_actor<mmul_actor_state>* self) 
         print_matrix(matrixB, "Matrix B");
         print_matrix(result, "Result Matrix");
         print_matrix(matrixC, "GPU Result Matrix");
-    */
-
+	*/
     self->quit();
     }
   };
 }
-
-
-
-
 
 
 void run_async_mmul_test(caf::actor_system& sys, int matrix_size, int num_actors) {
@@ -414,11 +417,132 @@ void run_async_mmul_test(caf::actor_system& sys, int matrix_size, int num_actors
 }
 
 
+//--------------------------------Perfomance tests 
+
+// Perf-version of the actor: each actor generates a matrix and sends to itself
+caf::behavior mmul_async_actor_fun_perf(caf::stateful_actor<mmul_actor_state>* self) {
+  return {
+    // 1) start: generate matrices and send them to self
+    [=](int N) {
+      // store start time in actor state (no locks)
+      self->state().start_time = std::chrono::high_resolution_clock::now();
+      self->state().last_N = N;
+
+      caf::cuda::manager& mgr = caf::cuda::manager::get();
+      // use the generator fatbin (as in your code)
+      auto program = mgr.create_program_from_fatbin("../generate_random_matrix.fatbin",
+                                                    "generate_random_matrix");
+
+      int THREADS = 256;
+      int BLOCKS = (N * N + THREADS - 1) / THREADS;
+      caf::cuda::nd_range dim(BLOCKS, 1, 1, THREADS, 1, 1);
+
+      // prepare args (same as your existing code)
+      auto arg_out = caf::cuda::create_out_arg(N * N);
+      auto arg_size = caf::cuda::create_in_arg(N * N);
+      auto arg_seed = caf::cuda::create_in_arg(rand());
+      auto arg_max = caf::cuda::create_in_arg(9999);
+
+      int device_number = rand()%2;
+
+      // launch generator(s) asynchronously and get mem_ptrs back
+      // (we follow your earlier style: run_async returns tuple of mem_ptrs)
+      auto tA = randomMatrix.run_async(program, dim, self->state().id,0,device_number,arg_out, arg_size, arg_seed, arg_max);
+      auto tB = randomMatrix.run_async(program, dim, self->state().id,0,device_number, arg_out, arg_size, arg_seed, arg_max);
+
+      // Extract the mem_ptrs (assume index 0 holds the buffer)
+      auto matA_ptr = std::get<0>(tA);
+      auto matB_ptr = std::get<0>(tB);
+
+      // ensure kernels are done and data is ready
+      if (matA_ptr) matA_ptr->synchronize();
+      if (matB_ptr) matB_ptr->synchronize();
+
+      // send the mem_ptrs to ourselves to trigger the multiply step
+      // (we send device buffers, N)
+      self->mail(matA_ptr, matB_ptr, N).send(self);
+    },
+
+    // 2) multiply: receive mem_ptrs, run the mmul kernel, measure time, print, quit
+    [=](const caf::cuda::mem_ptr<int> matA,
+        const caf::cuda::mem_ptr<int> matB,
+        int N) {
+
+      // prepare mmul program + dims (same as your code)
+      caf::cuda::manager& mgr = caf::cuda::manager::get();
+      auto program = mgr.create_program_from_cubin("../mmul.cubin", "matrixMul");
+      const int THREADS = 32;
+      const int BLOCKS = (N + THREADS - 1) / THREADS;
+      caf::cuda::nd_range dims(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
+
+      // create arguments; use device pointers directly (your style)
+      auto arg1 = matA;
+      auto arg2 = matB;
+      auto arg3 = caf::cuda::create_out_arg(N * N);
+      auto arg4 = caf::cuda::create_in_arg(N);
+
+      // Synchronous launch (blocks until kernel finishes and output is collected).
+      // This represents "actor is done with its result".
+      auto start = std::chrono::high_resolution_clock::now();
+      auto out_bufs = mmulAsync.run(program, dims, self->state().id,0,matA ->deviceNumber(), arg1, arg2, arg3, arg4);
+      auto end = std::chrono::high_resolution_clock::now();
+
+      // compute per-actor latency from the generation start stored in state
+      double actor_latency_ms =
+        std::chrono::duration<double, std::milli>(end - self->state().start_time).count();
+
+      // Print per-actor latency (actor id included)
+      std::cout << "[PERF] Actor id=" << self->state().id
+                << " N=" << N
+                << " latency=" << actor_latency_ms << " ms\n";
+
+      // Done for this actor; exit
+      self->quit();
+    }
+  };
+}
+
+// Driver: spawn actors, start timer, tell each actor to generate/send-to-self, wait, print total time
+void run_async_mmul_perf_test(caf::actor_system& sys, int matrix_size, int num_actors) {
+  if (num_actors < 1) {
+    std::cerr << "[ERROR] Number of actors must be >= 1\n";
+    return;
+  }
+
+  // spawn actors
+  std::vector<caf::actor> actors;
+  actors.reserve(num_actors);
+  for (int i = 0; i < num_actors; ++i) {
+    actors.push_back(sys.spawn(mmul_async_actor_fun_perf));
+  }
+
+  // Total runtime start
+  auto total_start = std::chrono::high_resolution_clock::now();
+
+  // Tell every actor to generate a matrix and route it to itself
+  for (auto& a : actors) {
+    // send N to the actor (actor will generate and self-send)
+    caf::anon_mail(matrix_size).send(a);
+  }
+
+  // wait for all actors to finish
+  sys.await_all_actors_done();
+
+  // Total runtime end & print
+  auto total_end = std::chrono::high_resolution_clock::now();
+  double total_ms = std::chrono::duration<double, std::milli>(total_end - total_start).count();
+  std::cout << "[PERF] Total runtime for " << num_actors << " actors: " << total_ms << " ms\n";
+}
+
+
+
+
 void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
 
   //run_mmul_test(sys,100,200);
-  run_async_mmul_test(sys,100,200);
+  //run_async_mmul_test(sys,100,1);
+  run_async_mmul_perf_test(sys,100,1);
 
 }
 
