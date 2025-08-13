@@ -58,13 +58,13 @@ public:
         std::move(dims),
         actor_id,
         std::forward<Us>(xs)...);
-    return cmd->enqueue();
+    return cmd->base_enqueue();
   }
 
   //this is the asynchronous version of command, it returns a tuple of mem_ptr's
   //the data can then be copied back to host or sent to other actors
  template <class... Us>
-  auto run_async(program_ptr program, nd_range dims, int actor_id,int device_number, Us&&... xs) {
+  std::tuple<mem_ptr<raw_t<Ts>>...> run_async(program_ptr program, nd_range dims, int actor_id,int device_number, Us&&... xs) {
     static_assert(sizeof...(Us) == sizeof...(Ts),
                   "Number of arguments must match Ts...");
     auto cmd = caf::make_counted<base_command_t>(
@@ -73,7 +73,7 @@ public:
         actor_id,
 	device_number,
         std::forward<Us>(xs)...);
-    return cmd->enqueue();
+    return cmd->base_enqueue();
   }
 
 
