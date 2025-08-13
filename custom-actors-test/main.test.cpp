@@ -77,6 +77,7 @@ struct mmul_actor_state {
   int id = rand(); // an actor id
   // per-actor timing start
   std::chrono::high_resolution_clock::time_point start_time;
+  int times = 0;
 };
 
 
@@ -455,11 +456,14 @@ caf::behavior mmul_async_actor_fun_perf(caf::stateful_actor<mmul_actor_state>* s
       auto matB_ptr = std::get<0>(tB);
 
       // ensure kernels are done and data is ready
-      if (matA_ptr) matA_ptr->synchronize();
-      if (matB_ptr) matB_ptr->synchronize();
+      //since we are sending to ourself no need to synchronize, since actors
+      //get their own stream
+      //if (matA_ptr) matA_ptr->synchronize();
+      //if (matB_ptr) matB_ptr->synchronize();
 
       // send the mem_ptrs to ourselves to trigger the multiply step
       // (we send device buffers, N)
+      for (int i =0;i < 20;i++)
       self->mail(matA_ptr, matB_ptr, N).send(self);
     },
 
@@ -496,8 +500,10 @@ caf::behavior mmul_async_actor_fun_perf(caf::stateful_actor<mmul_actor_state>* s
                 << " N=" << N
                 << " latency=" << actor_latency_ms << " ms\n";
 
+      if (self -> state().times++ == 19) {
       // Done for this actor; exit
       self->quit();
+      }
     }
   };
 }
@@ -573,10 +579,13 @@ caf::behavior mmul_shared_async_actor_fun_perf(caf::stateful_actor<mmul_actor_st
       auto matA_ptr = std::get<0>(tA);
       auto matB_ptr = std::get<0>(tB);
 
-      if (matA_ptr) matA_ptr->synchronize();
-      if (matB_ptr) matB_ptr->synchronize();
+      //since we send to ourselves we dont need to synchronize
+      //each actor gets its own stream
+      //if (matA_ptr) matA_ptr->synchronize();
+      //if (matB_ptr) matB_ptr->synchronize();
 
       // send mem_ptrs + N + device_number to self for the shared-memory multiply
+     for(int i = 0; i < 20;i++)
       self->mail(matA_ptr, matB_ptr, N, device_number).send(self);
     },
 
@@ -626,8 +635,12 @@ caf::behavior mmul_shared_async_actor_fun_perf(caf::stateful_actor<mmul_actor_st
                 << " shared_mem=" << shared_mem_bytes
                 << " latency=" << actor_latency_ms << " ms\n";
 
+      
+      if (self -> state().times++ == 19) {
+      // Done for this actor; exit
       self->quit();
-    }
+      }
+     }
   };
 }
 
@@ -670,7 +683,7 @@ void caf_main(caf::actor_system& sys) {
 
   //run_mmul_test(sys,100,200);
   //run_async_mmul_test(sys,100,1);
-  run_async_mmul_perf_test(sys,100,1);
+  run_async_mmul_perf_test(sys,1024,200);
 
 }
 
