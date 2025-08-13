@@ -243,12 +243,12 @@ caf::behavior mmul_async_actor_fun(caf::stateful_actor<mmul_actor_state>* self) 
 	  auto arg4 = caf::cuda::create_in_arg(9999); //max valux
 	  
           auto arg3B = caf::cuda::create_in_arg(rand()); //seed
-	  int device_number= 0;
+	  int device_number= 74;
 
 
 	  //launch kernels and collect their outputs
-	  auto tempA = randomMatrix.run_async(program,dim, self -> state().id,device_number,arg1,arg2,arg3,arg4);
-	  auto tempB = randomMatrix.run_async(program,dim, self -> state().id,device_number,arg1,arg2,arg3B,arg4);
+	  auto tempA = randomMatrix.run_async(program,dim, self -> state().id,arg1,arg2,arg3,arg4,0,device_number);
+	  auto tempB = randomMatrix.run_async(program,dim, self -> state().id,arg1,arg2,arg3B,arg4,0,device_number);
 	  caf::cuda::mem_ptr<int> matrixA =  std::get<0>(tempA);
 	  caf::cuda::mem_ptr<int> matrixB = std::get<0>(tempB);
 
@@ -296,7 +296,7 @@ caf::behavior mmul_async_actor_fun(caf::stateful_actor<mmul_actor_state>* self) 
     auto arg4 = caf::cuda::create_in_arg(N);
 
 
-    auto tempC = mmulAsync.run(program,dims,self -> state().id,device_number,arg1,arg2,arg3,arg4);
+    auto tempC = mmulAsync.run(program,dims,self -> state().id,arg1,arg2,arg3,arg4,0,device_number);
 
     std::vector<int> matrix1 = matrixA -> copy_to_host();
     std::vector<int> matrix2 = matrixB -> copy_to_host();    
@@ -377,7 +377,7 @@ void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
 
   //run_mmul_test(sys,100,200);
-  run_async_mmul_test(sys,2,2);
+  run_async_mmul_test(sys,1,2);
 
 }
 
