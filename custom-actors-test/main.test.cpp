@@ -247,8 +247,8 @@ caf::behavior mmul_async_actor_fun(caf::stateful_actor<mmul_actor_state>* self) 
 
 
 	  //launch kernels and collect their outputs
-	  auto tempA = randomMatrix.run_async(program,dim, self -> state().id,arg1,arg2,arg3,arg4,0,device_number);
-	  auto tempB = randomMatrix.run_async(program,dim, self -> state().id,arg1,arg2,arg3B,arg4,0,device_number);
+	  auto tempA = randomMatrix.run_async(program,dim, self -> state().id,0,device_number,arg1,arg2,arg3,arg4);
+	  auto tempB = randomMatrix.run_async(program,dim, self -> state().id,0,device_number,arg1,arg2,arg3B,arg4);
 	  caf::cuda::mem_ptr<int> matrixA =  std::get<0>(tempA);
 	  caf::cuda::mem_ptr<int> matrixB = std::get<0>(tempB);
 
@@ -296,7 +296,7 @@ caf::behavior mmul_async_actor_fun(caf::stateful_actor<mmul_actor_state>* self) 
     auto arg4 = caf::cuda::create_in_arg(N);
 
 
-    auto tempC = mmulAsync.run(program,dims,self -> state().id,arg1,arg2,arg3,arg4,0,device_number);
+    auto tempC = mmulAsync.run(program,dims,self -> state().id,0,device_number,arg1,arg2,arg3,arg4);
 
     std::vector<int> matrix1 = matrixA -> copy_to_host();
     std::vector<int> matrix2 = matrixB -> copy_to_host();    
