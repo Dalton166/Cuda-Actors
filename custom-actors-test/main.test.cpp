@@ -236,7 +236,7 @@ caf::behavior mmul_async_actor_fun(caf::stateful_actor<mmul_actor_state>* self) 
 	 */
         caf::cuda::manager& mgr = caf::cuda::manager::get();
         //create the program and configure the dimesnions of the kernel
-        auto program = mgr.create_program_from_cubin("../mmul.cubin","generate_random_matrix");
+        auto program = mgr.create_program_from_fatbin("../generate_random_matrix.fatbin","generate_random_matrix");
 	int THREADS = 256;
 	int BLOCKS = (N*N + THREADS - 1) / THREADS;
   	caf::cuda::nd_range dim(BLOCKS,1, 1, THREADS,1, 1);
@@ -244,7 +244,7 @@ caf::behavior mmul_async_actor_fun(caf::stateful_actor<mmul_actor_state>* self) 
 	//tag the arguments so that caf::cuda knows what to do with them	
          auto arg1 = caf::cuda::create_out_arg(N*N); //output buffer indicate its size, caf::cuda will handle the rest
           auto arg2 = caf::cuda::create_in_arg(N*N); //matrix size
-          auto arg3 = caf::cuda::create_in_arg(1234); //seed
+          auto arg3 = caf::cuda::create_in_arg(rand()); //seed
 	  auto arg4 = caf::cuda::create_in_arg(9999); //max valux
 	  
 	  int device_number= 0;
@@ -326,6 +326,7 @@ caf::behavior mmul_async_actor_fun(caf::stateful_actor<mmul_actor_state>* self) 
     else {
         std::cout << "actor with id " << self->state().id << " references did not match\n";
 
+    }
         auto print_matrix = [N](const std::vector<int>& mat, const std::string& name) {
             std::cout << name << ":\n";
             for (int i = 0; i < N; ++i) {
@@ -341,7 +342,7 @@ caf::behavior mmul_async_actor_fun(caf::stateful_actor<mmul_actor_state>* self) 
         print_matrix(matrixB, "Matrix B");
         print_matrix(result, "Result Matrix");
         print_matrix(matrixC, "GPU Result Matrix");
-    }
+    
 
     self->quit();
     }
@@ -380,7 +381,7 @@ void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
 
   //run_mmul_test(sys,100,200);
-  run_async_mmul_test(sys,5,200);
+  run_async_mmul_test(sys,2,2);
 
 }
 
