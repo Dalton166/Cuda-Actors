@@ -75,7 +75,7 @@ public:
   }
 
   void create_command(program_ptr program, Ts&&... xs) {
-    using command_t = command<caf::actor, raw_t<Ts>...>;
+    using command_t = command<caf::actor, Ts...>;
     auto rp = make_response_promise();
     auto cmd = make_counted<command_t>(
       program,
