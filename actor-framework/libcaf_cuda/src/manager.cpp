@@ -45,7 +45,7 @@ program_ptr manager::create_program(const char * kernel,
 //this actually doesnt even work do not use 
 program_ptr manager::create_program_from_ptx(const std::string& filename,
                                              const char* kernel_name,
-                                             device_ptr device) {
+                                             [[maybe_unused]] device_ptr device) {
   static std::mutex global_ptx_mutex_map_guard;
   static std::map<std::string, std::shared_ptr<std::mutex>> ptx_mutex_map;
 
@@ -82,7 +82,7 @@ program_ptr manager::create_program_from_ptx(const std::string& filename,
 
 program_ptr manager::create_program_from_cubin(const std::string& filename,
                                                const char* kernel_name,
-                                               device_ptr device) {
+                                               [[maybe_unused]] device_ptr device) {
   // Open the cubin file in binary mode
   std::ifstream in(filename, std::ios::binary);
   if (!in)
