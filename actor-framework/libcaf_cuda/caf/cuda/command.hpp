@@ -130,7 +130,7 @@ protected:
   int actor_id;
   device_ptr dev_;
   std::tuple<Ts ...> kernel_args;
-  int shared_memory_;
+  int shared_memory_ = 0;
 };
 
 // ===========================================================================
