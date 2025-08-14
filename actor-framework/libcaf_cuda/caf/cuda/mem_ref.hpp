@@ -32,8 +32,8 @@ public:
       access_(access),
       device_id(device_id),
       context_id(context_id),
-      ctx(context),
       stream_(stream),
+      ctx(context),
       is_scalar_(false)
   {
     if (memory_ == 0)
@@ -52,8 +52,8 @@ public:
       access_(access),
       device_id(device_id),
       context_id(context_id),
-      ctx(context),
       stream_(stream),
+      ctx(context),
       is_scalar_(true),
       host_scalar_(scalar_value)
   {
