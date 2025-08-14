@@ -6,6 +6,12 @@
 #include <iostream>
 #include "caf/cuda/helpers.hpp"
 
+
+/*
+ * A file that was supposed to be actor facade custom behaviors
+ * but due to time constraints never got implemented,
+ * is a nice idea however and could be useful someday
+ */
 namespace caf::cuda {
 
 namespace detail {
