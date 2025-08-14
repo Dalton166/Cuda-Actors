@@ -123,7 +123,7 @@ public:
     std::apply([&](auto&&... mem) {
       (([&] {
         if (mem && (mem->access() == OUT || mem->access() == IN_OUT)) {
-          using T = typename std::decay_t<decltype(*mem)>::value_type;
+          //using T = typename std::decay_t<decltype(*mem)>::value_type;
           result.emplace_back(output_buffer{buffer_variant{mem->copy_to_host()}});
         }
       })(), ...);
