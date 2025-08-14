@@ -171,7 +171,6 @@ public:
 
   caf::actor_system& system() { return system_; }
 
-  CUcontext get_context_by_id(int device_id, int context_id);
   device_ptr find_device(int id);
 
 private:
