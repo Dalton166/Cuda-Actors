@@ -27,7 +27,6 @@
 #include "caf/cuda/actor_facade.hpp"
 #include "caf/cuda/program.hpp"
 #include "caf/cuda/nd_range.hpp"
-#include "caf/cuda/behavior.hpp"
 #include <type_traits>
 
 namespace caf {
@@ -51,20 +50,6 @@ struct cuda_spawn_helper {
 			    dims,
 			    std::forward<Ts>(xs)...));
   }
-
-   //spawns in an actor facade given a behavior
-   actor operator()(
-		  actor_system * sys,
-		  actor_config&& cfg,
-		  caf::cuda::behavior_ptr behavior,
-                   Ts&&... xs) const {
-    return actor_cast<actor>(impl::create(
-			    sys,
-			    std::move(cfg),              
-			    behavior,
-			    std::forward<Ts>(xs)...));
-  }
-
 
 
 
