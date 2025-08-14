@@ -11,6 +11,16 @@
   #define CAF_CUDA_EXPORT __attribute__((visibility("default")))
 #endif
 
+
+//memory access flags, required for identifying which
+//gpu buffers are input and output buffers
+#define IN 0 
+#define IN_OUT 1
+#define OUT 2
+#define NOT_IN_USE -1
+
+
+
 namespace caf::cuda {
 
 // Forward declarations and intrusive_ptr aliases
@@ -279,6 +289,14 @@ template <typename T>
 struct raw_type<in_out<T>> {
   using type = T;
 };
+
+template <typename T>
+struct raw_type<caf::cuda::mem_ptr<T>> {
+  using type = T;
+};
+
+
+
 
 template <typename T>
 using raw_t = typename raw_type<T>::type;

@@ -20,6 +20,7 @@ public:
                  static_cast<size_t>(blockY),
                  static_cast<size_t>(blockZ)} {}
 
+
   // Constructor from vectors
   nd_range(const dim_vec& grid, const dim_vec& block) {
     if (grid.size() != 3 || block.size() != 3) {
@@ -28,6 +29,12 @@ public:
     gridDim = grid;
     blockDim = block;
   }
+
+
+  //default constructor
+  //TODO fix issue where actors store a non in use ndrange
+  nd_range() = default;
+
 
   // Getters for grid dimensions
   size_t getGridDimX() const { return gridDim[0]; }
