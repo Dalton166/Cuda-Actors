@@ -150,7 +150,7 @@ static caf::actor create(
 	  throw std::invalid_argument("gpu actor shutting down before it was requested");
     }
 
-    std::cout << "Deleting\n";
+    //std::cout << "Deleting\n";
     plat->release_streams_for_actor(actor_id);
   }
 
@@ -314,7 +314,7 @@ private:
  //schedules an actor for execution 
  resumable::resume_result resume(::caf::scheduler* sched, size_t max_throughput) override {
 
-	 std::cout << "Actor with id " << actor_id << "Is calling resume\n";	 
+	 //std::cout << "Actor with id " << actor_id << "Is calling resume\n";	 
 if (resuming_flag_.test_and_set(std::memory_order_acquire)) {
     return resumable::resume_later;
   }
@@ -341,10 +341,10 @@ if (resuming_flag_.test_and_set(std::memory_order_acquire)) {
     current_mailbox_element(msg.get());
 
     if (msg->content().match_elements<kernel_done_atom>()) {
-	    std::cout << "Received kernel done\n";
+	    //std::cout << "Received kernel done\n";
       if (--pending_promises_ == 0 && shutdown_requested_) {
         quit(exit_reason::user_shutdown);
-	std::cout << "Exiting\n";
+	//std::cout << "Exiting\n";
         return resumable::done;
       }
       current_mailbox_element(nullptr);
@@ -353,12 +353,12 @@ if (resuming_flag_.test_and_set(std::memory_order_acquire)) {
     }
 
     if (msg->content().match_elements<exit_msg>()) {
-	    std::cout << "Received exit message\n";
+	    //std::cout << "Received exit message\n";
       auto exit = msg->content().get_as<exit_msg>(0);
       shutdown_requested_ = true;
       if (--pending_promises_ == 0) {
         quit(static_cast<exit_reason>(exit.reason.code()));
-	std::cout << "Exiting\n";
+	//std::cout << "Exiting\n";
         return resumable::done;
       } else {
         current_mailbox_element(nullptr);
@@ -366,19 +366,19 @@ if (resuming_flag_.test_and_set(std::memory_order_acquire)) {
       }
     }
 
-    std::cout << "actor with id "  << actor_id  <<  " Calling handle message\n";
+    //std::cout << "actor with id "  << actor_id  <<  " Calling handle message\n";
     handle_message(msg->content());
     pending_promises_--;
     current_mailbox_element(nullptr);
     ++processed;
-    std::cout << "actor with id " << actor_id <<  " Done handling message\n";
+    //std::cout << "actor with id " << actor_id <<  " Done handling message\n";
   }
 
   // If there's still more work, return resume_later
   if (!mailbox_.empty())
     return resumable::resume_later;
 
-  std::cout << "Running it back with shutdown = " << shutdown_requested_ << "\n" ;
+  //std::cout << "Running it back with shutdown = " << shutdown_requested_ << "\n" ;
   return shutdown_requested_ ? resumable::resume_later : resumable::done;
 }
 
@@ -395,7 +395,7 @@ if (resuming_flag_.test_and_set(std::memory_order_acquire)) {
     if (was_empty && sched) {
       sched->schedule(this);
     }
-    std::cout << "actor with id " << actor_id <<  "Enqueuing message\n";
+    //std::cout << "actor with id " << actor_id <<  "Enqueuing message\n";
     return true;
   }
 
@@ -403,7 +403,7 @@ if (resuming_flag_.test_and_set(std::memory_order_acquire)) {
     if (!lazy && sched) {
       sched->schedule(this);
 
-    std::cout << "actor with id " << actor_id <<  "scheduling\n";
+    //std::cout << "actor with id " << actor_id <<  "scheduling\n";
     }
   }
 
@@ -415,7 +415,7 @@ if (resuming_flag_.test_and_set(std::memory_order_acquire)) {
 
   void force_close_mailbox() override  {
     
-    std::cout << "actor with id " << actor_id <<  "Closing mailbox\n";
+    //std::cout << "actor with id " << actor_id <<  "Closing mailbox\n";
     while (!mailbox_.empty()) {
       mailbox_.pop();
     }
@@ -423,7 +423,7 @@ if (resuming_flag_.test_and_set(std::memory_order_acquire)) {
 
 
  void quit(exit_reason reason) {
-	  std::cout << "Quit called\n";
+	  //std::cout << "Quit called\n";
    self_ = nullptr; 
    force_close_mailbox();
     current_mailbox_element(nullptr);
