@@ -20,7 +20,7 @@ using namespace caf::cuda;
 
 int test_actor_id = 0;
 
-void test_platform(actor_system& sys, platform_ptr plat) {
+void test_platform([[maybe_unused]] actor_system& sys, [[maybe_unused]] platform_ptr plat) {
     std::cout << "\n=== Test Platform ===\n";
     
     std::cout << "Test 1: Creating platform...\n";
@@ -44,7 +44,7 @@ void test_platform(actor_system& sys, platform_ptr plat) {
     std::cout << "---- Platform tests passed ----\n";
 }
 
-void test_device(actor_system& sys, platform_ptr plat) {
+void test_device([[maybe_unused]] actor_system& sys, [[maybe_unused]] platform_ptr plat) {
     std::cout << "\n=== Test Device ===\n";
     
     std::cout << "Test 1: Checking device properties...\n";
@@ -76,7 +76,7 @@ void test_device(actor_system& sys, platform_ptr plat) {
     std::cout << "---- Device tests passed ----\n";
 }
 
-void test_manager(actor_system& sys, platform_ptr plat) {
+void test_manager([[maybe_unused]] actor_system& sys, [[maybe_unused]] platform_ptr plat) {
     std::cout << "\n=== Test Manager ===\n";
     
     std::cout << "Test 1: Initializing manager...\n";
@@ -111,7 +111,7 @@ void test_manager(actor_system& sys, platform_ptr plat) {
     std::cout << "---- Manager tests passed ----\n";
 }
 
-void test_program(actor_system& sys, platform_ptr plat) {
+void test_program([[maybe_unused]] actor_system& sys, [[maybe_unused]] platform_ptr plat) {
     std::cout << "\n=== Test Program ===\n";
     
     std::cout << "Test 1: Checking program properties...\n";
@@ -128,7 +128,7 @@ void test_program(actor_system& sys, platform_ptr plat) {
     std::cout << "---- Program tests passed ----\n";
 }
 
-void test_create_program(actor_system& sys, platform_ptr plat) {
+void test_create_program([[maybe_unused]] actor_system& sys, [[maybe_unused]] platform_ptr plat) {
     std::cout << "\n=== Test Create Program ===\n";
 
     manager& mgr = manager::get();
@@ -181,7 +181,7 @@ void test_create_program(actor_system& sys, platform_ptr plat) {
     std::cout << "---- Create Program tests passed ----\n";
 }
 
-void test_mem_ref(actor_system& sys, platform_ptr plat) {
+void test_mem_ref([[maybe_unused]] actor_system& sys, [[maybe_unused]] platform_ptr plat) {
     std::cout << "\n=== Test Mem Ref ===\n";
     
     manager& mgr = manager::get();
@@ -232,13 +232,13 @@ void test_mem_ref(actor_system& sys, platform_ptr plat) {
     std::cout << "---- Mem Ref tests passed ----\n";
 }
 
-void test_command(actor_system& sys, platform_ptr plat) {
+void test_command([[maybe_unused]] actor_system& sys, [[maybe_unused]] platform_ptr plat) {
     std::cout << "\n=== Test Command ===\n";
     std::cout << "Test 1: Command test skipped due to response_promise issue.\n";
     std::cout << "---- Command tests passed (skipped) ----\n";
 }
 
-void test_mem_ref_extended(actor_system& sys, platform_ptr plat) {
+void test_mem_ref_extended([[maybe_unused]] actor_system& sys, [[maybe_unused]] platform_ptr plat) {
     std::cout << "\n=== Test Mem Ref Extended ===\n";
     
     manager& mgr = manager::get();
@@ -286,7 +286,7 @@ void test_mem_ref_extended(actor_system& sys, platform_ptr plat) {
     std::cout << "---- Mem Ref Extended tests passed ----\n";
 }
 
-void test_argument_translation(actor_system& sys, platform_ptr plat) {
+void test_argument_translation([[maybe_unused]] actor_system& sys, [[maybe_unused]] platform_ptr plat) {
     std::cout << "\n=== Test Argument Translation ===\n";
     
     manager& mgr = manager::get();
@@ -321,7 +321,7 @@ void test_argument_translation(actor_system& sys, platform_ptr plat) {
     std::cout << "---- Argument Translation tests passed ----\n";
 }
 
-void test_kernel_launch(actor_system& sys, platform_ptr plat) {
+void test_kernel_launch([[maybe_unused]] actor_system& sys, [[maybe_unused]] platform_ptr plat) {
     std::cout << "\n=== Test Kernel Launch ===\n";
     
     manager& mgr = manager::get();
@@ -368,7 +368,7 @@ void test_kernel_launch(actor_system& sys, platform_ptr plat) {
     std::cout << "---- Kernel Launch tests passed ----\n";
 }
 
-void test_kernel_launch_direct(actor_system& sys, platform_ptr plat) {
+void test_kernel_launch_direct([[maybe_unused]] actor_system& sys, [[maybe_unused]] platform_ptr plat) {
     std::cout << "\n=== Test Kernel Launch Direct ===\n";
     
     manager& mgr = manager::get();
@@ -429,7 +429,7 @@ void test_kernel_launch_direct(actor_system& sys, platform_ptr plat) {
     std::cout << "---- Kernel Launch Direct tests passed ----\n";
 }
 
-void test_kernel_launch_multi_buffer(actor_system& sys, platform_ptr plat) {
+void test_kernel_launch_multi_buffer([[maybe_unused]] actor_system& sys, [[maybe_unused]] platform_ptr plat) {
   std::cout << "\n=== Test Kernel Launch Multi Buffer ===\n";
 
   manager& mgr = manager::get();
@@ -808,7 +808,7 @@ void test_add_scalar_to_buffer() {
 
 
 
-void test_main(caf::actor_system& sys) {
+void test_main([[maybe_unused]] actor_system& sys) {
     std::cout << "\n===== Running CUDA CAF Tests =====\n";
     manager::init(sys);
     platform_ptr plat = platform::create();
