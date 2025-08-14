@@ -23,13 +23,6 @@
   #define CAF_CUDA_EXPORT __attribute__((visibility("default")))
 #endif
 
-//memory access flags, required for identifying which
-//gpu buffers are input and output buffers
-#define IN 0 
-#define IN_OUT 1
-#define OUT 2
-#define NOT_IN_USE -1
-
 //helper function to check errors
 void inline check(CUresult result, const char* msg) {
     if (result != CUDA_SUCCESS) {
@@ -196,26 +189,21 @@ CAF_BEGIN_TYPE_ID_BLOCK(cuda, caf::first_custom_type_id)
   CAF_ADD_TYPE_ID(cuda, (buffer_variant))
   CAF_ADD_TYPE_ID(cuda, (output_buffer))
   CAF_ADD_TYPE_ID(cuda, (std::vector<output_buffer>))
-  // Your atoms — atoms count as types too!
+  CAF_ADD_TYPE_ID(cuda,(caf::cuda::mem_ptr<int>))  
+  CAF_ADD_TYPE_ID(cuda,(caf::cuda::mem_ptr<float>))  
+  CAF_ADD_TYPE_ID(cuda,(caf::cuda::mem_ptr<double>))  
+  CAF_ADD_TYPE_ID(cuda,(caf::cuda::mem_ptr<char>))  
+  
+  //atoms 
   CAF_ADD_ATOM(cuda, kernel_done_atom)
+  CAF_ADD_ATOM(cuda, become)
+  CAF_ADD_ATOM(cuda, launch_behavior)
+  CAF_ADD_ATOM(cuda, update_behavior)
 
 CAF_END_TYPE_ID_BLOCK(cuda)
 
-namespace caf::cuda {
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(caf::cuda::mem_ptr<int>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(caf::cuda::mem_ptr<float>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(caf::cuda::mem_ptr<double>)
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(caf::cuda::mem_ptr<char>)
 
-inline std::string opencl_error(int /*err*/) {
-  return "CUDA support disabled";
-}
-
-inline std::string event_status(void* /*event*/) {
-  return "CUDA support disabled";
-}
-
-//For right now this gets commented out to fix a compiler error but may be useful 
-//later on
-//inline std::ostream& operator<<(std::ostream& os, int /*device_type*/) {
-  //os << "CUDA disabled";
- // return os;
-//}
-
-} // namespace caf::cuda

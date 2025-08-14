@@ -27,6 +27,7 @@
 #include "caf/cuda/actor_facade.hpp"
 #include "caf/cuda/program.hpp"
 #include "caf/cuda/nd_range.hpp"
+#include "caf/cuda/behavior.hpp"
 #include <type_traits>
 
 namespace caf {
@@ -36,66 +37,6 @@ template <bool PassConfig, class... Ts>
 struct cuda_spawn_helper {
   using impl = cuda::actor_facade<PassConfig, std::decay_t<Ts>...>;
  
-  
- /*as for right now, input and output mapping is disabled
-  * will eventually/likely have to reinstall this later on
-  * as a consquence all of these operators are disabled as well
- // using map_in_fun = typename impl::input_mapping;
- // using map_out_fun = typename impl::output_mapping;
-
-  actor operator()(actor_system& sys, const opencl::program_ptr& p,
-                   const char* fn, const opencl::nd_range& range,
-                   Ts&&... xs) const {
-    return actor_cast<actor>(impl::create(sys, p, fn, range,
-                                          map_in_fun{}, map_out_fun{},
-                                          std::forward<Ts>(xs)...));
-  }
-
-  actor operator()(actor_system& sys, const opencl::program_ptr& p,
-                   const char* fn, const opencl::nd_range& range,
-                   map_in_fun map_input, Ts&&... xs) const {
-    return actor_cast<actor>(impl::create(sys, p, fn, range,
-                                          std::move(map_input),
-                                          map_out_fun{},
-                                          std::forward<Ts>(xs)...));
-  }
-
-  actor operator()(actor_system& sys, const opencl::program_ptr& p,
-                   const char* fn, const opencl::nd_range& range,
-                   map_in_fun map_input, map_out_fun map_output,
-                   Ts&&... xs) const {
-    return actor_cast<actor>(impl::create(sys, p, fn, range,
-                                          std::move(map_input),
-					  std::move(map_output),
-                                          std::forward<Ts>(xs)...));
-  }
-
-  */
-
-  /*Literally just a test to see that actor_facade can still spawn
-   * takes no arguments and returns an actor facade that will just say
-   * hello world
-   */
-
-
-
-  /*
-   * Note that you can only move the cfg file
-   * so if we need to reuse the config 
-   * we must spawn in another using actor_config cfg{} later on if needed
-   *
-  actor operator()(
-		  actor_system &sys,
-		  actor_config&& cfg,
-                   Ts&&... xs) const {
-    return actor_cast<actor>(impl::create(
-			    sys,
-			    std::move(cfg),              
-			    std::forward<Ts>(xs)...));
-  }
-
-  */
-
   //this operator should spawn in a facade with a program
   actor operator()(
 		  actor_system * sys,
@@ -111,7 +52,18 @@ struct cuda_spawn_helper {
 			    std::forward<Ts>(xs)...));
   }
 
-
+   //spawns in an actor facade given a behavior
+   actor operator()(
+		  actor_system * sys,
+		  actor_config&& cfg,
+		  caf::cuda::behavior_ptr behavior,
+                   Ts&&... xs) const {
+    return actor_cast<actor>(impl::create(
+			    sys,
+			    std::move(cfg),              
+			    behavior,
+			    std::forward<Ts>(xs)...));
+  }
 
 
 

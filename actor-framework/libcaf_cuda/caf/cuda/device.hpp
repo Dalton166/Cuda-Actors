@@ -8,6 +8,7 @@
 #include <iostream>
 #include <unordered_map>
 #include <shared_mutex>
+#include <tuple>
 #include <mutex>
 
 #include <caf/intrusive_ptr.hpp>
@@ -18,6 +19,7 @@
 #include "caf/cuda/global.hpp"
 #include "caf/cuda/types.hpp"
 #include "caf/cuda/StreamPool.hpp"
+#include "caf/cuda/mem_ref.hpp"
 
 namespace caf::cuda {
 
@@ -59,6 +61,8 @@ public:
     stream_table_.release_stream(actor_id);
   }
 
+
+  // Overloads for make_arg using actor_id
   template <typename T>
   mem_ptr<T> make_arg(in<T> arg, int actor_id) {
     return global_argument(arg, actor_id, IN);
@@ -74,7 +78,98 @@ public:
     return scratch_argument(arg, actor_id, OUT);
   }
 
-  // Launch kernel with wrapper args
+
+  // Overloads for make_arg using CUstream directly
+
+  template <typename T>
+  mem_ptr<T> make_arg(in<T> arg, CUstream stream) {
+     return global_argument(arg, stream, IN);
+   }
+
+
+  template <typename T>
+  mem_ptr<T> make_arg(in_out<T> arg, CUstream stream) {
+    return global_argument(arg, stream, IN_OUT);
+   }
+
+  template <typename T>
+  mem_ptr<T> make_arg(out<T> arg, CUstream stream) {
+  return scratch_argument(arg, stream, OUT);
+  }
+
+
+
+  //handling the case that a mem_ref is passed in
+  //should I force synchronization onto the same stream always?
+  template <typename T>
+  mem_ptr<T> make_arg(mem_ptr<T> arg, CUstream stream) {
+  
+	  if (arg -> deviceID() != id_) {
+	  
+	throw std::runtime_error("Error memory on device " + std::to_string(arg->deviceID()) +
+                         " attempted to be used on a different device, device id was " + std::to_string(id_) + "\n");
+
+	  }
+	  //just return the arg back
+	  return arg; 
+  }
+
+
+
+
+  template <typename... Ts>
+  std::vector<output_buffer>  collect_output_buffers_helper(const std::tuple<Ts...>& args) {
+    std::vector<output_buffer> result;
+    std::apply([&](auto&&... mem) {
+      (([&] {
+        if (mem && (mem->access() == OUT || mem->access() == IN_OUT)) {
+          using T = typename std::decay_t<decltype(*mem)>::value_type;
+          result.emplace_back(output_buffer{buffer_variant{mem->copy_to_host()}});
+        }
+      })(), ...);
+    }, args);
+    return result;
+  }
+
+
+
+
+  //launches a kernel using wrapper types, in, in_out and out as arguments
+  //and returns a tuple of mem ref's that hold device memory  
+  	  template <typename... Args>
+	  std::tuple<mem_ptr<raw_t<Args>>...>
+	  launch_kernel_mem_ref(CUfunction kernel,
+                      const nd_range& range,
+                      std::tuple<Args...> args,
+                      int actor_id,
+		      int shared_mem //in bytes
+		      ) {
+  // Step 1: Allocate mem_ref<T> for each wrapper type
+  
+   CUstream stream = get_stream_for_actor(actor_id);
+   auto mem_refs = std::apply([&](auto&&... arg) {
+    return std::make_tuple(make_arg(std::forward<decltype(arg)>(arg), stream)...);
+  }, args);
+
+  // Step 2: Prepare kernel argument pointers
+  auto kernel_args = prepare_kernel_args(mem_refs);
+
+  // Step 3: Launch kernel
+  CHECK_CUDA(cuCtxPushCurrent(getContext()));
+  launch_kernel_internal(kernel, range, stream, kernel_args.ptrs.data(),shared_mem);
+  CHECK_CUDA(cuCtxPopCurrent(nullptr));
+
+  // Step 4: Clean up kernel argument pointers
+  cleanup_kernel_args(kernel_args);
+
+  // Step 5: Return tuple of mem_ref<T>...
+  return mem_refs;
+}
+
+
+
+  // Launch kernel with args that have already been allocated 
+  // on the device via mem_ref<T>
   template <typename... Ts>
   std::vector<output_buffer> launch_kernel(CUfunction kernel,
                                            const nd_range& range,
@@ -126,6 +221,14 @@ public:
     pack.allocated_device_ptrs.clear();
   }
 
+
+  template <typename... Ts>
+  std::vector<output_buffer> collect_output_buffers(const std::tuple<Ts...>& args) {
+   return collect_output_buffers_helper(args);
+  }
+
+
+
   // === Old method for legacy tests ===
   template <typename... Ts>
   std::vector<void*> extract_kernel_args(const std::tuple<Ts...>& t) {
@@ -141,61 +244,92 @@ private:
   std::mutex stream_mutex_;
 
   // === Memory handling ===
-  template <typename T>
-  mem_ptr<T> global_argument(const in<T>& arg, int actor_id, int access) {
-    CUstream stream = get_stream_for_actor(actor_id);
-    if (arg.is_scalar()) {
-      return caf::intrusive_ptr<mem_ref<T>>(
-        new mem_ref<T>(arg.getscalar(), access, id_, 0, stream));
-    }
-    size_t bytes = arg.size() * sizeof(T);
-    CUdeviceptr dev_ptr;
-    CHECK_CUDA(cuCtxPushCurrent(getContext()));
-    CHECK_CUDA(cuMemAlloc(&dev_ptr, bytes));
-    CHECK_CUDA(cuMemcpyHtoDAsync(dev_ptr, arg.data(), bytes, stream));
-    CHECK_CUDA(cuCtxPopCurrent(nullptr));
-    return caf::intrusive_ptr<mem_ref<T>>(
-      new mem_ref<T>(arg.size(), dev_ptr, access, id_, 0, stream));
-  }
+  
+  //----------------------------------------------
+// Helpers for actor_id version
+//----------------------------------------------
 
-  template <typename T>
-  mem_ptr<T> global_argument(const in_out<T>& arg, int actor_id, int access) {
-    CUstream stream = get_stream_for_actor(actor_id);
-    if (arg.is_scalar()) {
-      return caf::intrusive_ptr<mem_ref<T>>(
-        new mem_ref<T>(arg.getscalar(), access, id_, 0, stream));
-    }
-    size_t bytes = arg.size() * sizeof(T);
-    CUdeviceptr dev_ptr;
-    CHECK_CUDA(cuCtxPushCurrent(getContext()));
-    CHECK_CUDA(cuMemAlloc(&dev_ptr, bytes));
-    CHECK_CUDA(cuMemcpyHtoDAsync(dev_ptr, arg.data(), bytes, stream));
-    CHECK_CUDA(cuCtxPopCurrent(nullptr));
-    return caf::intrusive_ptr<mem_ref<T>>(
-      new mem_ref<T>(arg.size(), dev_ptr, access, id_, 0, stream));
-  }
+// allocate a readonly input buffer on the GPU
+template <typename T>
+mem_ptr<T> global_argument(const in<T>& arg, int actor_id, int access) {
+  CUstream stream = get_stream_for_actor(actor_id);
+  return global_argument(arg, stream, access);
+}
 
-  template <typename T>
-  mem_ptr<T> scratch_argument(const out<T>& arg, int actor_id, int access) {
-    size_t size = arg.is_scalar() ? arg.getscalar() : arg.size();
-    CUdeviceptr dev_ptr;
-    CUstream stream = get_stream_for_actor(actor_id);
-    CHECK_CUDA(cuCtxPushCurrent(getContext()));
-    CHECK_CUDA(cuMemAlloc(&dev_ptr, size * sizeof(T)));
-    CHECK_CUDA(cuCtxPopCurrent(nullptr));
-    return caf::intrusive_ptr<mem_ref<T>>(
-      new mem_ref<T>(size, dev_ptr, access, id_, 0, stream));
-  }
+// allocate a read/write input buffer on the GPU
+template <typename T>
+mem_ptr<T> global_argument(const in_out<T>& arg, int actor_id, int access) {
+  CUstream stream = get_stream_for_actor(actor_id);
+  return global_argument(arg, stream, access);
+}
 
-  // === Kernel launch core ===
+// allocate an output buffer on the GPU
+template <typename T>
+mem_ptr<T> scratch_argument(const out<T>& arg, int actor_id, int access) {
+  CUstream stream = get_stream_for_actor(actor_id);
+  return scratch_argument(arg, stream, access);
+}
+
+//----------------------------------------------
+// Helpers for CUstream version
+//----------------------------------------------
+
+// allocate a readonly input buffer on the GPU
+template <typename T>
+mem_ptr<T> global_argument(const in<T>& arg, CUstream stream, int access) {
+  if (arg.is_scalar()) {
+    return caf::intrusive_ptr<mem_ref<T>>(
+      new mem_ref<T>(arg.getscalar(), access, id_, 0, getContext(), stream));
+  }
+  size_t bytes = arg.size() * sizeof(T);
+  CUdeviceptr dev_ptr;
+  CHECK_CUDA(cuCtxPushCurrent(getContext()));
+  CHECK_CUDA(cuMemAlloc(&dev_ptr, bytes));
+  CHECK_CUDA(cuMemcpyHtoDAsync(dev_ptr, arg.data(), bytes, stream));
+  CHECK_CUDA(cuCtxPopCurrent(nullptr));
+  return caf::intrusive_ptr<mem_ref<T>>(
+    new mem_ref<T>(arg.size(), dev_ptr, access, id_, 0, getContext(), stream));
+}
+
+// allocate a read/write input buffer on the GPU
+template <typename T>
+mem_ptr<T> global_argument(const in_out<T>& arg, CUstream stream, int access) {
+  if (arg.is_scalar()) {
+    return caf::intrusive_ptr<mem_ref<T>>(
+      new mem_ref<T>(arg.getscalar(), access, id_, 0, getContext(), stream));
+  }
+  size_t bytes = arg.size() * sizeof(T);
+  CUdeviceptr dev_ptr;
+  CHECK_CUDA(cuCtxPushCurrent(getContext()));
+  CHECK_CUDA(cuMemAlloc(&dev_ptr, bytes));
+  CHECK_CUDA(cuMemcpyHtoDAsync(dev_ptr, arg.data(), bytes, stream));
+  CHECK_CUDA(cuCtxPopCurrent(nullptr));
+  return caf::intrusive_ptr<mem_ref<T>>(
+    new mem_ref<T>(arg.size(), dev_ptr, access, id_, 0, getContext(), stream));
+}
+
+// allocate an output buffer on the GPU
+template <typename T>
+mem_ptr<T> scratch_argument(const out<T>& arg, CUstream stream, int access) {
+  size_t size = arg.is_scalar() ? arg.getscalar() : arg.size();
+  CUdeviceptr dev_ptr;
+  CHECK_CUDA(cuCtxPushCurrent(getContext()));
+  CHECK_CUDA(cuMemAlloc(&dev_ptr, size * sizeof(T)));
+  CHECK_CUDA(cuCtxPopCurrent(nullptr));
+  return caf::intrusive_ptr<mem_ref<T>>(
+    new mem_ref<T>(size, dev_ptr, access, id_, 0, getContext(), stream));
+}  
+
+// === Kernel launch core ===
   void launch_kernel_internal(CUfunction kernel,
                               const nd_range& range,
                               CUstream stream,
-                              void** args) {
+                              void** args,
+			      int shared_mem = 0) {
     CUresult result = cuLaunchKernel(kernel,
                                      range.getGridDimX(), range.getGridDimY(), range.getGridDimZ(),
                                      range.getBlockDimX(), range.getBlockDimY(), range.getBlockDimZ(),
-                                     0, stream, args, nullptr);
+                                     shared_mem, stream, args, nullptr);
     if (result != CUDA_SUCCESS) {
       const char* err_name = nullptr;
       cuGetErrorName(result, &err_name);
@@ -203,21 +337,6 @@ private:
                                (err_name ? err_name : "unknown error"));
     }
   }
-
-  template <typename... Ts>
-  std::vector<output_buffer> collect_output_buffers(const std::tuple<Ts...>& args) {
-    std::vector<output_buffer> result;
-    std::apply([&](auto&&... mem) {
-      (([&] {
-        if (mem && (mem->access() == OUT || mem->access() == IN_OUT)) {
-          using T = typename std::decay_t<decltype(*mem)>::value_type;
-          result.emplace_back(output_buffer{buffer_variant{mem->copy_to_host()}});
-        }
-      })(), ...);
-    }, args);
-    return result;
-  }
-
   // === Legacy helper ===
   template <typename Tuple, std::size_t... Is>
   std::vector<void*> extract_kernel_args_impl(const Tuple& t,

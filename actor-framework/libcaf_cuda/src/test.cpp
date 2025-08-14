@@ -186,7 +186,7 @@ void test_mem_ref(actor_system& sys, platform_ptr plat) {
     
     manager& mgr = manager::get();
     device_ptr dev = mgr.find_device(0);
-
+    CUcontext ctx = dev -> getContext(0);
     std::cout << "Test 1: Testing input memory allocation...\n";
     std::vector<int> host_data(5, 10);
     in<int> input = create_in_arg(host_data);
@@ -595,7 +595,7 @@ extern "C" __global__ void scalar_kernel(int a, float b, double c) {
 void test_mem_ref_scalar_host() {
   std::cout << "\n=== test_mem_ref_scalar_host ===\n";
   // Direct scalar constructor
-  auto ptr = intrusive_ptr<mem_ref<int>>(new mem_ref<int>(123, IN_OUT, 0, 0, nullptr));
+  auto ptr = intrusive_ptr<mem_ref<int>>(new mem_ref<int>(123, IN_OUT, 0, 0,nullptr ,nullptr));
   assert(ptr->is_scalar() && "should report scalar");
   assert(ptr->host_scalar_ptr() && *ptr->host_scalar_ptr() == 123);
   auto host_copy = ptr->copy_to_host();
@@ -608,6 +608,7 @@ void test_extract_kernel_args_scalar() {
   manager& mgr = manager::get();
   auto dev = mgr.find_device(0);
   assert(dev && "device 0 must exist");
+
 
   // First wrap a scalar in an `in<T>` and make a mem_ptr
   in_out<double> in_arg(3.14);

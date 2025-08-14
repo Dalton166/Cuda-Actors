@@ -70,20 +70,21 @@ public:
   }
 
   ~actor_facade() {
+	  std::cout << "Destroying actor from te gpu\n";
     auto plat = platform::create();
     plat->release_streams_for_actor(actor_id);
   }
 
   void create_command(program_ptr program, Ts&&... xs) {
-    using command_t = command<caf::actor, raw_t<Ts>...>;
+    using command_t = command<caf::actor, Ts...>;
+    auto rp = make_response_promise();
     auto cmd = make_counted<command_t>(
-      make_response_promise(),
-      caf::actor_cast<caf::actor>(this),
       program,
       dims_,
       actor_id,
       std::forward<Ts>(xs)...);
-    cmd->enqueue();
+    rp.deliver(cmd->enqueue());
+    //anon_mail(kernel_done_atom_v).send(caf::actor_cast<caf::actor>(this));
   }
 
   void run_kernel(Ts&... xs) {
@@ -99,7 +100,7 @@ private:
   std::atomic<bool> shutdown_requested_ = false;
   int actor_id = generate_id();
   std::atomic_flag resuming_flag_ = ATOMIC_FLAG_INIT;
-
+  caf::actor self_ =   caf::actor_cast<caf::actor>(this);
 
   int generate_id() {
   
@@ -203,7 +204,7 @@ private:
     }
 
     handle_message(msg->content());
-    pending_promises_--;
+    //pending_promises_--;
     current_mailbox_element(nullptr);
     ++processed;
   }
@@ -220,15 +221,17 @@ private:
   void deref_resumable() const noexcept override  {}
 
   bool enqueue(mailbox_element_ptr what, ::caf::scheduler* sched) override {
-    if (!what)
+    if (!what || shutdown_requested_)
       return false;
 
     bool was_empty = mailbox_.empty();
     mailbox_.push(std::move(what));
     if (was_empty && sched) {
       sched->schedule(this);
+      return true;
     }
-    return true;
+
+    return false;
   }
 
   void launch(::caf::scheduler* sched, bool lazy, [[maybe_unused]] bool interruptible) override {
@@ -253,7 +256,9 @@ private:
 
 
   void quit(exit_reason reason) {
-    //force_close_mailbox();
+	  std::cout << "Quit called\n";
+   self_ = nullptr; 
+   force_close_mailbox();
     current_mailbox_element(nullptr);
   }
 };

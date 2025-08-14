@@ -31,6 +31,7 @@ public:
   device_ptr getDevice(int id);
   scheduler* get_scheduler();
   device_ptr schedule(int actor_id);
+  device_ptr schedule(int actor_id,int device_number);
   void release_streams_for_actor(int actor_id);
 
 private:

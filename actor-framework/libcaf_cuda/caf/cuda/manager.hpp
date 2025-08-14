@@ -21,6 +21,7 @@
 #include "caf/cuda/actor_facade.hpp"
 #include "caf/cuda/platform.hpp"
 
+
 namespace caf::cuda {
 
 class device;
@@ -100,6 +101,17 @@ public:
   program_ptr create_program_from_cubin(const std::string& filename,
                                                const char* kernel_name,
                                                device_ptr device);
+
+
+
+  program_ptr create_program_from_cubin(const std::string& filename,
+                                               const char* kernel_name);
+
+  program_ptr create_program_from_fatbin(const std::string& filename,
+                                               const char* kernel_name);
+
+
+
 
   template <bool PassConfig, class Result, class... Ts>
   caf::actor spawn(const char*,
