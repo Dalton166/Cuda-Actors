@@ -155,15 +155,6 @@ bool manager::compile_nvrtc_program(const char* source, CUdevice device, std::ve
 }
 
 
-
- CUcontext manager::get_context_by_id(int device_id, int context_id) {
-  device_ptr dev = find_device(device_id);
-  if (!dev) {
-    throw std::runtime_error("No CUDA device found with id: " + std::to_string(device_id));
-  }
-  return dev->getContext();
-}
-
-
+ 
 
 } // namespace caf::cuda
