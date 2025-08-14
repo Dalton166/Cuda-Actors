@@ -187,6 +187,7 @@ void test_mem_ref([[maybe_unused]] actor_system& sys, [[maybe_unused]] platform_
     manager& mgr = manager::get();
     device_ptr dev = mgr.find_device(0);
     CUcontext ctx = dev -> getContext(0);
+    (void)ctx; //silence the warning
     std::cout << "Test 1: Testing input memory allocation...\n";
     std::vector<int> host_data(5, 10);
     in<int> input = create_in_arg(host_data);
