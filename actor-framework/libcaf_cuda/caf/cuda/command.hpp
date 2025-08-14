@@ -86,6 +86,33 @@ public:
       static_assert(sizeof...(Us) == sizeof...(Ts), "Argument count mismatch");
   }
 
+  // -------------------------------
+  // Constructor msg +  actor_id
+  // -------------------------------  
+   template <typename... Us>
+  base_command(caf::message msg,
+               program_ptr program,
+               nd_range dims,
+               int id,
+               Us&&... xs)
+    : msg_(std::move(msg)),
+      program_(std::move(program)),
+      dims_(std::move(dims)),
+      kernel_args(unpack_args(msg,std::index_sequence_for<Ts ...>{})),
+      actor_id(id) {
+    dev_ = platform::create()->schedule(id);
+   
+    static_assert(sizeof...(Us) == sizeof...(Ts), "Argument count mismatch");
+  }
+
+
+   //turns a message into kernel args
+   template <size_t ... Is>
+   auto unpack_args(caf::message msg,std::index_sequence<Is...>) {
+	   return std::make_tuple(msg.get_as<Ts>(Is)...);
+   }
+
+
   virtual ~base_command() = default;
 
   // -------------------------------------------------------------------------
@@ -140,6 +167,24 @@ public:
           Us&&... xs)
       : base(std::move(program), std::move(dims), actor_id, shared_memory, device_number, std::forward<Us>(xs)...) {}
 
+
+
+ // -------------------------------
+  // Constructor msg +  actor_id
+  // -------------------------------  
+   template <typename... Us>
+  command(caf::message msg,
+               program_ptr program,
+               nd_range dims,
+               int id,
+               Us&&... xs)
+    : base(std::move(msg),std::move(program), std::move(dims), actor_id, shared_memory, device_number, std::forward<Us>(xs)...) {}
+
+
+
+
+
+
   // -------------------------------------------------------------------------
   // Overrides base_enqueue to return collected output_buffers
   // -------------------------------------------------------------------------
@@ -147,6 +192,7 @@ public:
       auto mem_refs = base::base_enqueue();
       return base::dev_->collect_output_buffers(mem_refs);
   }
+
 };
 
 } // namespace caf::cuda
