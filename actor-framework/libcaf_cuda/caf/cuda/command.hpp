@@ -95,7 +95,7 @@ public:
                nd_range dims,
                int id,
                Us&&... xs)
-    : msg_(std::move(msg)),
+    : 
       program_(std::move(program)),
       dims_(std::move(dims)),
       kernel_args(unpack_args(msg,std::index_sequence_for<Ts ...>{})),
@@ -178,7 +178,7 @@ public:
                nd_range dims,
                int id,
                Us&&... xs)
-    : base(std::move(msg),std::move(program), std::move(dims), actor_id, shared_memory, device_number, std::forward<Us>(xs)...) {}
+    : base(std::move(msg),std::move(program), std::move(dims),id,std::forward<Us>(xs)...) {}
 
 
 
