@@ -16,9 +16,9 @@ public:
   virtual ~scheduler() = default;
 
   // Returns the device an actor should run on
-  virtual device_ptr schedule(int actor_id) = 0;
+  virtual device_ptr schedule( [[maybe_unused]] int actor_id) = 0;
 
-  virtual device_ptr schedule(int actor_id, int device_number) = 0;
+  virtual device_ptr schedule([[maybe_unused]] int actor_id, [[maybe_unused]]int device_number) = 0;
 
   // Assigns the context and stream for the scheduled device
   virtual void getStreamAndContext(int actor_id, CUcontext* context, CUstream* stream) = 0;
@@ -100,14 +100,14 @@ public:
     devices_ = devices;
   }
 
-  device_ptr schedule(int actor_id) override {
+  device_ptr schedule( [[maybe_unused]] int actor_id) override {
     if (devices_.empty()) {
       throw std::runtime_error("No devices available");
     }
     return devices_[0];
   }
   
-  device_ptr schedule(int actor_id,int device_number) override {
+  device_ptr schedule( [[maybe_unused]] int actor_id, [[maybe_unused]] int device_number) override {
     if (devices_.empty()) {
       throw std::runtime_error("No devices available");
     }
@@ -145,7 +145,7 @@ public:
     devices_ = devices;
   }
 
-  device_ptr schedule(int actor_id) override {
+  device_ptr schedule( [[maybe_unused]] int actor_id) override {
     if (devices_.empty()) {
       throw std::runtime_error("No devices available");
     }
@@ -158,7 +158,7 @@ public:
 
 
 
-  device_ptr schedule(int actor_id,int device_number) override {
+  device_ptr schedule( [[maybe_unused]] int actor_id,int device_number) override {
     if (devices_.empty()) {
       throw std::runtime_error("No devices available");
     }
