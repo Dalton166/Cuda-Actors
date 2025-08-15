@@ -311,7 +311,7 @@ mem_ptr<T> global_argument(const in_out<T>& arg, CUstream stream, int access) {
 // allocate an output buffer on the GPU
 template <typename T>
 mem_ptr<T> scratch_argument(const out<T>& arg, CUstream stream, int access) {
-  size_t size = arg.is_scalar() ? arg.getscalar() : arg.size();
+  size_t size =  arg.size();
   CUdeviceptr dev_ptr;
   CHECK_CUDA(cuCtxPushCurrent(getContext()));
   CHECK_CUDA(cuMemAlloc(&dev_ptr, size * sizeof(T)));
