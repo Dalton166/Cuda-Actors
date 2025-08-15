@@ -62,28 +62,23 @@ bool inspect(Inspector& f, in<T>& x) {
   }
   return true;
 }
-
 template <class Inspector, typename T>
 bool inspect(Inspector& f, out<T>& x) {
     if constexpr (Inspector::is_loading) {
-        // Loading: read buffer and size from the inspector
         std::vector<T> buf;
         int size = 0;
         if (!f.object(x).fields(f.field("buffer", buf), f.field("size", size))) {
             return false;
         }
-        // Reconstruct out<T> with the buffer and set its size
-        x = out<T>(buf);
-        // Ensure the size_ matches the serialized size if needed
-        // (optional: you could store size_ separately in out<T> if it differs)
+        x = out<T>(buf); // reconstruct with loaded buffer
         return true;
     } else {
-        // Saving: write buffer and size
-        const auto& buf = x.get_buffer();
+        auto buf = x.get_buffer(); // make a copy (non-const)
         auto size = x.size();
         return f.object(x).fields(f.field("buffer", buf), f.field("size", size));
     }
 }
+
 
 
 template <class Inspector, typename T>
