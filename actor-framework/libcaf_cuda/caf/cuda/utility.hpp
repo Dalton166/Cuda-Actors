@@ -30,6 +30,13 @@ out<T> create_out_arg(const std::vector<T>& buffer) {
   return out<T>{buffer};
 }
 
+// Create `out<T>` from scalar or vector
+template <typename T>
+out<T> create_out_arg_with_size(int size) {
+  return out<T>{size};
+}
+
+
 // Create `in_out<T>` from scalar or vector
 template <typename T>
 in_out<T> create_in_out_arg(const T& val) {
