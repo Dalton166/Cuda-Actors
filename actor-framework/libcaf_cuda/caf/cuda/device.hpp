@@ -142,7 +142,7 @@ public:
                       const nd_range& range,
                       std::tuple<Args...> args,
                       int actor_id,
-		      int shared_mem //in bytes
+		      int shared_mem = 0 //in bytes
 		      ) {
   // Step 1: Allocate mem_ref<T> for each wrapper type
   
