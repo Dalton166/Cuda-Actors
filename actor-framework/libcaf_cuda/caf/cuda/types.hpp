@@ -136,6 +136,7 @@ class out_impl {
 private:
   std::variant<T, std::vector<T>> data_;
   bool moved_from_ = false;
+  int size_ = 0; // Always store as int
 
   void check_valid() const {
     if (moved_from_)
@@ -145,21 +146,27 @@ private:
 public:
   using value_type = T;
 
-  out_impl() : data_(T{}) {}
-  explicit out_impl(const T& val) : data_(val) {}
-  explicit out_impl(const std::vector<T>& buf) : data_(buf) {}
+  out_impl() : data_(T{}), size_(1) {}
+  
+  // Replaces old scalar constructor: just set size
+  explicit out_impl(int size) 
+    : data_(std::vector<T>(size)), size_(size) {}
+  
+  explicit out_impl(const std::vector<T>& buf) 
+    : data_(buf), size_(static_cast<int>(buf.size())) {}
 
   out_impl(const out_impl&) = default;
   out_impl& operator=(const out_impl&) = default;
 
   out_impl(out_impl&& other) noexcept
-    : data_(std::move(other.data_)) {
+    : data_(std::move(other.data_)), size_(other.size_) {
     other.moved_from_ = true;
   }
 
   out_impl& operator=(out_impl&& other) noexcept {
     if (this != &other) {
       data_ = std::move(other.data_);
+      size_ = other.size_;
       other.moved_from_ = true;
     }
     return *this;
@@ -170,14 +177,7 @@ public:
     return std::holds_alternative<T>(data_);
   }
 
-  const T& getscalar() const {
-    check_valid();
-    if (!is_scalar())
-      throw std::runtime_error("out_impl does not hold scalar");
-    return std::get<T>(data_);
-  }
-
-  const std::vector<T>& get_buffer() const {
+   const std::vector<T>& get_buffer() const {
     check_valid();
     if (is_scalar())
       throw std::runtime_error("out_impl does not hold buffer");
@@ -186,14 +186,17 @@ public:
 
   const T* data() const {
     check_valid();
-    return is_scalar() ? &std::get<T>(data_) : std::get<std::vector<T>>(data_).data();
+    return is_scalar() ? reinterpret_cast<const T*>(&size_)
+                       : std::get<std::vector<T>>(data_).data();
   }
 
-  std::size_t size() const {
+  size_t size() const {
     check_valid();
-    return is_scalar() ? 1 : std::get<std::vector<T>>(data_).size();
+    return static_cast<size_t>(size_);
   }
+
 };
+
 
 template <typename T>
 class in_out_impl {
