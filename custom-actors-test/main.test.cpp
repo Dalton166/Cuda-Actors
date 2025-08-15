@@ -127,7 +127,7 @@ caf::behavior mmul_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
 	 */
         caf::cuda::manager& mgr = caf::cuda::manager::get();
         //create the program and configure the dimesnions of the kernel
-        auto program = mgr.create_program_from_cubin("../mmul.cubin","generate_random_matrix");
+        auto program = mgr.create_program_from_fatbin("../generate_random_matrix.fatbin","generate_random_matrix");
 	int THREADS = 256;
 	int BLOCKS = (N*N + THREADS - 1) / THREADS;
   	caf::cuda::nd_range dim(BLOCKS,1, 1, THREADS,1, 1);
@@ -738,15 +738,15 @@ void benchmark_shared_perf_all(caf::actor_system& sys) {
 void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
 
-  //run_mmul_test(sys,100,200);
+  run_mmul_test(sys,100,200);
   //run_async_mmul_test(sys,100,1);
   //run_async_mmul_perf_test(sys,1024,200);
 
   // run the async (no-shared) suite:
-  benchmark_async_perf_all(sys);
+  //benchmark_async_perf_all(sys);
 
   // run the shared-memory suite:
-  benchmark_shared_perf_all(sys);
+  //benchmark_shared_perf_all(sys);
 }
 
 
