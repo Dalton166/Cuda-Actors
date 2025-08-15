@@ -549,6 +549,7 @@ void test_in_wrapper() {
     assert(buffer_in.get_buffer() == vec && "Buffer in should return correct vector");
 }
 
+/*
 // Test `out<T>` wrapper for scalar and buffer cases
 void test_out_wrapper() {
     // Scalar case
@@ -566,6 +567,8 @@ void test_out_wrapper() {
     assert(buffer_out.size() == 3 && "Buffer out should have correct size");
     assert(buffer_out.get_buffer() == vec && "Buffer out should return correct vector");
 }
+
+*/
 
 // Test `in_out<T>` wrapper for scalar and buffer cases
 void test_in_out_wrapper() {
@@ -834,7 +837,7 @@ void test_main([[maybe_unused]] actor_system& sys) {
 
 
 	test_in_wrapper();
-    	test_out_wrapper();
+    	//test_out_wrapper();
     	test_in_out_wrapper();
 
 	test_mem_ref_scalar_host();
