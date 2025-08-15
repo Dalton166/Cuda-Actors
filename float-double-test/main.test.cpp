@@ -154,7 +154,7 @@ caf::behavior mmul_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
   	caf::cuda::nd_range dim(BLOCKS,1, 1, THREADS,1, 1);
 
 	//tag the arguments so that caf::cuda knows what to do with them	
-         out<float> arg1 = caf::cuda::create_out_arg_with_size(N*N); //output buffer indicate its size, caf::cuda will handle the rest
+         out<float> arg1 = caf::cuda::create_out_arg_with_size<float>(N*N); //output buffer indicate its size, caf::cuda will handle the rest
           in<int> arg2 = caf::cuda::create_in_arg(N*N); //matrix size
           in<int> arg3 = caf::cuda::create_in_arg(1234); //seed
 	  in<int> arg4 = caf::cuda::create_in_arg(9999); //max valux
@@ -201,11 +201,11 @@ caf::behavior mmul_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
     //create args
     auto arg1 = caf::cuda::create_in_arg(matrixA);
     auto arg2 = caf::cuda::create_in_arg(matrixB);
-    auto arg3 = caf::cuda::create_out_arg(N*N);
+    out<float> arg3 = caf::cuda::create_out_arg_with_size<float>(N*N);
     auto arg4 = caf::cuda::create_in_arg(N);
 
-    auto tempC = mmul.run(program,dims,self -> state().id,arg1,arg2,arg3,arg4);
-    std::vector<int> matrixC = caf::cuda::extract_vector<int>(tempC);
+    auto tempC = mmulFloat.run(program,dims,self -> state().id,arg1,arg2,arg3,arg4);
+    std::vector<float> matrixC = caf::cuda::extract_vector<float>(tempC);
 
     //verify its own result 
     self -> mail(matrixA,matrixB,matrixC,N).send(self);
@@ -759,15 +759,15 @@ void benchmark_shared_perf_all(caf::actor_system& sys) {
 void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
 
-  //run_mmul_test(sys,100,200);
+  run_mmul_test(sys,100,1);
   //run_async_mmul_test(sys,100,1);
   //run_async_mmul_perf_test(sys,1024,200);
 
   // run the async (no-shared) suite:
-  benchmark_async_perf_all(sys);
+  //benchmark_async_perf_all(sys);
 
   // run the shared-memory suite:
-  benchmark_shared_perf_all(sys);
+  //benchmark_shared_perf_all(sys);
 }
 
 
