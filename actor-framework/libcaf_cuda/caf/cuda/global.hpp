@@ -65,32 +65,26 @@ bool inspect(Inspector& f, in<T>& x) {
 
 template <class Inspector, typename T>
 bool inspect(Inspector& f, out<T>& x) {
-  auto is_scalar = x.is_scalar();
-  if constexpr (Inspector::is_loading) {
-    if (is_scalar) {
-      T val;
-      if (!f.object(x).fields(f.field("is_scalar", is_scalar), f.field("value", val))) {
-        return false;
-      }
-      x = out<T>(val);
+    if constexpr (Inspector::is_loading) {
+        // Loading: read buffer and size from the inspector
+        std::vector<T> buf;
+        int size = 0;
+        if (!f.object(x).fields(f.field("buffer", buf), f.field("size", size))) {
+            return false;
+        }
+        // Reconstruct out<T> with the buffer and set its size
+        x = out<T>(buf);
+        // Ensure the size_ matches the serialized size if needed
+        // (optional: you could store size_ separately in out<T> if it differs)
+        return true;
     } else {
-      std::vector<T> buf;
-      if (!f.object(x).fields(f.field("is_scalar", is_scalar), f.field("buffer", buf))) {
-        return false;
-      }
-      x = out<T>(buf);
+        // Saving: write buffer and size
+        const auto& buf = x.get_buffer();
+        auto size = x.size();
+        return f.object(x).fields(f.field("buffer", buf), f.field("size", size));
     }
-  } else {
-    if (is_scalar) {
-      auto val = x.getscalar();
-      return f.object(x).fields(f.field("is_scalar", is_scalar), f.field("value", val));
-    } else {
-      auto buf = x.get_buffer();
-      return f.object(x).fields(f.field("is_scalar", is_scalar), f.field("buffer", buf));
-    }
-  }
-  return true;
 }
+
 
 template <class Inspector, typename T>
 bool inspect(Inspector& f, in_out<T>& x) {
