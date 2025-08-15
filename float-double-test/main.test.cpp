@@ -148,8 +148,9 @@ caf::behavior mmul_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
 
        caf::cuda::manager& mgr = caf::cuda::manager::get();
         //create the program and configure the dimesnions of the kernel
-        auto program = mgr.create_program_from_cubin("../mmul.cubin","generate_random_matrix_float");
-	int THREADS = 256;
+	
+         auto program = mgr.create_program_from_fatbin("../generate_random_matrix.fatbin","generate_random_matrix_float");
+        int THREADS = 256;
 	int BLOCKS = (N*N + THREADS - 1) / THREADS;
   	caf::cuda::nd_range dim(BLOCKS,1, 1, THREADS,1, 1);
 
@@ -164,8 +165,8 @@ caf::behavior mmul_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
 	  //launch kernels and collect their outputs
 	  auto tempA = randomFloatMatrix.run(program,dim, self -> state().id,arg1,arg2,arg3,arg4);
 	  auto tempB = randomFloatMatrix.run(program,dim, self -> state().id,arg1,arg2,arg3,arg4);
-	  std::vector<int> matrixA =  caf::cuda::extract_vector<int>(tempA);
-	  std::vector<int> matrixB = caf::cuda::extract_vector<int>(tempB);
+	  std::vector<float> matrixA =  caf::cuda::extract_vector<float>(tempA);
+	  std::vector<float> matrixB = caf::cuda::extract_vector<float>(tempB);
 
 
 
