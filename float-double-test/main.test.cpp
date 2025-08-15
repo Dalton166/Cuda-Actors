@@ -16,8 +16,6 @@
 using namespace caf;
 using namespace std::chrono_literals;
 
-// Define a custom type ID block for custom actors
-CAF_ADD_ATOM(cuda,shared_mem)
 
 
 
@@ -88,10 +86,22 @@ using mmulCommand = caf::cuda::command_runner<in<int>,in<int>,out<int>,in<int>>;
 using matrixGenCommand = caf::cuda::command_runner<out<int>,in<int>,in<int>,in<int>>;
 
 using mmulAsyncCommand = caf::cuda::command_runner<caf::cuda::mem_ptr<int>,caf::cuda::mem_ptr<int>,out<int>,in<int>>;
+using mmulFloatCommand = caf::cuda::command_runner<in<float>,in<float>,out<float>,in<int>>;
+using matrixGenFloatCommand = caf::cuda::command_runner<out<float>,in<int>,in<int>,in<int>>;
 
+using mmulAsyncFloatCommand = caf::cuda::command_runner<caf::cuda::mem_ptr<float>,caf::cuda::mem_ptr<float>,out<int>,in<int>>;
+
+
+//integer commands
 mmulCommand mmul;
 matrixGenCommand randomMatrix;
 mmulAsyncCommand mmulAsync;
+
+//floating point type commands 
+mmulFloatCommand mmulFloat;
+matrixGenFloatCommand randomFloatMatrix;
+mmulAsyncFloatCommand mmulFloatAsync;
+
 
 
 void serial_matrix_multiply(const std::vector<int>& a,
@@ -112,6 +122,22 @@ void serial_matrix_multiply(const std::vector<int>& a,
 }
 
 
+void serial_matrix_multiply(const std::vector<float>& a,
+                            const std::vector<float>& b,
+                            std::vector<float>& c,
+                            int N) {
+
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < N; ++j) {
+            float sum = 0.0f;
+            for (int k = 0; k < N; ++k) {
+                sum += a[i * N + k] * b[k * N + j];
+            }
+            c[i * N + j] = sum;
+        }
+    }
+}
+
 
 
 // Stateful actor behavior
@@ -120,29 +146,24 @@ caf::behavior mmul_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
     // 1st handler: Just int N, and who to send the matrices to
     [=](int N, std::vector<caf::actor> receivers) {
 
-	/*
-	 * Unfortuanley libraries such as curand cannot be linked with cubins 
-	 * making it incompatable with this software for right now
-	 * its not really random, just a matrix filled with 5's
-	 */
-        caf::cuda::manager& mgr = caf::cuda::manager::get();
+       caf::cuda::manager& mgr = caf::cuda::manager::get();
         //create the program and configure the dimesnions of the kernel
-        auto program = mgr.create_program_from_cubin("../mmul.cubin","generate_random_matrix");
+        auto program = mgr.create_program_from_cubin("../mmul.cubin","generate_random_matrix_float");
 	int THREADS = 256;
 	int BLOCKS = (N*N + THREADS - 1) / THREADS;
   	caf::cuda::nd_range dim(BLOCKS,1, 1, THREADS,1, 1);
 
 	//tag the arguments so that caf::cuda knows what to do with them	
-         auto arg1 = caf::cuda::create_out_arg(N*N); //output buffer indicate its size, caf::cuda will handle the rest
-          auto arg2 = caf::cuda::create_in_arg(N*N); //matrix size
-          auto arg3 = caf::cuda::create_in_arg(1234); //seed
-	  auto arg4 = caf::cuda::create_in_arg(9999); //max valux
+         out<float> arg1 = caf::cuda::create_out_arg_with_size(N*N); //output buffer indicate its size, caf::cuda will handle the rest
+          in<int> arg2 = caf::cuda::create_in_arg(N*N); //matrix size
+          in<int> arg3 = caf::cuda::create_in_arg(1234); //seed
+	  in<int> arg4 = caf::cuda::create_in_arg(9999); //max valux
 	  
 
 
 	  //launch kernels and collect their outputs
-	  auto tempA = randomMatrix.run(program,dim, self -> state().id,arg1,arg2,arg3,arg4);
-	  auto tempB = randomMatrix.run(program,dim, self -> state().id,arg1,arg2,arg3,arg4);
+	  auto tempA = randomFloatMatrix.run(program,dim, self -> state().id,arg1,arg2,arg3,arg4);
+	  auto tempB = randomFloatMatrix.run(program,dim, self -> state().id,arg1,arg2,arg3,arg4);
 	  std::vector<int> matrixA =  caf::cuda::extract_vector<int>(tempA);
 	  std::vector<int> matrixB = caf::cuda::extract_vector<int>(tempB);
 
@@ -165,14 +186,14 @@ caf::behavior mmul_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
     },
 
     // 2nd handler: GPU atom + matrices + N, launches a kenrel and sends its result to itself for verification
-    [=](const std::vector<int> matrixA,
-        const std::vector<int> matrixB, int N) {
+    [=](const std::vector<float> matrixA,
+        const std::vector<float> matrixB, int N) {
  
 
   caf::cuda::manager& mgr = caf::cuda::manager::get();
 
   //create program and dims   
-  auto program = mgr.create_program_from_cubin("../mmul.cubin","matrixMul");
+  auto program = mgr.create_program_from_cubin("../mmul.cubin","matrixMulFloat");
   const int THREADS = 32;
   const int BLOCKS = (N + THREADS - 1) / THREADS;
   caf::cuda::nd_range dims(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
@@ -192,10 +213,10 @@ caf::behavior mmul_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
     },
 
     // 3rd handler: CPU atom + matrices + N
-    [=](const std::vector<int>& matrixA,
-        const std::vector<int>& matrixB, const std::vector<int> matrixC, int N) {
+    [=](const std::vector<float>& matrixA,
+        const std::vector<float>& matrixB, const std::vector<float> matrixC, int N) {
        
-	 std::vector<int> result(N*N);
+	 std::vector<float> result(N*N);
 
 	 serial_matrix_multiply(matrixA,matrixB,result,N);
 
