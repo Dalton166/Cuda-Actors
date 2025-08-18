@@ -59,8 +59,7 @@ public:
   static manager& get() {
     std::lock_guard<std::mutex> guard(mutex_);
     if (!instance_) {
-      throw std::runtime_error("CUDA manager used before initialization\n
-		      Please place caf::cuda::manager::init() at the top of CAF_MAIN\n");
+      throw std::runtime_error("CUDA manager used before initialization\n  Please place caf::cuda::manager::init() at the top of CAF_MAIN\n");
     }
     return *instance_;
   }
