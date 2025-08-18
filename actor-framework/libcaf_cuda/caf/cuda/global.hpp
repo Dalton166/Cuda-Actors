@@ -151,19 +151,24 @@ bool inspect(Inspector& f, buffer_variant& x) {
 
 // Check CUDA errors macro
 #define CHECK_CUDA(call) \
-    do { CUresult err = call; if (err != CUDA_SUCCESS) { \
-        const char* errStr; cuGetErrorString(err, &errStr); \
-        std::cerr << "CUDA Error: " << errStr << std::endl; exit(1); }} while(0)
+    do { \
+        CUresult err = call; \
+        if (err != CUDA_SUCCESS) { \
+            const char* errStr; \
+            cuGetErrorString(err, &errStr); \
+            throw std::runtime_error(std::string("CUDA Error: ") + errStr); \
+        } \
+    } while(0)
+
 
 // Check NVRTC errors macro
 #define CHECK_NVRTC(call) \
     do { nvrtcResult res = call; if (res != NVRTC_SUCCESS) { \
         std::cerr << "NVRTC Error: " << nvrtcGetErrorString(res) << std::endl; exit(1); }} while(0)
 
-// CAF type ID registration
-#include <caf/type_id.hpp>
 
 // Define a custom type ID block for CUDA types
+// TODO should this become a macro???
 CAF_BEGIN_TYPE_ID_BLOCK(cuda, caf::first_custom_type_id)
 
   // Your type IDs
@@ -185,9 +190,9 @@ CAF_BEGIN_TYPE_ID_BLOCK(cuda, caf::first_custom_type_id)
   
   //atoms 
   CAF_ADD_ATOM(cuda, kernel_done_atom)
-  CAF_ADD_ATOM(cuda, become)
-  CAF_ADD_ATOM(cuda, launch_behavior)
-  CAF_ADD_ATOM(cuda, update_behavior)
+  //CAF_ADD_ATOM(cuda, become)
+  //CAF_ADD_ATOM(cuda, launch_behavior)
+  //CAF_ADD_ATOM(cuda, update_behavior)
 
 CAF_END_TYPE_ID_BLOCK(cuda)
 
