@@ -6,7 +6,7 @@ namespace caf::cuda {
 platform_ptr platform::create() {
   static platform_ptr instance;
   if (!instance) {
-    std::cout << "[platform] constructor called\n";
+    //std::cout << "[platform] constructor called\n";
     instance = make_counted<platform>();
   }
   return instance;
@@ -18,7 +18,7 @@ platform::platform() {
   devices_.resize(device_count);
   contexts_.resize(device_count);
 
-  std::cout << "Device count is " << device_count << "\n";
+  //std::cout << "Device count is " << device_count << "\n";
 
   std::vector<std::string> device_names(device_count);
 
@@ -45,10 +45,10 @@ platform::platform() {
   //we turn off multi gpu support
   if (device_count > 1 && all_same) {
     scheduler_ = std::make_unique<multi_device_scheduler>();
-    std::cout << "Using multi-device scheduler (heterogeneous GPUs)\n";
+    //std::cout << "Using multi-device scheduler (heterogeneous GPUs)\n";
   } else {
     scheduler_ = std::make_unique<single_device_scheduler>();
-    std::cout << "Using single-device scheduler (homogeneous or single GPU)\n";
+    //std::cout << "Using single-device scheduler (homogeneous or single GPU)\n";
   }
 
   scheduler_->set_devices(devices_);
