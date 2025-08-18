@@ -1741,12 +1741,12 @@ void caf_main(caf::actor_system& sys) {
   //actor_facade_launch_kernel_test(sys);
    //test_mmul(sys,1024);
    //test_mmul_from_ptx(sys,1024);
-   //test_mmul_from_cubin(sys,1024);
+   test_mmul_from_cubin(sys,100);
    //test_mmul_plain(sys,1024);
   //test_mmul_large(sys);
   //run_concurrent_serial_mmul_test_global_with_worker(sys,1,1024);
   //run_concurrent_mmul_validate_test(sys,100,60);
-   run_all_concurrent_tests(sys);
+   //run_all_concurrent_tests(sys);
 
   //run_concurrent_mmul_test_shared_gpu(sys,2,50);
   //test_mmul_sync(sys,50);

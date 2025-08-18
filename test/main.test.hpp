@@ -6,7 +6,6 @@
 #include "caf/cuda/manager.hpp"
 #include "caf/cuda/nd_range.hpp"
 #include "caf/cuda/all.hpp"
-#include "caf/cuda/utility.hpp"
 #include <caf/type_id.hpp>
 #include "caf/detail/test.hpp"
 #include <cassert>
