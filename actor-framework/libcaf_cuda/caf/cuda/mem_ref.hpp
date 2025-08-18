@@ -14,12 +14,13 @@
 
 namespace caf::cuda {
 
-
+//A class that is a handle to gpu memory
 template <class T>
 class mem_ref : public caf::ref_counted {
 public:
   using value_type = T;
 
+  //constructor with CUdeviceptr
   mem_ref(size_t num_elements,
           CUdeviceptr memory,
           int access,
@@ -69,14 +70,9 @@ public:
   mem_ref(const mem_ref&) = delete;
   mem_ref& operator=(const mem_ref&) = delete;
 
-  bool is_scalar() const noexcept {
-    return is_scalar_;
-  }
-
-  const T* host_scalar_ptr() const noexcept {
-    return &host_scalar_;
-  }
-
+  // a bunch of getters
+  bool is_scalar() const noexcept {return is_scalar_;}
+  const T* host_scalar_ptr() const noexcept {return &host_scalar_;}
   size_t size()  const noexcept { return num_elements_; }
   CUdeviceptr mem()   const noexcept { return memory_; }
   int access()  const noexcept { return access_; }
@@ -96,8 +92,9 @@ public:
     CHECK_CUDA(cuCtxPopCurrent(nullptr)); 
   } 
 
+  //Frees the memory on the gpu and 
+  //sets all its attributes to null or -1
   void reset() {
-	  //std::cout << "Resting\n"; 
     if (!is_scalar_ && memory_) {
       CHECK_CUDA(cuMemFree(memory_));
       memory_ = 0;
@@ -108,6 +105,7 @@ public:
     ctx = nullptr;
   }
 
+  //copies gpu memory back to cpu memory in the form of an std::vector
   std::vector<T> copy_to_host() const {
     if (access_ == IN)
     {
@@ -127,6 +125,9 @@ public:
     return host_data;
   }
 
+
+
+    //reference counting for auto garabage collection
     friend void intrusive_ptr_add_ref(const mem_ref<T>* p) noexcept {
         p->ref_count_.fetch_add(1, std::memory_order_relaxed);
     }
