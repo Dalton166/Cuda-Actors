@@ -48,6 +48,52 @@ std::vector<T> extract_vector(const std::vector<output_buffer>& outputs, size_t 
 }
 
 
+//factory methods that will create a tagged argument 
+//required for launching kernels 
 
-
+//creates a tag of a  readonly buffer on the gpu
+template <typename T>
+in<T> create_in_arg(const T& val) {
+  return in<T>{val};
 }
+
+//creates a tag of a readonly buffer on the gpu
+template <typename T>
+in<T> create_in_arg(const std::vector<T>& buffer) {
+  return in<T>{buffer};
+}
+
+
+//creates an output buffer/ write only buffer on the gpu
+
+// Create `out<T>` from scalar or vector
+template <typename T>
+out<T> create_out_arg(const T& val) {
+  return out<T>{val};
+}
+
+template <typename T>
+out<T> create_out_arg(const std::vector<T>& buffer) {
+  return out<T>{buffer};
+}
+
+// Create `out<T>` from scalar or vector
+template <typename T>
+out<T> create_out_arg_with_size(int size) {
+  return out<T>{size};
+}
+
+//creates a read/write buffer on the gpu 
+
+// Create `in_out<T>` from scalar or vector
+template <typename T>
+in_out<T> create_in_out_arg(const T& val) {
+  return in_out<T>{val};
+}
+
+template <typename T>
+in_out<T> create_in_out_arg(const std::vector<T>& buffer) {
+  return in_out<T>{buffer};
+}
+
+} //namespace caf cuda
