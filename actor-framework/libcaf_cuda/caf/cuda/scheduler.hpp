@@ -11,13 +11,14 @@ namespace caf::cuda {
 class device; // Forward declaration
 using device_ptr = caf::intrusive_ptr<device>;
 
+//a group of classes that decide what gpu a kernel should go onto 
+//depending on how many devices there are 
 class scheduler {
 public:
   virtual ~scheduler() = default;
 
   // Returns the device an actor should run on
   virtual device_ptr schedule( [[maybe_unused]] int actor_id) = 0;
-
   virtual device_ptr schedule([[maybe_unused]] int actor_id, [[maybe_unused]]int device_number) = 0;
 
   // Assigns the context and stream for the scheduled device
@@ -94,6 +95,8 @@ private:
   }
 };
 
+
+//scheduler that is choosen if only 1 device is detected
 class single_device_scheduler : public scheduler {
 public:
   void set_devices(const std::vector<device_ptr>& devices) override {
@@ -139,6 +142,10 @@ private:
   std::vector<device_ptr> devices_;
 };
 
+//scheduler that is choosen if more than 1 device is detected and they
+//are all the same
+//currently just uses a simple lottery scheduler to decide which
+//gpu to send a command to 
 class multi_device_scheduler : public scheduler {
 public:
   void set_devices(const std::vector<device_ptr>& devices) override {
