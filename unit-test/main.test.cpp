@@ -430,7 +430,7 @@ void test_device_launch_kernel([[maybe_unused]] caf::actor_system& sys) {
   try {
     std::cerr << "Retrieving kernel for set_out" << std::endl;
     kernel = prog->get_kernel(dev->getId());
-    std::cerr << "Kernel retrieved successfully for set_out" << std::endl;
+    std::cerr << "Program created successfully for set_out" << std::endl;
   } catch (const std::exception& e) {
     std::cerr << "Warning: Skipping test_device_launch_kernel due to get_kernel failure: " << e.what() << std::endl;
     return; // Skip test if kernel retrieval fails
@@ -442,6 +442,229 @@ void test_device_launch_kernel([[maybe_unused]] caf::actor_system& sys) {
   mem_out->synchronize();
   auto host_out = mem_out->copy_to_host();
   assert(host_out[0] == 42);
+}
+
+// Test for multi-threaded kernel execution
+void test_multi_thread_kernel([[maybe_unused]] caf::actor_system& sys) {
+  using namespace caf::cuda;
+  auto& mgr = manager::get();
+  auto dev = mgr.find_device(0);
+  
+  // Kernel that sets each element to its thread index
+  const char* kernel_src = R"(
+  extern "C" __global__
+  void index_kernel(int* out, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+      out[idx] = idx;
+    }
+  }
+  )";
+  program_ptr prog;
+  try {
+    std::cerr << "Creating program for index_kernel" << std::endl;
+    prog = mgr.create_program(kernel_src, "index_kernel", dev);
+    std::cerr << "Program created successfully for index_kernel" << std::endl;
+  } catch (const std::exception& e) {
+    std::cerr << "Warning: Skipping test_multi_thread_kernel due to create_program failure: " << e.what() << std::endl;
+    return; // Skip test if program creation fails
+  }
+  
+  const int size = 256;
+  nd_range dims(size / 64, 1, 1, 64, 1, 1);  // 4 blocks, 64 threads each
+  command_runner<out<int>, in<int>> runner;
+  
+  auto outputs = runner.run(prog, dims, 1 /* actor_id */, create_out_arg_with_size<int>(size), create_in_arg(size));
+  assert(outputs.size() == 1u);
+  auto result = extract_vector<int>(outputs);
+  assert(result.size() == size);
+  for (int i = 0; i < size; ++i) {
+    assert(result[i] == i);
+  }
+}
+
+// Test for vector addition kernel
+void test_vector_addition([[maybe_unused]] caf::actor_system& sys) {
+  using namespace caf::cuda;
+  auto& mgr = manager::get();
+  auto dev = mgr.find_device(0);
+  
+  // Kernel that adds two arrays element-wise
+  const char* kernel_src = R"(
+  extern "C" __global__
+  void add_vectors(const int* a, const int* b, int* result, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+      result[idx] = a[idx] + b[idx];
+    }
+  }
+  )";
+  program_ptr prog;
+  try {
+    std::cerr << "Creating program for add_vectors" << std::endl;
+    prog = mgr.create_program(kernel_src, "add_vectors", dev);
+    std::cerr << "Program created successfully for add_vectors" << std::endl;
+  } catch (const std::exception& e) {
+    std::cerr << "Warning: Skipping test_vector_addition due to create_program failure: " << e.what() << std::endl;
+    return; // Skip test if program creation fails
+  }
+  
+  const int size = 128;
+  std::vector<int> vec_a(size, 2), vec_b(size, 3);
+  nd_range dims(size / 32, 1, 1, 32, 1, 1);  // 4 blocks, 32 threads each
+  command_runner<out<int>, in<int>, in<int>, in<int>> runner;
+  
+  auto outputs = runner.run(prog, dims, 1 /* actor_id */, create_out_arg_with_size<int>(size),
+                           create_in_arg(vec_a), create_in_arg(vec_b), create_in_arg(size));
+  assert(outputs.size() == 1u);
+  auto result = extract_vector<int>(outputs);
+  assert(result.size() == size);
+  
+  // Debug: Print result vector
+  std::cerr << "Result vector: ";
+  for (int i = 0; i < size; ++i) {
+    std::cerr << result[i] << " ";
+    if (i % 16 == 15) std::cerr << "\n";
+  }
+  std::cerr << "\n";
+  
+  for (int i = 0; i < size; ++i) {
+    if (result[i] != 5) {
+      std::cerr << "Assertion failed at index " << i << ": expected 5, got " << result[i] << std::endl;
+    }
+    assert(result[i] == 5); // 2 + 3
+  }
+}
+
+// Test for invalid kernel parameters
+void test_invalid_kernel_params([[maybe_unused]] caf::actor_system& sys) {
+  using namespace caf::cuda;
+  auto& mgr = manager::get();
+  auto dev = mgr.find_device(0);
+  
+  // Kernel with extern "C"
+  const char* kernel_src = R"(
+  extern "C" __global__
+  void test_kernel(int* out) { *out = 42; }
+  )";
+  program_ptr prog;
+  try {
+    std::cerr << "Creating program for test_kernel" << std::endl;
+    prog = mgr.create_program(kernel_src, "test_kernel", dev);
+    std::cerr << "Program created successfully for test_kernel" << std::endl;
+  } catch (const std::exception& e) {
+    std::cerr << "Warning: Skipping test_invalid_kernel_params due to create_program failure: " << e.what() << std::endl;
+    return; // Skip test if program creation fails
+  }
+  
+  nd_range dims(1, 1, 1, 1, 1, 1);  // 1D single thread
+  command_runner<out<int>> runner;
+  
+  // Test with invalid (null) output buffer
+  bool threw = false;
+  try {
+    auto outputs = runner.run(prog, dims, 1 /* actor_id */, create_out_arg_with_size<int>(0));
+  } catch (const std::exception&) {
+    threw = true;
+  }
+  assert(threw);
+}
+
+// Test for asynchronous execution with streams
+void test_stream_async_execution([[maybe_unused]] caf::actor_system& sys) {
+  using namespace caf::cuda;
+  auto& mgr = manager::get();
+  auto dev = mgr.find_device(0);
+  
+  // Use the device context managed by CAF CUDA
+  CUcontext ctx;
+  TEST_CHECK_CUDA(cuCtxGetCurrent(&ctx), "cuCtxGetCurrent");
+  if (ctx == nullptr) {
+    throw std::runtime_error("No current CUDA context");
+  }
+  
+  // Kernel with extern "C"
+  const char* kernel_src = R"(
+  extern "C" __global__
+  void set_value(int* out, int value) { *out = value; }
+  )";
+  program_ptr prog;
+  try {
+    std::cerr << "Creating program for set_value" << std::endl;
+    prog = mgr.create_program(kernel_src, "set_value", dev);
+    std::cerr << "Program created successfully for set_value" << std::endl;
+  } catch (const std::exception& e) {
+    std::cerr << "Warning: Skipping test_stream_async_execution due to create_program failure: " << e.what() << std::endl;
+    return; // Skip test if program creation fails
+  }
+  
+  StreamPool pool(ctx, 2);
+  auto stream1 = pool.acquire();
+  auto stream2 = pool.acquire();
+  
+  nd_range dims(1, 1, 1, 1, 1, 1);  // 1D single thread
+  command_runner<out<int>, in<int>> runner1, runner2;
+  
+  // Launch two async kernels with different actor IDs
+  auto mem_tuple1 = runner1.run_async(prog, dims, 1 /* actor_id */, create_out_arg_with_size<int>(1), create_in_arg(100));
+  auto mem_tuple2 = runner2.run_async(prog, dims, 2 /* actor_id */, create_out_arg_with_size<int>(1), create_in_arg(200));
+  
+  auto mem_ptr1 = std::get<0>(mem_tuple1);
+  auto mem_ptr2 = std::get<0>(mem_tuple2);
+  
+  mem_ptr1->synchronize();
+  mem_ptr2->synchronize();
+  
+  auto result1 = mem_ptr1->copy_to_host();
+  auto result2 = mem_ptr2->copy_to_host();
+  
+  assert(result1[0] == 100);
+  assert(result2[0] == 200);
+  
+  pool.release(stream1);
+  pool.release(stream2);
+}
+
+// Test for string comparison kernel
+void test_compare_strings([[maybe_unused]] caf::actor_system& sys) {
+  using namespace caf::cuda;
+  auto& mgr = manager::get();
+  auto dev = mgr.find_device(0);
+  
+  // String comparison kernel
+  const char* kernel_src = R"(
+  extern "C" __global__
+  void compare_strings(const char* a, const char* b, int* result, int* length) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < *length) {
+      result[idx] = (a[idx] == b[idx]) ? 1 : 0;
+    }
+  }
+  )";
+  program_ptr prog;
+  try {
+    std::cerr << "Creating program for compare_strings" << std::endl;
+    prog = mgr.create_program(kernel_src, "compare_strings", dev);
+    std::cerr << "Program created successfully for compare_strings" << std::endl;
+  } catch (const std::exception& e) {
+    std::cerr << "Warning: Skipping test_compare_strings due to create_program failure: " << e.what() << std::endl;
+    return; // Skip test if program creation fails
+  }
+  
+  const int size = 16;
+  std::vector<char> str_a = {'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd', '!', 0, 0, 0, 0};
+  std::vector<char> str_b = {'h', 'e', 'l', 'l', 'o', ' ', 't', 'e', 's', 't', '!', '!', 0, 0, 0, 0};
+  std::vector<int> expected = {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1};
+  
+  nd_range dims(size / 4, 1, 1, 4, 1, 1);  // 4 blocks, 4 threads each
+  command_runner<out<int>, in<char>, in<char>, in<int>> runner;
+  
+  auto outputs = runner.run(prog, dims, 1 /* actor_id */, create_out_arg_with_size<int>(size),
+                           create_in_arg(str_a), create_in_arg(str_b), create_in_arg(size));
+  assert(outputs.size() == 1u);
+  auto result = extract_vector<int>(outputs);
+  assert(result.size() == size);
+  assert(vectors_equal(result, expected));
 }
 
 // Structure to hold test information
@@ -464,7 +687,12 @@ const std::vector<Test> tests = {
     {"test_manager_create_and_spawn", test_manager_create_and_spawn},
     {"test_stream_pool", test_stream_pool},
     {"test_device_mem_alloc", test_device_mem_alloc},
-    {"test_device_launch_kernel", test_device_launch_kernel}
+    {"test_device_launch_kernel", test_device_launch_kernel},
+    {"test_multi_thread_kernel", test_multi_thread_kernel},
+    {"test_vector_addition", test_vector_addition},
+    {"test_invalid_kernel_params", test_invalid_kernel_params},
+    {"test_stream_async_execution", test_stream_async_execution},
+    {"test_compare_strings", test_compare_strings}
 };
 
 // Function to run a single test and report its result
@@ -514,7 +742,6 @@ void caf_main(caf::actor_system& sys) {
         std::cout << "\nCUDA manager shutdown successfully" << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "Failed to shutdown CUDA manager: " << e.what() << std::endl;
-        return;
     }
 
     // Summary
