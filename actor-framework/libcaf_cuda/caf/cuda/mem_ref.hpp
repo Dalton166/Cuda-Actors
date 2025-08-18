@@ -8,7 +8,7 @@
 #include <chrono>
 #include <iostream>
 #include "caf/cuda/types.hpp"
-#include "caf/cuda/utility.hpp"
+//#include "caf/cuda/utility.hpp"
 #include <cuda.h>
 #include <atomic>
 

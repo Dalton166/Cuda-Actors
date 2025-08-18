@@ -18,7 +18,6 @@
 #include "caf/cuda/program.hpp"
 #include "caf/cuda/command.hpp"
 #include "caf/cuda/platform.hpp"
-#include "caf/cuda/utility.hpp"
 #include <random>
 #include <climits>
 #include <thread>
