@@ -17,14 +17,14 @@
 #include <stdexcept>
 #include <iostream>
 
-// Helper macro for CUDA checks in tests
-#define TEST_CHECK_CUDA(err) \
+// Helper macro for CUDA checks in tests with debugging output
+#define TEST_CHECK_CUDA(err, call) \
   do { \
     if (err != CUDA_SUCCESS) { \
       const char* err_str; \
       cuGetErrorString(err, &err_str); \
-      std::cerr << "CUDA error: " << err_str << std::endl; \
-      assert(false); \
+      std::cerr << "CUDA error in " << call << ": " << err_str << std::endl; \
+      throw std::runtime_error(std::string("CUDA Error: ") + err_str); \
     } \
   } while (0)
 
@@ -189,11 +189,14 @@ void test_extract_vector([[maybe_unused]] caf::actor_system& sys) {
 void test_mem_ref_basic([[maybe_unused]] caf::actor_system& sys) {
   using namespace caf::cuda;
   auto& mgr = caf::cuda::manager::get();
+  auto dev = mgr.find_device(0);
   
-  CUdevice cu_dev;
-  TEST_CHECK_CUDA(cuDeviceGet(&cu_dev, 0));
+  // Use the device context managed by CAF CUDA
   CUcontext ctx;
-  TEST_CHECK_CUDA(cuCtxCreate(&ctx, 0, cu_dev));
+  TEST_CHECK_CUDA(cuCtxGetCurrent(&ctx), "cuCtxGetCurrent");
+  if (ctx == nullptr) {
+    throw std::runtime_error("No current CUDA context");
+  }
   
   // Scalar mem_ref
   mem_ref<int> scalar_ref(42, IN, 0, 0, ctx, nullptr);
@@ -201,58 +204,62 @@ void test_mem_ref_basic([[maybe_unused]] caf::actor_system& sys) {
   assert(scalar_ref.size() == 1u);
   assert(scalar_ref.access() == IN);
   
-  // Buffer mem_ref
+  // Buffer mem_ref using CAF CUDA device
   size_t num = 10;
-  CUdeviceptr dev_ptr;
-  TEST_CHECK_CUDA(cuMemAlloc(&dev_ptr, num * sizeof(int)));
-  mem_ref<int> buffer_ref(num, dev_ptr, OUT, 0, 0, ctx, nullptr);
-  assert(!buffer_ref.is_scalar());
-  assert(buffer_ref.size() == 10u);
-  assert(buffer_ref.mem() == dev_ptr);
+  out<int> out_arg(num);
+  auto buffer_ref = dev->make_arg(out_arg, 0 /* actor_id */);
+  assert(!buffer_ref->is_scalar());
+  assert(buffer_ref->size() == num);
+  assert(buffer_ref->access() == OUT);
+  assert(buffer_ref->mem() != 0u);
   
   // Synchronize (no-op for null stream)
-  buffer_ref.synchronize();
+  buffer_ref->synchronize();
   
-  // Reset
-  buffer_ref.reset();
-  assert(buffer_ref.size() == 0u);
-  assert(buffer_ref.mem() == 0u);
-  
-  TEST_CHECK_CUDA(cuCtxDestroy(ctx));
+  // Reset (CAF CUDA handles memory cleanup)
+  buffer_ref->reset();
+  assert(buffer_ref->size() == 0u);
+  assert(buffer_ref->mem() == 0u);
 }
 
 // Test for mem_ref.hpp: copy_to_host
 void test_mem_ref_copy_to_host([[maybe_unused]] caf::actor_system& sys) {
   using namespace caf::cuda;
+  auto& mgr = caf::cuda::manager::get();
+  auto dev = mgr.find_device(0);
   
-  CUdevice cu_dev;
-  TEST_CHECK_CUDA(cuDeviceGet(&cu_dev, 0));
+  // Use the device context managed by CAF CUDA
   CUcontext ctx;
-  TEST_CHECK_CUDA(cuCtxCreate(&ctx, 0, cu_dev));
+  TEST_CHECK_CUDA(cuCtxGetCurrent(&ctx), "cuCtxGetCurrent");
+  if (ctx == nullptr) {
+    throw std::runtime_error("No current CUDA context");
+  }
   
-  // Prepare device buffer
+  // Prepare device buffer using CAF CUDA
   std::vector<int> host_data = {1, 2, 3};
-  CUdeviceptr dev_ptr;
-  size_t bytes = host_data.size() * sizeof(int);
-  TEST_CHECK_CUDA(cuMemAlloc(&dev_ptr, bytes));
-  TEST_CHECK_CUDA(cuMemcpyHtoD(dev_ptr, host_data.data(), bytes));
+  in_out<int> in_out_arg(host_data);
+  auto ref = dev->make_arg(in_out_arg, 0 /* actor_id */);
+  assert(ref->size() == host_data.size());
+  assert(ref->access() == IN_OUT);
   
-  mem_ref<int> ref(host_data.size(), dev_ptr, IN_OUT, 0, 0, ctx, nullptr);
-  auto copied = ref.copy_to_host();
+  // Copy to host and verify
+  auto copied = ref->copy_to_host();
   assert(vectors_equal(copied, host_data));
   
   // Test invalid access (IN should throw)
-  mem_ref<int> in_ref(host_data.size(), dev_ptr, IN, 0, 0, ctx, nullptr);
+  in<int> in_arg(host_data);
+  auto in_ref = dev->make_arg(in_arg, 0 /* actor_id */);
   bool threw = false;
   try {
-    in_ref.copy_to_host();
+    in_ref->copy_to_host();
   } catch (const std::runtime_error&) {
     threw = true;
   }
   assert(threw);
   
-  ref.reset();
-  TEST_CHECK_CUDA(cuCtxDestroy(ctx));
+  // Reset (CAF CUDA handles memory cleanup)
+  ref->reset();
+  in_ref->reset();
 }
 
 // Test for command_runner.hpp: synchronous run
@@ -313,12 +320,18 @@ void test_manager_create_and_spawn([[maybe_unused]] caf::actor_system& sys) {
 
 // Test for StreamPool.hpp: StreamPool basic operations
 void test_stream_pool([[maybe_unused]] caf::actor_system& sys) {
-  CUdevice cu_dev;
-  TEST_CHECK_CUDA(cuDeviceGet(&cu_dev, 0));
-  CUcontext ctx;
-  TEST_CHECK_CUDA(cuCtxCreate(&ctx, 0, cu_dev));
+  using namespace caf::cuda;
+  auto& mgr = caf::cuda::manager::get();
+  auto dev = mgr.find_device(0);
   
-  caf::cuda::StreamPool pool(ctx, 2);
+  // Use the device context managed by CAF CUDA
+  CUcontext ctx;
+  TEST_CHECK_CUDA(cuCtxGetCurrent(&ctx), "cuCtxGetCurrent");
+  if (ctx == nullptr) {
+    throw std::runtime_error("No current CUDA context");
+  }
+  
+  StreamPool pool(ctx, 2);
   
   auto s1 = pool.acquire();
   assert(s1 != nullptr);
@@ -332,8 +345,6 @@ void test_stream_pool([[maybe_unused]] caf::actor_system& sys) {
   pool.release(s1);
   auto s4 = pool.acquire();  // Should reuse s1
   assert(s4 == s1);
-  
-  TEST_CHECK_CUDA(cuCtxDestroy(ctx));
 }
 
 // Test for device.hpp: memory allocation helpers
