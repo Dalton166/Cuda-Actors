@@ -1,13 +1,12 @@
-/*
- * A file full of helper functions that can be called by any class at anytime 
- * if desired 
- */
 #pragma once
 #include "caf/cuda/global.hpp"
 #include <random>
 #include <climits>
 #include <fstream>
 
+//file of helper functions that can be called from anywhere at anytime 
+//they are not class specific and is encouraged that users use these 
+//functions rather than creating their own 
 namespace caf::cuda {
 
 	CAF_CUDA_EXPORT int random_number();
