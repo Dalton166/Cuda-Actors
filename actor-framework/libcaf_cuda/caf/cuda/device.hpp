@@ -53,10 +53,12 @@ public:
 
   CUcontext getContext(int) { return context_; }
 
+  //returns the CUStream associated with the actor id 
   CUstream get_stream_for_actor(int actor_id) {
     return stream_table_.get_stream(actor_id);
   }
 
+  //releases the CUStream associated with the actor id 
   void release_stream_for_actor(int actor_id) {
     stream_table_.release_stream(actor_id);
   }
@@ -117,6 +119,8 @@ public:
 
 
 
+  //given a tuple of mem_ptrs
+  //will copy their data back to host and place them in an output buffer
   template <typename... Ts>
   std::vector<output_buffer>  collect_output_buffers_helper(const std::tuple<Ts...>& args) {
     std::vector<output_buffer> result;
@@ -144,8 +148,8 @@ public:
                       int actor_id,
 		      int shared_mem = 0 //in bytes
 		      ) {
-  // Step 1: Allocate mem_ref<T> for each wrapper type
-  
+
+  // Step 1: Allocate mem_ref<T> for each wrapper type 
    CUstream stream = get_stream_for_actor(actor_id);
    auto mem_refs = std::apply([&](auto&&... arg) {
     return std::make_tuple(make_arg(std::forward<decltype(arg)>(arg), stream)...);
@@ -196,6 +200,10 @@ public:
     std::vector<CUdeviceptr*> allocated_device_ptrs; // Buffers only
   };
 
+ 
+
+   //given a tuple of mem_refs, turns them into  CUDeviceptrs that 
+   //can be used to launch kernels
   template <typename... Ts>
   kernel_arg_pack prepare_kernel_args(const std::tuple<Ts...>& args) {
     kernel_arg_pack pack;
@@ -214,6 +222,7 @@ public:
     return pack;
   }
 
+  //cleans up the cuDevicePtrs that are no longer needed
   void cleanup_kernel_args(kernel_arg_pack& pack) {
     for (auto* ptr : pack.allocated_device_ptrs)
       delete ptr;
@@ -222,6 +231,8 @@ public:
   }
 
 
+  //given a tuple of mem_ptrs, collects their data on the gpu and 
+  //returns an std::vector<output_buffer>
   template <typename... Ts>
   std::vector<output_buffer> collect_output_buffers(const std::tuple<Ts...>& args) {
    return collect_output_buffers_helper(args);
