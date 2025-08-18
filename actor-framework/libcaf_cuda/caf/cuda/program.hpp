@@ -10,7 +10,7 @@
 #include "caf/cuda/platform.hpp"
 
 namespace caf::cuda {
-
+//class that represents a cuda kernel 
 class program : public caf::ref_counted {
 public:
 program(std::string name, std::vector<char> binary, bool is_fatbin = false)
@@ -18,6 +18,7 @@ program(std::string name, std::vector<char> binary, bool is_fatbin = false)
 
   auto plat = platform::create();
 
+  //load kernel on all possible devices
   for (const auto& dev : plat->devices()) {
     CUcontext ctx = dev->getContext();
     CHECK_CUDA(cuCtxPushCurrent(ctx));
@@ -42,6 +43,7 @@ program(std::string name, std::vector<char> binary, bool is_fatbin = false)
     kernels_[dev->getId()] = kernel;
   }
 }
+  //returns a CUfunction for a given device 
   CUfunction get_kernel(int device_id) {
     auto it = kernels_.find(device_id);
     if (it == kernels_.end()) {
