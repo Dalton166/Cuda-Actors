@@ -45,6 +45,8 @@ public:
   }
 
 private:
+
+  //creates a new stream to add into the stream pool
   CUstream create_stream() {
     // Push context to the current thread
     CUresult err = cuCtxPushCurrent(ctx_);
@@ -85,6 +87,7 @@ public:
   explicit DeviceStreamTable(CUcontext ctx, size_t pool_size = 32)
       : pool_(ctx, pool_size) {}
 
+  //gets a cuStream given an actor id 
   CUstream get_stream(int actor_id) {
     {
       std::shared_lock lock(table_mutex_);
@@ -100,6 +103,7 @@ public:
     return s;
   }
 
+  //releases a stream back into the pool
   void release_stream(int actor_id) {
     std::unique_lock lock(table_mutex_);
     auto it = table_.find(actor_id);
