@@ -24,9 +24,15 @@
 
 namespace caf::cuda {
 
+//An actor that acts as a gateway to the gpu 
+//you can send it messages that is of the parameters of the kernel
+//you wish to launch
+//and it will reply with an output_buffer
 template <bool PassConfig, class... Ts>
 class actor_facade : public caf::local_actor, public caf::resumable {
 public:
+
+  //Factory methods to create the actor
   static caf::actor create(
     caf::actor_system& sys,
     caf::actor_config&& actor_conf,
@@ -61,6 +67,7 @@ public:
       std::forward<Ts>(xs)...);
   }
 
+  //constructor
   actor_facade(caf::actor_config&& cfg, program_ptr prog, nd_range nd, Ts&&... xs)
     : local_actor(cfg),
       config_(std::move(cfg)),
@@ -68,12 +75,13 @@ public:
       dims_(nd) {
   }
 
+  //deconstructor
   ~actor_facade() {
-	  std::cout << "Destroying actor from te gpu\n";
     auto plat = platform::create();
     plat->release_streams_for_actor(actor_id);
   }
 
+  //creates a command and enqueues the kernel to be launched
   void create_command(program_ptr program, Ts&&... xs) {
     using command_t = command<caf::actor, Ts...>;
     auto rp = make_response_promise();
@@ -86,6 +94,7 @@ public:
     //anon_mail(kernel_done_atom_v).send(caf::actor_cast<caf::actor>(this));
   }
 
+  //does the same thing as create_command
   void run_kernel(Ts&... xs) {
     create_command(program_, std::forward<Ts>(xs)...);
   }
@@ -101,11 +110,13 @@ private:
   std::atomic_flag resuming_flag_ = ATOMIC_FLAG_INIT;
   caf::actor self_ =   caf::actor_cast<caf::actor>(this);
 
+  //creates an id for the actor facade, used for stream allocation and 
+  //deallocation
   int generate_id() {
-  
       return random_number();	  
   }
 
+  //helper method that is used to handle an incoming message
   bool handle_message(const message& msg) {
     if (!msg.types().empty() && msg.types()[0] == caf::type_id_v<caf::actor>) {
       auto sender = msg.get_as<caf::actor>(0);
@@ -125,6 +136,7 @@ private:
      return false;
   }
 
+  //unpacks a message and launches the kernel
   template <std::size_t... Is>
   bool unpack_and_run_wrapped(caf::actor sender, const message& msg, std::index_sequence<Is...>) {
     auto wrapped = std::make_tuple(msg.get_as<Ts>(Is + 1)...);
@@ -132,6 +144,7 @@ private:
     return true;
   }
 
+  //unpacks a message and launches a kernel
   template <std::size_t... Is>
   bool unpack_and_run(caf::actor sender, const message& msg, std::index_sequence<Is...>) {
     auto unpacked = std::make_tuple(msg.get_as<raw_t<Ts>>(Is + 1)...);
@@ -141,6 +154,7 @@ private:
   }
 
 
+  //unpacks a message and launches a kernel
   template <std::size_t... Is>
   bool unpack_and_run_wrapped_async(const message& msg, std::index_sequence<Is...>) {
     auto wrapped = std::make_tuple(msg.get_as<Ts>(Is)...);
@@ -155,6 +169,7 @@ private:
     return subtype_t(0);
   }
 
+  //handles scheduling for caf, will return based on what work needs to be done
  resumable::resume_result resume(::caf::scheduler* sched, size_t max_throughput) override {
   if (resuming_flag_.test_and_set(std::memory_order_acquire)) {
     return resumable::resume_later;
@@ -190,6 +205,7 @@ private:
       continue;
     }
 
+    //check for exit message if yes begin the shutdown process
     if (msg->content().match_elements<exit_msg>()) {
       auto exit = msg->content().get_as<exit_msg>(0);
       shutdown_requested_ = true;
@@ -202,6 +218,7 @@ private:
       }
     }
 
+    //process the message and begin launching the kernel
     handle_message(msg->content());
     //pending_promises_--;
     current_mailbox_element(nullptr);
@@ -219,6 +236,7 @@ private:
 
   void deref_resumable() const noexcept override  {}
 
+  //add a message to its mailbox and enqueue the actor on the scheduler
   bool enqueue(mailbox_element_ptr what, ::caf::scheduler* sched) override {
     if (!what || shutdown_requested_)
       return false;
@@ -233,6 +251,7 @@ private:
     return false;
   }
 
+  //schedule the actor on startup
   void launch(::caf::scheduler* sched, bool lazy, [[maybe_unused]] bool interruptible) override {
     if (!lazy && sched) {
       sched->schedule(this);
@@ -245,6 +264,7 @@ private:
     }
   }
 
+  //close the mailbox when done
   void force_close_mailbox() override  {
     while (!mailbox_.empty()) {
       mailbox_.pop();
@@ -252,10 +272,8 @@ private:
   }
 
 
-
-
+  //helper method to be executed when an exit message is received 
   void quit(exit_reason reason) {
-	  std::cout << "Quit called\n";
    self_ = nullptr; 
    force_close_mailbox();
     current_mailbox_element(nullptr);
