@@ -9,6 +9,8 @@ namespace caf::cuda {
 
 // ===========================================================================
 // COMMAND RUNNER
+// An Alternative gateway to the gpu, enabling users to create their own custom
+// gpu actors if they wish 
 // Manages synchronous and asynchronous command execution with overloads
 // for actor_id, shared_memory, and device_number.
 // ===========================================================================
@@ -20,6 +22,7 @@ public:
 
   // -------------------------------
   // Synchronous run: actor_id only
+  // returns an output_buffer
   // -------------------------------
   template <class... Us>
   auto run(program_ptr program,
@@ -74,6 +77,7 @@ public:
 
   // -------------------------------
   // Asynchronous run: actor_id only
+  // returns a tuple of mem_ptrs
   // -------------------------------
   template <class... Us>
   auto run_async(program_ptr program,
