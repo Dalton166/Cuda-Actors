@@ -13,7 +13,6 @@
 #include "caf/cuda/platform.hpp"
 #include "caf/cuda/mem_ref.hpp"
 #include "caf/cuda/device.hpp"
-#include "caf/cuda/arguments.hpp"
 
 
 
