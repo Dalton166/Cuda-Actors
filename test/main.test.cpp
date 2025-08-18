@@ -584,7 +584,7 @@ caf::behavior supervisor_fun(caf::stateful_actor<supervisor_state>* self, int id
           ++st_ref.count;
 
           if (st_ref.count < 20) {
-            self->delayed_send(self, std::chrono::milliseconds(0), std::string("start"));
+            self->mail(std::string("start")).send(self);
           } else {
             double kernel_avg = std::accumulate(st_ref.kernel_times.begin(), st_ref.kernel_times.end(), 0.0) / st_ref.kernel_times.size();
             double full_avg = std::accumulate(st_ref.full_times.begin(), st_ref.full_times.end(), 0.0) / st_ref.full_times.size();
@@ -721,7 +721,7 @@ if (match) {
 }
 
           if (st_ref.count < 20) {
-            self->delayed_send(self, std::chrono::milliseconds(0), std::string("start"));
+            self->mail(std::string("start")).send(self);
           } else {
             double kernel_avg = std::accumulate(st_ref.kernel_times.begin(), st_ref.kernel_times.end(), 0.0) / st_ref.kernel_times.size();
             double full_avg = std::accumulate(st_ref.full_times.begin(), st_ref.full_times.end(), 0.0) / st_ref.full_times.size();
@@ -1011,7 +1011,7 @@ caf::behavior cpu_supervisor_global_fun(caf::stateful_actor<cpu_supervisor_state
           ++st_ref.count;
 
           if (st_ref.count < 20) {
-            self->delayed_send(self, std::chrono::milliseconds(0), std::string("start"));
+            self->mail(std::string("start")).send(self);
           } else {
             double avg = std::accumulate(st_ref.run_times.begin(), st_ref.run_times.end(), 0.0) / st_ref.run_times.size();
             std::cout << "[INFO] [CPU GLOBAL] Supervisor " << st_ref.id
@@ -1162,7 +1162,7 @@ caf::behavior supervisor_shared_fun(caf::stateful_actor<supervisor_state_shared>
 
           if (st_ref.count < 20) {
             std::cout << "[DEBUG] [Supervisor " << st_ref.id << "] Scheduling next iteration...\n";
-            self->delayed_send(self, std::chrono::milliseconds(0), std::string("start"));
+            self->mail(std::string("start")).send(self);
           } else {
             double kernel_avg = std::accumulate(st_ref.kernel_times.begin(), st_ref.kernel_times.end(), 0.0) / st_ref.kernel_times.size();
             double full_avg = std::accumulate(st_ref.full_times.begin(), st_ref.full_times.end(), 0.0) / st_ref.full_times.size();
@@ -1457,315 +1457,6 @@ inline void run_concurrent_mmul_test_global_sync(caf::actor_system& sys,
 }
 
 
-
-struct mmul_sync_state {
-  caf::actor gpu_actor;
-  Clock::time_point start_time;
-};
-
-void test_mmul_sync(caf::actor_system& sys, int N) {
-  std::cout << "[TEST] Starting test_mmul_sync\n";
-
-  caf::cuda::manager& mgr = caf::cuda::manager::get();
-
-  int THREADS = 32;
-  int BLOCKS = (N + THREADS - 1) / THREADS;
-
-  caf::cuda::nd_range dim(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
-
-  auto gpuActor = mgr.spawnFromCUBIN(
-    "../mmul.cubin", "matrixMul", dim,
-    in<int>{}, in<int>{}, out<int>{}, in<int>{}
-  );
-
-  std::vector<int> h_a(N * N);
-  std::vector<int> h_b(N * N);
-  std::vector<int> h_c(N * N, 0);
-  std::vector<int> h_ref(N * N, 0);
-  std::vector<int> h_n(1, N);
-
-  std::generate(h_a.begin(), h_a.end(), []() { return rand() % 10; });
-  std::generate(h_b.begin(), h_b.end(), []() { return rand() % 10; });
-
-  serial_matrix_multiply(h_a, h_b, h_ref, N);
-
-  auto arg1 = caf::cuda::create_in_arg(h_a);
-  auto arg2 = caf::cuda::create_in_arg(h_b);
-  auto arg3 = caf::cuda::create_out_arg(h_c);
-  auto arg4 = caf::cuda::create_in_arg(N);
-
-  sys.spawn([=](caf::stateful_actor<mmul_sync_state>* self_actor) {
-    auto& st = self_actor->state();
-    st.gpu_actor = gpuActor;
-
-    // Register lifecycle hooks
-    self_actor->set_exit_handler([=](const caf::exit_msg& msg) {
-      std::cout << "[EXIT HANDLER] test_mmul_sync received exit from actor: "
-                << to_string(msg.source) << ", reason: " << caf::to_string(msg.reason) << "\n";
-      if (msg.source == st.gpu_actor) {
-        std::cerr << "[ERROR] GPU actor crashed or terminated unexpectedly!\n";
-        self_actor->quit(msg.reason);
-      }
-    });
-
-    self_actor->monitor(st.gpu_actor);
-
-    self_actor->attach_functor([=](const caf::error& reason) {
-      std::cout << "[EXIT] test_mmul_sync terminated with reason: "
-                << caf::to_string(reason) << "\n";
-    });
-
-    // Send synchronous message
-    st.start_time = Clock::now();
-    self_actor->send(st.gpu_actor, self_actor, arg1, arg2, arg3, arg4);
-
-    return caf::behavior{
-      [=](const std::vector<output_buffer>& outputs) {
-        auto& st_ref = self_actor->state();
-        auto end = Clock::now();
-        std::chrono::duration<double> elapsed = end - st_ref.start_time;
-
-        std::vector<int> result;
-        for (const auto& out : outputs) {
-          std::visit([&](const auto& vec) {
-            if constexpr (std::is_same_v<std::decay_t<decltype(vec)>, std::vector<int>>) {
-              result = vec;
-            }
-          }, out.data);
-        }
-
-        bool match = result == h_ref;
-        std::cout << "[INFO] Kernel round-trip time: " << elapsed.count() << " seconds\n";
-        std::cout << (match ? "[PASS] GPU result matches reference\n" : "[FAIL] Mismatch in GPU result\n");
-
-        self_actor->send_exit(st_ref.gpu_actor, caf::exit_reason::user_shutdown);
-        self_actor->quit();
-      },
-      [=](caf::error& err) {
-        std::cerr << "[ERROR] test_mmul_sync kernel execution failed: "
-                  << caf::to_string(err) << "\n";
-        self_actor->quit(err);
-      }
-    };
-  });
-
-  sys.await_all_actors_done();
-}
-
-
-
-struct supervisor_mmul_state {
-  int id = 0;
-  int N = 0;
-  int count = 0;
-  std::vector<double> kernel_times;
-  std::vector<double> full_times;
-  caf::actor gpu_actor;
-  std::vector<int> h_a;
-  std::vector<int> h_b;
-  std::vector<int> h_c;
-  std::vector<int> h_n;
-  std::queue<std::pair<Clock::time_point, Clock::time_point>> start_times; // {iteration_start, kernel_start}
-  int pending_messages = 0; // Track number of sent but unprocessed messages
-};
-
-caf::behavior supervisor_sync_fun(caf::stateful_actor<supervisor_mmul_state>* self, int id, int N) {
-  auto& st = self->state();
-  st.id = id;
-  st.N = N;
-
-  // Generate matrices once
-  st.h_a.resize(st.N * st.N);
-  st.h_b.resize(st.N * st.N);
-  st.h_c.resize(st.N * st.N, 0);
-  st.h_n = {st.N};
-
-  std::generate(st.h_a.begin(), st.h_a.end(), [] { return rand() % 10; });
-  std::generate(st.h_b.begin(), st.h_b.end(), [] { return rand() % 10; });
-
-  const int THREADS = 32;
-  const int BLOCKS = (N + THREADS - 1) / THREADS;
-  caf::cuda::nd_range dims(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
-
-  st.gpu_actor = caf::cuda::manager::get().spawnFromCUBIN(
-    "../mmul.cubin", "matrixMul", dims,
-    in<int>{}, in<int>{}, out<int>{}, in<int>{}
-  );
-
-  // Register lifecycle hooks
-  self->attach_functor([=](const caf::error& reason) {
-    std::cout << "[EXIT] Supervisor " << self->state().id
-              << " died with reason: " << caf::to_string(reason)
-              << ", after iteration: " << self->state().count << "\n";
-  });
-
-  self->set_exit_handler([=](const caf::exit_msg& msg) {
-    std::cout << "[EXIT HANDLER] Supervisor " << self->state().id
-              << " received exit from actor: " << to_string(msg.source)
-              << ", reason: " << caf::to_string(msg.reason) << "\n";
-
-    if (msg.source == st.gpu_actor) {
-      std::cerr << "[ERROR] GPU actor crashed or terminated unexpectedly!\n";
-      self->quit(msg.reason);
-    }
-  });
-
-  self->monitor(st.gpu_actor);
-
-  self->system().registry().put(st.gpu_actor.id(), st.gpu_actor);
-  self->attach_functor([=](const caf::error& reason) {
-    std::cout << "[GPU Actor Terminated] Reason: " << to_string(reason) << "\n";
-  });
-
-  auto run_iteration = [self]() {
-    auto& st_ref = self->state();
-    // Only run a new iteration if no messages are pending
-    if (st_ref.pending_messages > 0) {
-      std::cout << "[DEBUG] Supervisor " << st_ref.id
-                << " skipping iteration " << st_ref.count
-                << " due to " << st_ref.pending_messages << " pending messages\n";
-      return;
-    }
-
-    auto iteration_start = Clock::now();
-    auto kernel_start = Clock::now();
-
-    /*
-    auto arg1 = caf::cuda::create_in_arg(st_ref.h_a);
-    auto arg2 = caf::cuda::create_in_arg(st_ref.h_b);
-    auto arg3 = caf::cuda::create_out_arg(st_ref.h_c);
-    auto arg4 = caf::cuda::create_in_arg(st_ref.N);
-
-    */
-
-    auto arg1 = caf::cuda::create_in_arg(std::vector<int>(st_ref.h_a));
-    auto arg2 = caf::cuda::create_in_arg(std::vector<int>(st_ref.h_b));
-    auto arg3 = caf::cuda::create_out_arg(std::vector<int>(st_ref.h_c));
-
-    auto arg4 = caf::cuda::create_in_arg(st_ref.N);
-
-
-
-    // Store start times and increment pending messages
-    st_ref.start_times.emplace(std::make_pair(iteration_start, kernel_start));
-    ++st_ref.pending_messages;
-
-    std::cout << "[DEBUG] Supervisor " << st_ref.id
-              << " sending iteration " << st_ref.count
-              << ", pending messages: " << st_ref.pending_messages << "\n";
-
-
-
-    std::cout << "[DEBUG] Buffers A: " << static_cast<const void*>(st_ref.h_a.data())
-          << " B: " << static_cast<const void*>(st_ref.h_b.data())
-          << " C: " << static_cast<const void*>(st_ref.h_c.data()) << "\n";
-
-
-    // Send message synchronously to GPU actor
-    self->send(st_ref.gpu_actor, self, arg1, arg2, arg3, arg4);
-  };
-
-  return {
-    [=](const std::string& msg) {
-      if (msg == "start") {
-        run_iteration();
-      }
-    },
-    [=](const std::vector<output_buffer>& outputs) {
-      auto& st_ref = self->state();
-
-      std::cout << "[DEBUG] Supervisor " << st_ref.id
-                << " received response for iteration " << st_ref.count
-                << ", pending messages: " << st_ref.pending_messages
-                << ", start_times size: " << st_ref.start_times.size() << "\n";
-
-      // Validate pending messages and start times
-      if (st_ref.pending_messages == 0) {
-        std::cerr << "[ERROR] [MMUL SYNC] Supervisor " << st_ref.id
-                  << " received unexpected response with no pending messages!\n";
-        self->quit(caf::make_error(caf::sec::runtime_error, "Unexpected response received"));
-        return;
-      }
-
-      if (st_ref.start_times.empty()) {
-        std::cerr << "[ERROR] [MMUL SYNC] Supervisor " << st_ref.id
-                  << " received response but no start times available!\n";
-        self->quit(caf::make_error(caf::sec::runtime_error, "No start times for iteration"));
-        return;
-      }
-
-      auto [iteration_start, kernel_start] = st_ref.start_times.front();
-      st_ref.start_times.pop();
-      --st_ref.pending_messages;
-
-      auto kernel_end = Clock::now();
-      auto iteration_end = Clock::now();
-
-      double kernel_time = std::chrono::duration<double>(kernel_end - kernel_start).count();
-      double full_time = std::chrono::duration<double>(iteration_end - iteration_start).count();
-
-      std::cout << "[INFO] [MMUL SYNC] Supervisor " << st_ref.id
-                << " Iteration " << st_ref.count
-                << " Kernel round-trip: " << kernel_time << " s, "
-                << "Full iteration time: " << full_time << " s\n";
-
-      st_ref.kernel_times.push_back(kernel_time);
-      st_ref.full_times.push_back(full_time);
-      ++st_ref.count;
-
-      if (st_ref.count < 20) {
-        std::cout << "[DEBUG] Supervisor " << st_ref.id
-                  << " scheduling iteration " << st_ref.count << "\n";
-        run_iteration(); // Schedule next iteration directly after receiving response
-      } else {
-        double kernel_avg = std::accumulate(
-          st_ref.kernel_times.begin(), st_ref.kernel_times.end(), 0.0
-        ) / st_ref.kernel_times.size();
-
-        double full_avg = std::accumulate(
-          st_ref.full_times.begin(), st_ref.full_times.end(), 0.0
-        ) / st_ref.full_times.size();
-
-        std::cout << "[INFO] [MMUL SYNC] Supervisor " << st_ref.id
-                  << " Kernel average: " << kernel_avg << " s, "
-                  << "Full iteration average: " << full_avg << " s\n";
-
-        std::cout << "[DEBUG] Supervisor " << st_ref.id
-                  << " quitting after iteration " << st_ref.count << "\n";
-
-        self->send_exit(st_ref.gpu_actor, caf::exit_reason::user_shutdown);
-        
-	self->quit();
-      }
-    },
-    [=](caf::error& err) {
-      std::cerr << "[ERROR] [MMUL SYNC] Kernel execution failed: "
-                << caf::to_string(err) << "\n";
-      self->quit(err);
-    }
-  };
-}
-
-// Driver function
-inline void run_concurrent_mmul_test_sync(caf::actor_system& sys,
-                                         int num_supervisors,
-                                         int matrix_size) {
-  auto start = Clock::now();
-
-  for (int i = 0; i < num_supervisors; ++i) {
-    auto sup = sys.spawn(supervisor_sync_fun, i, matrix_size);
-    caf::anon_send(sup, std::string("start"));
-  }
-
-  sys.await_all_actors_done();
-
-  auto end = Clock::now();
-  std::chrono::duration<double> duration = end - start;
-  std::cout << "[TIMER] run_concurrent_mmul_test_sync took: "
-            << duration.count() << " seconds\n";
-}
-
-
 // === Worker Actor: Performs serial matrix multiplication ===
 caf::behavior cpu_worker_per_actor_fun(caf::event_based_actor* self) {
   return {
@@ -1829,7 +1520,7 @@ caf::behavior cpu_supervisor_per_actor_fun(caf::stateful_actor<cpu_supervisor_pe
           ++st_ref.count;
 
           if (st_ref.count < st_ref.num_iterations) {
-            self->delayed_send(self, std::chrono::milliseconds(0), std::string("start"));
+            self->mail(std::string("start")).send(self);
           } else {
             double avg = std::accumulate(st_ref.run_times.begin(), st_ref.run_times.end(), 0.0) / st_ref.run_times.size();
             std::cout << "[INFO] [CPU PER ACTOR] Supervisor " << st_ref.id
@@ -1962,7 +1653,7 @@ caf::behavior gpu_supervisor_per_actor_fun(caf::stateful_actor<gpu_supervisor_pe
           ++st_ref.count;
 
           if (st_ref.count < st_ref.num_iterations) {
-            self->delayed_send(self, std::chrono::milliseconds(0), std::string("start"));
+            self->mail(std::string("start")).send(self);
           } else {
             double kernel_avg = std::accumulate(st_ref.kernel_times.begin(), st_ref.kernel_times.end(), 0.0) / st_ref.kernel_times.size();
             double full_avg = std::accumulate(st_ref.full_times.begin(), st_ref.full_times.end(), 0.0) / st_ref.full_times.size();
