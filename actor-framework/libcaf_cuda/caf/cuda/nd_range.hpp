@@ -9,6 +9,7 @@ namespace caf::cuda {
 
 using dim_vec = std::vector<size_t>;
 
+//class that represents the grid and block dimensions of a kernel
 class nd_range {
 public:
   // Constructor with individual dimension arguments
@@ -51,9 +52,9 @@ public:
   const dim_vec& getBlockDims() const { return blockDim; }
 
   ~nd_range() {
-  
-	  //std::cout << "Destroying range\n";
+  //no-op
   }
+
 
 
 private:
