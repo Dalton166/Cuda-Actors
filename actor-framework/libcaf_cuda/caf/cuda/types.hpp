@@ -1,4 +1,7 @@
 #pragma once
+//file full of either forward declarations 
+//or types used in caf cuda
+
 
 #include <caf/intrusive_ptr.hpp>
 #include <variant>
@@ -63,6 +66,8 @@ struct output_buffer {
 
 
 // === Wrapper types for in/out/in_out with default ctor, union safely used ===
+
+//represents a readonly buffer on the gpu
 template <typename T>
 class in_impl {
 private:
@@ -131,6 +136,8 @@ public:
   }
 };
 
+
+//represents a write only buffer on the gpu
 template <typename T>
 class out_impl {
 private:
@@ -198,6 +205,7 @@ public:
 };
 
 
+//creates a read-write buffer on the gpu
 template <typename T>
 class in_out_impl {
 private:
@@ -263,12 +271,17 @@ public:
 };
 
 // === Aliases ===
+
+//readonly buffer
 template <typename T>
 using in = in_impl<T>;
 
+//writeonly buffer
 template <typename T>
 using out = out_impl<T>;
 
+
+//readwrite buffer
 template <typename T>
 using in_out = in_out_impl<T>;
 
@@ -297,9 +310,6 @@ template <typename T>
 struct raw_type<caf::cuda::mem_ptr<T>> {
   using type = T;
 };
-
-
-
 
 template <typename T>
 using raw_t = typename raw_type<T>::type;
