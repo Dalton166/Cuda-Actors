@@ -21,7 +21,8 @@
 #include "caf/cuda/actor_facade.hpp"
 #include "caf/cuda/platform.hpp"
 
-
+//A class that just acts as a user interface
+//and a system initialization for cuda 
 namespace caf::cuda {
 
 class device;
@@ -58,7 +59,8 @@ public:
   static manager& get() {
     std::lock_guard<std::mutex> guard(mutex_);
     if (!instance_) {
-      throw std::runtime_error("CUDA manager used before initialization");
+      throw std::runtime_error("CUDA manager used before initialization\n
+		      Please place caf::cuda::manager::init() at the top of CAF_MAIN\n");
     }
     return *instance_;
   }
@@ -74,26 +76,25 @@ public:
   manager(const manager&) = delete;
   manager& operator=(const manager&) = delete;
 
+  //device_ptr getter
   device_ptr find_device(std::size_t id) const;
 
-  template <class Predicate>
-  device_ptr find_device_if(Predicate&&) const {
-    throw std::runtime_error("CUDA support disabled: manager::find_device_if");
-  }
 
-  /*
-  program_ptr create_program(const std::string& source,
-                             const char* options,
-                             device_ptr dev);
-*/
+  //Creates a program ptr to be used to launch kernels
+  //@param: kernel, A string representation of a kernel
+  //@param:name, the function signature name of the kernel
+  //@param dev, device pointer
   program_ptr create_program(const char* kernel,
                              const std::string& name,
                              device_ptr dev);
+
 
   program_ptr create_program_from_file(const std::string& filename,
                                        const char* options,
                                        device_ptr dev);
 
+
+  //Currently not working DO NOT USE 
   program_ptr create_program_from_ptx(const std::string& filename,
                                     const char* kernel_name,
                                     device_ptr device);
@@ -104,22 +105,29 @@ public:
 
 
 
+ //Creates a program ptr to be used to launch kernels
+ //must read in a precompiled cubin file 
+  //@param: filename, this is the path to the file that contains the kernel
+  //@param: kernel_name, the function signature name of the kernel
   program_ptr create_program_from_cubin(const std::string& filename,
                                                const char* kernel_name);
 
+
+
+ //Creates a program ptr to be used to launch kernels
+ //must read in a precompiled fatbin file 
+  //@param: filename, this is the path to the file that contains the kernel
+  //@param: kernel_name, the function signature name of the kernel
   program_ptr create_program_from_fatbin(const std::string& filename,
                                                const char* kernel_name);
 
 
 
-
-  template <bool PassConfig, class Result, class... Ts>
-  caf::actor spawn(const char*,
-                   program_ptr,
-                   Ts&&...) {
-    throw std::runtime_error("CUDA support disabled: manager::spawn");
-  }
-
+  //Spawns in an actor facade 
+  //@param, kernel, string version of the kernel
+  //@param name, name of the function that is the kernel 
+  //@param dims: both block and grid dimensions of the kernel you want to launch
+  //@returns a handle to the actor facade
   template <class... Ts>
   caf::actor spawn(const char* kernel,
                    const std::string& name,
@@ -134,7 +142,8 @@ public:
     return f(&system_, std::move(cfg), std::move(prog),dims,std::forward<Ts>(xs)...);
   }
 
- 
+
+  //Currently broken DO not use  
   template <class... Ts>
   caf::actor spawnFromPTX(
                    const std::string& fileName,
@@ -153,6 +162,12 @@ public:
 
 
  
+  //Spawns an actor in from a precompiled cubin
+  //must read in a precompiled cubin file
+  //@param filename, path to the file
+  //@param kernelName: the name of the kernel
+  //@param dims: both block and grid dimensions of the kernel you want to launch
+  //@returns a handle to the actor facade
   template <class... Ts>
   caf::actor spawnFromCUBIN(
                    const std::string& fileName,
@@ -182,6 +197,7 @@ private:
   caf::actor_system& system_;
   platform_ptr platform_;
 
+  //helper to compile a nvrtc program
   bool compile_nvrtc_program(const char* source, CUdevice device, std::vector<char>& ptx_out);
 
 
