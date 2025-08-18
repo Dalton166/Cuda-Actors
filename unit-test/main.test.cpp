@@ -1,3 +1,4 @@
+#include <caf/all.hpp>
 #include <caf/actor_system.hpp>
 #include <caf/cuda/manager.hpp>
 #include <caf/cuda/helpers.hpp>
@@ -6,10 +7,9 @@
 #include <caf/cuda/mem_ref.hpp>
 #include <caf/cuda/device.hpp>
 #include <caf/cuda/StreamPool.hpp>
-#include <caf/cuda/program.hpp>  // Assuming this is needed for some tests
+#include <caf/cuda/program.hpp>
 #include <caf/cuda/nd_range.hpp>
-#include <caf/cuda/platform.hpp>  // For platform access if needed
-
+#include <caf/cuda/platform.hpp>
 #include <cassert>
 #include <vector>
 #include <string>
@@ -28,8 +28,15 @@
     } \
   } while (0)
 
-// Note: These tests assume CUDA is initialized via manager::init(sys).
-// Each test function is self-contained and uses the provided actor_system.
+// Helper function to compare vectors for test_extract_vector
+template <typename T>
+bool vectors_equal(const std::vector<T>& a, const std::vector<T>& b) {
+    if (a.size() != b.size()) return false;
+    for (size_t i = 0; i < a.size(); ++i) {
+        if (a[i] != b[i]) return false;
+    }
+    return true;
+}
 
 // Test for types.hpp: in_impl (in<T>)
 void test_in_impl([[maybe_unused]] caf::actor_system& sys) {
@@ -164,24 +171,23 @@ void test_extract_vector([[maybe_unused]] caf::actor_system& sys) {
   // Extract first matching
   auto opt_int = extract_vector_or_empty<int>(outputs);
   assert(opt_int.has_value());
-  assert(opt_int.value() == std::vector<int>{1, 2, 3});
+  assert(vectors_equal(opt_int.value(), std::vector<int>{1, 2, 3}));
   
   auto vec_float = extract_vector<float>(outputs);
-  assert(vec_float == std::vector<float>{4.0f, 5.0f});
+  assert(vectors_equal(vec_float, std::vector<float>{4.0f, 5.0f}));
   
   // By index
   auto vec_int_idx = extract_vector<int>(outputs, 2);
-  assert(vec_int_idx == std::vector<int>{6, 7});
+  assert(vectors_equal(vec_int_idx, std::vector<int>{6, 7}));
   
   // Non-matching or out of range
-  assert(extract_vector<double>(outputs) == std::vector<double>{});
-  assert(extract_vector<int>(outputs, 10) == std::vector<int>{});
+  assert(vectors_equal(extract_vector<double>(outputs), std::vector<double>{}));
+  assert(vectors_equal(extract_vector<int>(outputs, 10), std::vector<int>{}));
 }
 
 // Test for mem_ref.hpp: mem_ref class (basic operations)
 void test_mem_ref_basic([[maybe_unused]] caf::actor_system& sys) {
   using namespace caf::cuda;
-  caf::cuda::manager::init(sys);
   auto& mgr = caf::cuda::manager::get();
   
   CUdevice cu_dev;
@@ -218,7 +224,6 @@ void test_mem_ref_basic([[maybe_unused]] caf::actor_system& sys) {
 // Test for mem_ref.hpp: copy_to_host
 void test_mem_ref_copy_to_host([[maybe_unused]] caf::actor_system& sys) {
   using namespace caf::cuda;
-  caf::cuda::manager::init(sys);
   
   CUdevice cu_dev;
   TEST_CHECK_CUDA(cuDeviceGet(&cu_dev, 0));
@@ -234,7 +239,7 @@ void test_mem_ref_copy_to_host([[maybe_unused]] caf::actor_system& sys) {
   
   mem_ref<int> ref(host_data.size(), dev_ptr, IN_OUT, 0, 0, ctx, nullptr);
   auto copied = ref.copy_to_host();
-  assert(copied == host_data);
+  assert(vectors_equal(copied, host_data));
   
   // Test invalid access (IN should throw)
   mem_ref<int> in_ref(host_data.size(), dev_ptr, IN, 0, 0, ctx, nullptr);
@@ -253,7 +258,6 @@ void test_mem_ref_copy_to_host([[maybe_unused]] caf::actor_system& sys) {
 // Test for command_runner.hpp: synchronous run
 void test_command_runner_sync([[maybe_unused]] caf::actor_system& sys) {
   using namespace caf::cuda;
-  manager::init(sys);
   auto& mgr = manager::get();
   
   // Assume a simple kernel source and program creation
@@ -261,10 +265,10 @@ void test_command_runner_sync([[maybe_unused]] caf::actor_system& sys) {
   auto dev = mgr.find_device(0);
   auto prog = mgr.create_program(kernel_src, "test_kernel", dev);
   
-  nd_range dims(1, 1);  // 1D single thread
+  nd_range dims(1, 1, 1, 1, 1, 1);  // 1D single thread
   command_runner<out<int>> runner;
   
-  auto outputs = runner.run(prog, dims, 1 /* actor_id */ , create_out_arg_with_size<int>(1));
+  auto outputs = runner.run(prog, dims, 1 /* actor_id */, create_out_arg_with_size<int>(1));
   assert(outputs.size() == 1u);
   auto result = extract_vector<int>(outputs);
   assert(result[0] == 42);
@@ -273,7 +277,6 @@ void test_command_runner_sync([[maybe_unused]] caf::actor_system& sys) {
 // Test for command_runner.hpp: asynchronous run
 void test_command_runner_async([[maybe_unused]] caf::actor_system& sys) {
   using namespace caf::cuda;
-  manager::init(sys);
   auto& mgr = manager::get();
   
   // Similar setup as above
@@ -281,7 +284,7 @@ void test_command_runner_async([[maybe_unused]] caf::actor_system& sys) {
   auto dev = mgr.find_device(0);
   auto prog = mgr.create_program(kernel_src, "test_kernel", dev);
   
-  nd_range dims(1, 1);
+  nd_range dims(1, 1, 1, 1, 1, 1);  // 1D single thread
   command_runner<out<int>> runner;
   
   auto mem_tuple = runner.run_async(prog, dims, 1 /* actor_id */, create_out_arg_with_size<int>(1));
@@ -294,7 +297,6 @@ void test_command_runner_async([[maybe_unused]] caf::actor_system& sys) {
 // Test for manager.hpp: create_program and spawn
 void test_manager_create_and_spawn([[maybe_unused]] caf::actor_system& sys) {
   using namespace caf::cuda;
-  manager::init(sys);
   auto& mgr = manager::get();
   
   // Test create_program
@@ -304,7 +306,7 @@ void test_manager_create_and_spawn([[maybe_unused]] caf::actor_system& sys) {
   assert(prog != nullptr);
   
   // Test spawn (basic, no args)
-  nd_range dims(1, 1);
+  nd_range dims(1, 1, 1, 1, 1, 1);  // 1D single thread
   auto actor = mgr.spawn(kernel_src, "simple_kernel", dims);
   assert(actor != nullptr);
 }
@@ -337,7 +339,6 @@ void test_stream_pool([[maybe_unused]] caf::actor_system& sys) {
 // Test for device.hpp: memory allocation helpers
 void test_device_mem_alloc([[maybe_unused]] caf::actor_system& sys) {
   using namespace caf::cuda;
-  manager::init(sys);
   auto& mgr = manager::get();
   auto dev = mgr.find_device(0);
   
@@ -363,7 +364,6 @@ void test_device_mem_alloc([[maybe_unused]] caf::actor_system& sys) {
 // Test for device.hpp: kernel launch with mem_refs
 void test_device_launch_kernel([[maybe_unused]] caf::actor_system& sys) {
   using namespace caf::cuda;
-  manager::init(sys);
   auto& mgr = manager::get();
   auto dev = mgr.find_device(0);
   
@@ -372,7 +372,7 @@ void test_device_launch_kernel([[maybe_unused]] caf::actor_system& sys) {
   auto prog = mgr.create_program(kernel_src, "set_out", dev);
   CUfunction kernel = prog->get_kernel(dev->getId());
   
-  nd_range dims(1, 1);
+  nd_range dims(1, 1, 1, 1, 1, 1);  // 1D single thread
   auto mem_tuple = dev->launch_kernel_mem_ref(kernel, dims, std::make_tuple(create_out_arg_with_size<int>(1)), 1 /* actor_id */);
   auto mem_out = std::get<0>(mem_tuple);
   mem_out->synchronize();
@@ -463,6 +463,3 @@ void caf_main(caf::actor_system& sys) {
 
 // Define CAF main entry point
 CAF_MAIN()
-
-
-
