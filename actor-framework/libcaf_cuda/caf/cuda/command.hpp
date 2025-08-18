@@ -15,12 +15,19 @@
 #include "caf/cuda/device.hpp"
 #include "caf/cuda/arguments.hpp"
 
+
+
+//These classes represent an abstraction of a single kernel launch
+//they are not meant to be visbile by the programmer if you need to 
+//launch a kernel use actor facade or the command runner class
 namespace caf::cuda {
 
 // ===========================================================================
 // BASE COMMAND
 // This class will always launch and schedule a kernel execution and return a
 // tuple of mem_ptr's.
+// This classes methods are asynchronous meaning that the memory in the 
+// mem_ptrs may or may not still be getting worked on
 // ===========================================================================
 template <class Actor, class... Ts>
 class base_command : public ref_counted {
@@ -90,7 +97,7 @@ public:
 
   // -------------------------------------------------------------------------
   // Unpacks a caf message and calls launch_kernel_mem_ref
-  // Returns tuple of mem_ptr
+  // Returns tuple of mem_ptrs/handles of memory on the gpu
   // -------------------------------------------------------------------------
   virtual std::tuple<mem_ptr<raw_t<Ts>>...> base_enqueue() {
       CUfunction kernel = program_->get_kernel(dev_->getId());
@@ -110,6 +117,8 @@ protected:
 // COMMAND
 // This class returns an output buffer instead of mem_ptr tuple and handles
 // mem_ref cleanup.
+// this classes calls are synchronious, meaning that the memory in the buffers
+// are guarenteed to be there
 // ===========================================================================
 template <class Actor, class... Ts>
 class command : public base_command<Actor, Ts...> {
