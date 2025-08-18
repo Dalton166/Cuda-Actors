@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.13..3.27 FATAL_ERROR)
-project(CAF VERSION 1.0.2 LANGUAGES CXX)
+project(CAF VERSION 1.1.0 LANGUAGES CXX)
 
 # -- version boilerplate -------------------------------------------------------
 
@@ -68,7 +68,7 @@ option(CAF_ENABLE_EXCEPTIONS "Build CAF with support for exceptions" ON)
 option(CAF_ENABLE_IO_MODULE "Build legacy networking I/O module" ON)
 option(CAF_ENABLE_NET_MODULE "Build networking I/O module" ON)
 option(CAF_ENABLE_TESTING "Build unit test suites" ON)
-option(CAF_ENABLE_CUDA "Build caf with cuda support --> currently in progress" ON)
+option(CAF_ENABLE_CUDA "Build caf with cuda support" ON)
 
 # -- CAF options that depend on others -----------------------------------------
 
@@ -77,7 +77,7 @@ cmake_dependent_option(CAF_ENABLE_OPENSSL_MODULE "Build OpenSSL module" ON
 
 # -- CAF options with non-boolean values ---------------------------------------
 
-set(CAF_CXX_VERSION 17 CACHE STRING "Set the C++ version to use for CAF")
+set(CAF_CXX_VERSION 20 CACHE STRING "Set the C++ version to use for CAF")
 set(CAF_LOG_LEVEL "QUIET" CACHE STRING "Set log verbosity of CAF components")
 set(CAF_EXCLUDE_TESTS "" CACHE STRING "List of excluded test suites")
 set(CAF_SANITIZERS "" CACHE STRING
@@ -123,8 +123,6 @@ if(CAF_ENABLE_OPENSSL_MODULE OR CAF_ENABLE_NET_MODULE)
     find_package(OpenSSL REQUIRED)
   endif()
 endif()
-
-
 
 # -- fetch the cuda + actors library ---------
 if (CAF_ENABLE_CUDA)
@@ -273,7 +271,7 @@ function(caf_add_component name)
   endforeach()
   set(lib_target "libcaf_${name}")
   if(NOT TARGET ${lib_target})
-	  add_library(${lib_target} "${PROJECT_SOURCE_DIR}/cmake/dummy.cpp")
+    add_library(${lib_target} "${PROJECT_SOURCE_DIR}/cmake/dummy.cpp")
   endif()
   set_property(TARGET ${lib_target} PROPERTY POSITION_INDEPENDENT_CODE ON)
   target_link_libraries(${lib_target} ${CAF_ADD_COMPONENT_DEPENDENCIES})
@@ -289,7 +287,7 @@ function(caf_add_component name)
                           VISIBILITY_INLINES_HIDDEN ON)
   endif()
   if(CAF_ENABLE_TESTING)
-	add_executable("caf-${name}-test" ${CMAKE_CURRENT_SOURCE_DIR}/main.test.cpp)
+    add_executable("caf-${name}-test" ${CMAKE_CURRENT_SOURCE_DIR}/main.test.cpp)
     target_compile_definitions(
       "caf-${name}-test" PRIVATE
       CAF_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/data")
@@ -385,9 +383,11 @@ if(CAF_ENABLE_EXAMPLES)
   add_subdirectory(examples)
 endif()
 
+
 if(CAF_ENABLE_CUDA)
 	add_subdirectory(libcaf_cuda)
 endif()
+
 
 
 # -- optionally add the Robot tests to CTest -----------------------------------

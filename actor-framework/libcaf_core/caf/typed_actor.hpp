@@ -18,6 +18,7 @@
 #include "caf/typed_actor_view_base.hpp"
 #include "caf/typed_behavior.hpp"
 
+#include <concepts>
 #include <cstddef>
 #include <functional>
 
@@ -34,6 +35,8 @@ class typed_actor<TraitOrSignature>
     detail::comparable<typed_actor<TraitOrSignature>, actor_addr>,
     detail::comparable<typed_actor<TraitOrSignature>, strong_actor_ptr> {
 public:
+  // -- member types -----------------------------------------------------------
+
   /// Stores the template parameter pack.
   using trait = detail::to_statically_typed_trait_t<TraitOrSignature>;
 
@@ -119,35 +122,31 @@ public:
   typed_actor& operator=(const typed_actor&) = default;
 
   template <class... Ts>
+    requires detail::tl_subset_of_v<signatures,
+                                    typename typed_actor<Ts...>::signatures>
   typed_actor(const typed_actor<Ts...>& other) : ptr_(other.ptr_) {
-    static_assert(detail::tl_subset_of<
-                    signatures, typename typed_actor<Ts...>::signatures>::value,
-                  "Cannot assign incompatible handle");
+    // nop
   }
 
   // allow `handle_type{this}` for typed actors
-  template <class T,
-            class = std::enable_if_t<actor_traits<T>::is_statically_typed>>
+  template <class T>
+    requires(actor_traits<T>::is_statically_typed
+             && detail::tl_subset_of_v<signatures, typename T::signatures>)
   typed_actor(T* ptr) : ptr_(ptr->ctrl()) {
-    static_assert(
-      detail::tl_subset_of<signatures, typename T::signatures>::value,
-      "Cannot assign T* to incompatible handle type");
     CAF_ASSERT(ptr != nullptr);
   }
 
   // Enable `handle_type{self}` for typed actor views.
-  template <class T, class = std::enable_if_t<
-                       std::is_base_of_v<typed_actor_view_base, T>>>
+  template <std::derived_from<typed_actor_view_base> T>
+    requires detail::tl_subset_of_v<signatures, typename T::signatures>
   explicit typed_actor(T ptr) : ptr_(ptr.ctrl()) {
-    static_assert(
-      detail::tl_subset_of<signatures, typename T::signatures>::value,
-      "Cannot assign T to incompatible handle type");
+    // nop
   }
 
   template <class... Ts>
+    requires detail::tl_subset_of_v<signatures,
+                                    typename typed_actor<Ts...>::signatures>
   typed_actor& operator=(const typed_actor<Ts...>& other) {
-    static_assert(detail::tl_subset_of<signatures, type_list<Ts...>>::value,
-                  "Cannot assign incompatible handle");
     ptr_ = other.ptr_;
     return *this;
   }
@@ -232,7 +231,7 @@ public:
 
   template <class Inspector>
   friend bool inspect(Inspector& f, typed_actor& x) {
-    return inspect(f, x.ptr_);
+    return f.value(x.ptr_);
   }
 
   /// Releases the reference held by handle `x`. Using the

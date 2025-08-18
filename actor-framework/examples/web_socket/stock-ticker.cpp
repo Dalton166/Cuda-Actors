@@ -3,6 +3,8 @@
 
 #include "caf/net/acceptor_resource.hpp"
 #include "caf/net/middleman.hpp"
+#include "caf/net/ssl/context.hpp"
+#include "caf/net/ssl/format.hpp"
 #include "caf/net/web_socket/frame.hpp"
 #include "caf/net/web_socket/with.hpp"
 
@@ -15,7 +17,6 @@
 #include "caf/event_based_actor.hpp"
 #include "caf/json_writer.hpp"
 #include "caf/scheduled_actor/flow.hpp"
-#include "caf/span.hpp"
 
 #include <cassert>
 #include <chrono>

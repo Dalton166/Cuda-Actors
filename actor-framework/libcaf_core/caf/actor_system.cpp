@@ -6,8 +6,6 @@
 
 #include "caf/actor.hpp"
 #include "caf/actor_companion.hpp"
-#include "caf/actor_from_state.hpp"
-#include "caf/actor_ostream.hpp"
 #include "caf/actor_registry.hpp"
 #include "caf/actor_system_config.hpp"
 #include "caf/defaults.hpp"
@@ -17,99 +15,26 @@
 #include "caf/detail/daemons.hpp"
 #include "caf/detail/meta_object.hpp"
 #include "caf/detail/private_thread_pool.hpp"
-#include "caf/detail/test_coordinator.hpp"
-#include "caf/detail/thread_safe_actor_clock.hpp"
 #include "caf/event_based_actor.hpp"
+#include "caf/log/core.hpp"
 #include "caf/raise_error.hpp"
 #include "caf/scheduler.hpp"
 #include "caf/spawn_options.hpp"
 #include "caf/stateful_actor.hpp"
 #include "caf/system_messages.hpp"
 #include "caf/telemetry/metric_registry.hpp"
+#include "caf/thread_owner.hpp"
 
 #include <array>
 #include <atomic>
 #include <cstdio>
 #include <fstream>
+#include <limits>
 #include <memory>
+#include <mutex>
+#include <span>
 #include <unordered_map>
 #include <unordered_set>
-
-// -- printer actor ------------------------------------------------------------
-
-namespace caf::detail {
-
-struct printer_actor_state {
-  struct actor_data {
-    std::string current_line;
-    actor_data() {
-      // nop
-    }
-  };
-
-  using data_map = std::unordered_map<actor_id, actor_data>;
-
-  explicit printer_actor_state(event_based_actor* selfptr) : self(selfptr) {
-    // nop
-  }
-
-  event_based_actor* self;
-
-  data_map data;
-
-  actor_data* get_data(actor_id addr, bool insert_missing) {
-    if (addr == invalid_actor_id)
-      return nullptr;
-    auto i = data.find(addr);
-    if (i == data.end() && insert_missing)
-      i = data.emplace(addr, actor_data{}).first;
-    if (i != data.end())
-      return &(i->second);
-    return nullptr;
-  }
-
-  void flush(actor_data* what, bool forced) {
-    if (what == nullptr)
-      return;
-    auto& line = what->current_line;
-    if (line.empty() || (line.back() != '\n' && !forced))
-      return;
-    self->println(line);
-    line.clear();
-  }
-
-  behavior make_behavior() {
-    return {
-      [this](add_atom, actor_id aid, std::string& str) {
-        if (str.empty() || aid == invalid_actor_id)
-          return;
-        auto d = get_data(aid, true);
-        if (d != nullptr) {
-          d->current_line += str;
-          flush(d, false);
-        }
-      },
-      [this](flush_atom, actor_id aid) { flush(get_data(aid, false), true); },
-      [this](delete_atom, actor_id aid) {
-        auto data_ptr = get_data(aid, false);
-        if (data_ptr != nullptr) {
-          flush(data_ptr, true);
-          data.erase(aid);
-        }
-      },
-      [](redirect_atom, const std::string&, int) {
-        // nop
-      },
-      [](redirect_atom, actor_id, const std::string&, int) {
-        // nop
-      },
-    };
-  }
-
-  static constexpr const char* name = "printer_actor";
-};
-
-} // namespace caf::detail
 
 namespace caf {
 
@@ -254,10 +179,8 @@ auto make_base_metrics(telemetry::metric_registry& reg) {
     // Initialize the base metrics.
     reg.counter_singleton("caf.system", "rejected-messages",
                           "Number of rejected messages.", "1", true),
-    reg.counter_singleton("caf.system", "processed-messages",
-                          "Number of processed messages.", "1", true),
-    reg.gauge_singleton("caf.system", "running-actors",
-                        "Number of currently running actors."),
+    reg.counter_family("caf.system", "processed-messages", {"name"},
+                       "Number of processed messages.", "1", true),
     reg.gauge_singleton("caf.system", "queued-messages",
                         "Number of messages in all mailboxes.", "1", true),
   };
@@ -380,6 +303,247 @@ private:
   cleanup do_cleanup_ = nullptr;
 };
 
+class actor_registry_impl : public actor_registry {
+public:
+  using exclusive_guard = std::unique_lock<std::shared_mutex>;
+  using shared_guard = std::shared_lock<std::shared_mutex>;
+
+  void erase(actor_id key) override {
+    // Stores a reference to the actor we're going to remove. This guarantees
+    // that we aren't releasing the last reference to an actor while erasing it.
+    // Releasing the final ref can trigger the actor to call its cleanup
+    // function that in turn calls this function and we can end up in a
+    // deadlock.
+    strong_actor_ptr ref;
+    { // Lifetime scope of guard.
+      exclusive_guard guard{instances_mtx_};
+      auto i = entries_.find(key);
+      if (i != entries_.end()) {
+        ref.swap(i->second);
+        entries_.erase(i);
+      }
+    }
+  }
+
+  size_t inc_running() override {
+    return ++running_;
+  }
+
+  size_t dec_running() override {
+    auto new_val = --running_;
+    if (new_val <= 1) {
+      std::unique_lock guard{running_mtx_};
+      running_cv_.notify_all();
+    }
+    return new_val;
+  }
+
+  /// Returns the number of currently running actors.
+  size_t running() const override {
+    return running_.load();
+  }
+
+  /// Blocks the caller until running-actors-count becomes `expected`
+  /// (must be either 0 or 1) or timeout is reached.
+  void await_running_count_equal(size_t expected,
+                                 timespan timeout = infinite) const override {
+    CAF_ASSERT(expected == 0 || expected == 1);
+    auto lg = log::core::trace("expected = {}", expected);
+    std::unique_lock guard{running_mtx_};
+    auto pred = [this, &expected] {
+      log::core::debug("running = {}", running());
+      return running() == expected;
+    };
+    if (timeout == infinite)
+      running_cv_.wait(guard, pred);
+    else
+      running_cv_.wait_for(guard, timeout, pred);
+  }
+
+  /// Removes a name mapping.
+  void erase(const std::string& key) override {
+    // Stores a reference to the actor we're going to remove for the same
+    // reasoning as in erase(actor_id).
+    strong_actor_ptr ref;
+    { // Lifetime scope of guard.
+      exclusive_guard guard{named_entries_mtx_};
+      auto i = named_entries_.find(key);
+      if (i != named_entries_.end()) {
+        ref.swap(i->second);
+        named_entries_.erase(i);
+      }
+    }
+  }
+
+  using name_map = std::unordered_map<std::string, strong_actor_ptr>;
+
+  name_map named_actors() const override {
+    shared_guard guard{named_entries_mtx_};
+    return named_entries_;
+  }
+
+  // Starts this component.
+  void start() {
+    // nop
+  }
+
+  // Stops this component.
+  void stop() {
+    {
+      exclusive_guard guard{instances_mtx_};
+      entries_.clear();
+    }
+    {
+      exclusive_guard guard{named_entries_mtx_};
+      named_entries_.clear();
+    }
+  }
+
+private:
+  strong_actor_ptr get_impl(actor_id key) const override {
+    shared_guard guard(instances_mtx_);
+    auto i = entries_.find(key);
+    if (i != entries_.end())
+      return i->second;
+    log::core::debug("key invalid, assume actor no longer exists: key = {}",
+                     key);
+    return nullptr;
+  }
+
+  void put_impl(actor_id key, strong_actor_ptr val) override {
+    auto lg = log::core::trace("key = {}", key);
+    if (!val)
+      return;
+    { // lifetime scope of guard
+      exclusive_guard guard(instances_mtx_);
+      if (!entries_.emplace(key, val).second)
+        return;
+    }
+    // attach functor without lock
+    log::core::debug("added actor: key = {}", key);
+    actor_registry* reg = this;
+    val->get()->attach_functor([key, reg]() { reg->erase(key); });
+  }
+
+  strong_actor_ptr get_impl(const std::string& key) const override {
+    shared_guard guard{named_entries_mtx_};
+    auto i = named_entries_.find(key);
+    if (i == named_entries_.end())
+      return nullptr;
+    return i->second;
+  }
+
+  void put_impl(const std::string& key, strong_actor_ptr val) override {
+    if (val == nullptr) {
+      erase(key);
+      return;
+    }
+    exclusive_guard guard{named_entries_mtx_};
+    named_entries_.emplace(std::move(key), std::move(val));
+  }
+
+  using entries = std::unordered_map<actor_id, strong_actor_ptr>;
+
+  std::atomic<size_t> running_ = 0;
+  mutable std::mutex running_mtx_;
+  mutable std::condition_variable running_cv_;
+
+  mutable std::shared_mutex instances_mtx_;
+  entries entries_;
+
+  name_map named_entries_;
+  mutable std::shared_mutex named_entries_mtx_;
+};
+
+class actor_clock_impl : public caf::actor_clock {
+public:
+  explicit actor_clock_impl(caf::actor_system& sys) {
+    worker_ = sys.launch_thread("caf.clock", caf::thread_owner::system,
+                                [this] { run(); });
+  }
+
+  ~actor_clock_impl() override {
+    {
+      std::unique_lock guard{mutex_};
+      push({time_point::min(), caf::action{}});
+    }
+    cv_.notify_one();
+    worker_.join();
+  }
+
+  caf::disposable schedule(time_point timeout, caf::action callback) override {
+    if (!callback) {
+      return {};
+    }
+    // Only wake up the dispatcher if the new timeout is smaller than the
+    // current timeout.
+    auto do_wakeup = false;
+    {
+      std::unique_lock guard{mutex_};
+      do_wakeup = queue_.empty() || timeout < queue_.front().timeout;
+      push({timeout, callback});
+    }
+    if (do_wakeup) {
+      cv_.notify_one();
+    }
+    return std::move(callback).as_disposable();
+  }
+
+private:
+  struct entry {
+    time_point timeout;
+    caf::action callback;
+  };
+
+  static constexpr auto entry_cmp = [](const entry& lhs, const entry& rhs) {
+    // We want the smallest entry to be at the front of the queue. Since
+    // std::push_heap will put the largest element at the front, we need to
+    // invert the comparison.
+    return lhs.timeout > rhs.timeout;
+  };
+
+  void push(entry e) {
+    queue_.push_back(std::move(e));
+    std::push_heap(queue_.begin(), queue_.end(), entry_cmp);
+  }
+
+  void pop() {
+    std::pop_heap(queue_.begin(), queue_.end(), entry_cmp);
+    queue_.pop_back();
+  }
+
+  void run() {
+    std::unique_lock guard{mutex_};
+    while (queue_.empty()) {
+      cv_.wait(guard);
+    }
+    for (;;) {
+      auto& job = queue_.front();
+      if (!job.callback) {
+        return;
+      }
+      auto timeout = job.timeout;
+      if (now() >= timeout) {
+        auto fn = std::move(job.callback);
+        pop();
+        guard.unlock();
+        fn.run();
+        guard.lock();
+        while (queue_.empty()) {
+          cv_.wait(guard);
+        }
+      } else {
+        cv_.wait_until(guard, timeout);
+      }
+    }
+  }
+
+  std::thread worker_;
+  std::mutex mutex_;
+  std::condition_variable cv_;
+  std::vector<entry> queue_;
+};
+
 } // namespace
 
 class actor_system::impl {
@@ -393,10 +557,12 @@ public:
     : ids(0),
       metrics(cfg),
       base_metrics(make_base_metrics(metrics)),
-      registry(*parent),
-      await_actors_before_shutdown(true),
       cfg(&cfg),
       private_threads(parent) {
+    memset(&flags, 0xFF, sizeof(flags)); // All flags are ON by default.
+    running_actors_metric_family
+      = metrics.gauge_family("caf.system", "running-actors", {"name"},
+                             "Number of currently running actors.");
     print_state = std::make_unique<print_state_impl>(cfg);
     meta_objects_guard = detail::global_meta_objects_guard();
     if (!meta_objects_guard)
@@ -405,14 +571,20 @@ public:
       hook->init(*parent);
     // Cache some configuration parameters for faster lookups at runtime.
     using string_list = std::vector<std::string>;
+    if (get_or(cfg, "caf.metrics.disable-running-actors", false)) {
+      flags.collect_running_actors_metrics = false;
+    }
     if (auto lst = get_as<string_list>(cfg,
-                                       "caf.metrics-filters.actors.includes"))
+                                       "caf.metrics.filters.actors.includes")) {
       metrics_actors_includes = std::move(*lst);
+    }
     if (auto lst = get_as<string_list>(cfg,
-                                       "caf.metrics-filters.actors.excludes"))
+                                       "caf.metrics.filters.actors.excludes")) {
       metrics_actors_excludes = std::move(*lst);
-    if (!metrics_actors_includes.empty())
+    }
+    if (!metrics_actors_includes.empty()) {
       actor_metric_families = make_actor_metric_families(metrics);
+    }
     // Spin up modules.
     for (auto fn : cfg.module_factories()) {
       auto mod_ptr = fn(*parent);
@@ -448,16 +620,13 @@ public:
     }
     // Make sure we have a clock.
     if (!clock) {
-      clock = std::make_unique<detail::thread_safe_actor_clock>(*parent);
+      clock = std::make_unique<actor_clock_impl>(*parent);
     }
     // Make sure we have a scheduler up and running.
     if (!scheduler) {
       using defaults::scheduler::policy;
       auto config_policy = get_or(cfg, "caf.scheduler.policy", policy);
-      if (config_policy == "testing") {
-        clock.reset(new detail::test_actor_clock());
-        scheduler.reset(new detail::test_coordinator(*parent));
-      } else if (config_policy == "sharing") {
+      if (config_policy == "sharing") {
         scheduler = scheduler::make_work_sharing(*parent);
       } else {
         // Any invalid configuration falls back to work stealing.
@@ -470,11 +639,6 @@ public:
       }
     }
     scheduler->start();
-    if (!printer) {
-      auto p = parent->spawn<hidden + detached + lazy_init>(
-        actor_from_state<detail::printer_actor_state>);
-      printer = actor_cast<strong_actor_ptr>(std::move(p));
-    }
     // Initialize the state for each module and give each module the opportunity
     // to adapt the system configuration.
     for (auto& mod : modules)
@@ -501,8 +665,9 @@ public:
     {
       auto lg = log::core::trace("");
       log::core::debug("shutdown actor system");
-      if (await_actors_before_shutdown)
+      if (flags.await_actors_before_shutdown) {
         registry.await_running_count_equal(0);
+      }
       // shutdown internal actors
       auto drop = [&](auto& x) {
         anon_send_exit(x, exit_reason::user_shutdown);
@@ -518,7 +683,6 @@ public:
           ptr->stop();
         }
       }
-      drop(printer);
       CAF_LOG_DEBUG("stop scheduler");
       scheduler->stop();
       private_threads.stop();
@@ -544,7 +708,7 @@ public:
   node_id node;
 
   /// Maps well-known actor names to actor handles.
-  actor_registry registry;
+  actor_registry_impl registry;
 
   /// Manages log output.
   intrusive_ptr<caf::logger> logger;
@@ -558,11 +722,19 @@ public:
   /// Stores optional actor system components.
   module_array modules;
 
-  /// Background printer.
-  strong_actor_ptr printer;
+  // Bundles various flags for the actor system into a single, memory-efficient
+  // structure.
+  struct flags_t {
+    /// Stores whether the system should wait for running actors on shutdown.
+    bool await_actors_before_shutdown : 1;
 
-  /// Stores whether the system should wait for running actors on shutdown.
-  bool await_actors_before_shutdown;
+    /// Stores whether the system should keep track of how many actors are
+    /// currently running per actor type.
+    bool collect_running_actors_metrics : 1;
+  };
+
+  /// Stores flags that affect the entire actor system.
+  flags_t flags;
 
   /// Stores config parameters.
   strong_actor_ptr config_serv;
@@ -573,16 +745,19 @@ public:
   /// The system-wide, user-provided configuration.
   actor_system_config* cfg;
 
-  /// Caches the configuration parameter `caf.metrics-filters.actors.includes`
+  /// Caches the configuration parameter `caf.metrics.filters.actors.includes`
   /// for faster lookups at runtime.
   std::vector<std::string> metrics_actors_includes;
 
-  /// Caches the configuration parameter `caf.metrics-filters.actors.excludes`
+  /// Caches the configuration parameter `caf.metrics.filters.actors.excludes`
   /// for faster lookups at runtime.
   std::vector<std::string> metrics_actors_excludes;
 
   /// Caches families for optional actor metrics.
   actor_metric_families_t actor_metric_families;
+
+  /// Caches the metric family for the `caf.running-actors` metric.
+  telemetry::int_gauge_family* running_actors_metric_family;
 
   /// Manages threads for detached actors.
   detail::private_thread_pool private_threads;
@@ -644,12 +819,23 @@ actor_system::meta_objects_guard() const noexcept {
   return impl_->meta_objects_guard;
 }
 
-span<const std::string> actor_system::metrics_actors_includes() const noexcept {
+std::span<const std::string>
+actor_system::metrics_actors_includes() const noexcept {
   return impl_->metrics_actors_includes;
 }
 
-span<const std::string> actor_system::metrics_actors_excludes() const noexcept {
+std::span<const std::string>
+actor_system::metrics_actors_excludes() const noexcept {
   return impl_->metrics_actors_excludes;
+}
+
+bool actor_system::collect_running_actors_metrics() const noexcept {
+  return impl_->flags.collect_running_actors_metrics;
+}
+
+telemetry::int_gauge_family*
+actor_system::running_actors_metric_family() const noexcept {
+  return impl_->running_actors_metric_family;
 }
 
 const actor_system_config& actor_system::config() const {
@@ -665,11 +851,11 @@ size_t actor_system::detached_actors() const noexcept {
 }
 
 bool actor_system::await_actors_before_shutdown() const {
-  return impl_->await_actors_before_shutdown;
+  return impl_->flags.await_actors_before_shutdown;
 }
 
 void actor_system::await_actors_before_shutdown(bool new_value) {
-  impl_->await_actors_before_shutdown = new_value;
+  impl_->flags.await_actors_before_shutdown = new_value;
 }
 
 const strong_actor_ptr& actor_system::spawn_serv() const {
@@ -742,10 +928,6 @@ actor_id actor_system::latest_actor_id() const {
   return impl_->ids.load();
 }
 
-strong_actor_ptr actor_system::legacy_printer_actor() const {
-  return impl_->printer;
-}
-
 void actor_system::await_all_actors_done() const {
   impl_->registry.await_running_count_equal(0);
 }
@@ -813,45 +995,6 @@ void actor_system::release_private_thread(detail::private_thread* ptr) {
   impl_->private_threads.release(ptr);
 }
 
-namespace {
-
-class actor_local_printer_impl : public detail::actor_local_printer {
-public:
-  actor_local_printer_impl(abstract_actor* self, actor printer)
-    : self_(self->id()), printer_(std::move(printer)) {
-    CAF_ASSERT(printer_ != nullptr);
-    if (!self->getf(abstract_actor::has_used_aout_flag))
-      self->setf(abstract_actor::has_used_aout_flag);
-  }
-
-  void write(std::string&& arg) override {
-    printer_->enqueue(make_mailbox_element(nullptr, make_message_id(),
-                                           add_atom_v, self_, std::move(arg)),
-                      nullptr);
-  }
-
-  void write(const char* arg) override {
-    write(std::string{arg});
-  }
-
-  void flush() override {
-    printer_->enqueue(make_mailbox_element(nullptr, make_message_id(),
-                                           flush_atom_v, self_),
-                      nullptr);
-  }
-
-private:
-  actor_id self_;
-  actor printer_;
-};
-
-} // namespace
-
-detail::actor_local_printer_ptr actor_system::printer_for(local_actor* self) {
-  using impl_t = actor_local_printer_impl;
-  return make_counted<impl_t>(self, actor_cast<actor>(impl_->printer));
-}
-
 detail::mailbox_factory* actor_system::mailbox_factory() {
   return impl_->cfg->mailbox_factory();
 }
@@ -881,10 +1024,6 @@ void actor_system::set_clock(std::unique_ptr<actor_clock> ptr) {
 
 void actor_system::set_scheduler(std::unique_ptr<caf::scheduler> ptr) {
   impl_->scheduler = std::move(ptr);
-}
-
-void actor_system::set_legacy_printer_actor(strong_actor_ptr ptr) {
-  impl_->printer = std::move(ptr);
 }
 
 void actor_system::set_node(node_id id) {

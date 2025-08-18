@@ -16,6 +16,7 @@
 #include "caf/fwd.hpp"
 #include "caf/intrusive_ptr.hpp"
 
+#include <concepts>
 #include <cstddef>
 #include <tuple>
 #include <type_traits>
@@ -50,9 +51,8 @@ public:
     return *this;
   }
 
-  template <class Operator>
-  std::enable_if_t<std::is_base_of_v<op::base<T>, Operator>, observable&>
-  operator=(intrusive_ptr<Operator> ptr) noexcept {
+  template <std::derived_from<op::base<T>> Operator>
+  observable& operator=(intrusive_ptr<Operator> ptr) noexcept {
     pimpl_ = ptr;
     return *this;
   }
@@ -212,8 +212,18 @@ public:
   /// regular intervals .
   observable<cow_vector<T>> buffer(size_t count, timespan period);
 
+  /// Emit an item if timespan @p period has passed without it emitting another
+  /// item.
+  observable<T> debounce(timespan period);
+
   /// Emits the most recent item of the input observable once per interval.
   observable<T> sample(timespan period);
+
+  /// Emits the first item of the input observable once per interval.
+  observable<T> throttle_first(timespan period);
+
+  /// Emits the most recent item of the input observable once per interval.
+  observable<T> throttle_last(timespan period);
 
   /// Re-subscribes to the input observable on error for as long as the
   /// predicate returns true.

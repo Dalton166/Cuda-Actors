@@ -7,15 +7,14 @@
 #include "caf/config.hpp"
 #include "caf/detail/assert.hpp"
 #include "caf/detail/parser/chars.hpp"
-#include "caf/detail/parser/is_char.hpp"
 #include "caf/detail/parser/read_bool.hpp"
 #include "caf/detail/parser/read_number.hpp"
 #include "caf/pec.hpp"
-#include "caf/span.hpp"
 
 #include <cstring>
 #include <iterator>
 #include <memory>
+#include <memory_resource>
 #include <numeric>
 #include <streambuf>
 
@@ -49,21 +48,21 @@ ptrdiff_t utf32_to_utf8(uint32_t code_point, Out out) {
     return 1;
   }
   if (code_point <= 0x7ff) {
-    *out++ = 0xc0 | ((code_point & 0x07c0) >> 6);
-    *out++ = 0x80 | (code_point & 0x003f);
+    *out++ = static_cast<char>(0xc0 | ((code_point & 0x07c0) >> 6));
+    *out++ = static_cast<char>(0x80 | (code_point & 0x003f));
     return 2;
   }
   if (code_point <= 0xffff) {
-    *out++ = 0xe0 | ((code_point & 0xf000) >> 12);
-    *out++ = 0x80 | ((code_point & 0x0fc0) >> 6);
-    *out++ = 0x80 | (code_point & 0x003f);
+    *out++ = static_cast<char>(0xe0 | ((code_point & 0xf000) >> 12));
+    *out++ = static_cast<char>(0x80 | ((code_point & 0x0fc0) >> 6));
+    *out++ = static_cast<char>(0x80 | (code_point & 0x003f));
     return 3;
   }
   if (code_point <= 0x10ffff) {
-    *out++ = 0xf0 | ((code_point & 0x1c0000) >> 18);
-    *out++ = 0x80 | ((code_point & 0x03f000) >> 12);
-    *out++ = 0x80 | ((code_point & 0x000fc0) >> 6);
-    *out++ = 0x80 | (code_point & 0x00003f);
+    *out++ = static_cast<char>(0xf0 | ((code_point & 0x1c0000) >> 18));
+    *out++ = static_cast<char>(0x80 | ((code_point & 0x03f000) >> 12));
+    *out++ = static_cast<char>(0x80 | ((code_point & 0x000fc0) >> 6));
+    *out++ = static_cast<char>(0x80 | (code_point & 0x00003f));
     return 4;
   }
   return 0;
@@ -74,7 +73,7 @@ size_t do_unescape(const char* i, const char* e, char* out) {
   auto read_4len_hex = [](auto& x, auto& c) {
     ascii_to_int<16, std::decay_t<decltype(x)>> f;
     for (auto i = 0; i < 4; i++)
-      x = x * 16 + f(*c++);
+      x = static_cast<uint16_t>(x * 16) + f(*c++);
   };
   size_t new_size = 0;
   while (i != e) {
@@ -124,7 +123,8 @@ size_t do_unescape(const char* i, const char* e, char* out) {
                 i += 2;
                 auto low_surrogate = uint16_t{0};
                 read_4len_hex(low_surrogate, i);
-                code_point = surrogates_to_utf32(code_point, low_surrogate);
+                code_point = surrogates_to_utf32(
+                  static_cast<uint16_t>(code_point), low_surrogate);
               }
               auto written = utf32_to_utf8(code_point, out);
               out += written;
@@ -149,11 +149,11 @@ std::string_view as_str_view(const char* first, const char* last) {
 }
 
 struct regular_unescaper {
-  std::string_view operator()(caf::detail::monotonic_buffer_resource* storage,
+  std::string_view operator()(std::pmr::memory_resource* storage,
                               const char* first, const char* last,
                               bool is_escaped) const {
     auto len = static_cast<size_t>(last - first);
-    caf::detail::monotonic_buffer_resource::allocator<char> alloc{storage};
+    std::pmr::polymorphic_allocator<char> alloc{storage};
     auto* str_buf = alloc.allocate(len);
     if (!is_escaped) {
       strncpy(str_buf, first, len);
@@ -165,12 +165,12 @@ struct regular_unescaper {
 };
 
 struct shallow_unescaper {
-  std::string_view operator()(caf::detail::monotonic_buffer_resource* storage,
+  std::string_view operator()(std::pmr::memory_resource* storage,
                               const char* first, const char* last,
                               bool is_escaped) const {
     if (!is_escaped)
       return as_str_view(first, last);
-    caf::detail::monotonic_buffer_resource::allocator<char> alloc{storage};
+    std::pmr::polymorphic_allocator<char> alloc{storage};
     auto* str_buf = alloc.allocate(static_cast<size_t>(last - first));
     auto unescaped_size = do_unescape(first, last, str_buf);
     return std::string_view{str_buf, unescaped_size};
@@ -178,8 +178,8 @@ struct shallow_unescaper {
 };
 
 struct in_situ_unescaper {
-  std::string_view operator()(caf::detail::monotonic_buffer_resource*,
-                              char* first, char* last, bool is_escaped) const {
+  std::string_view operator()(std::pmr::memory_resource*, char* first,
+                              char* last, bool is_escaped) const {
     if (!is_escaped)
       return as_str_view(first, last);
     auto unescaped_size = do_unescape(first, last, first);
@@ -208,7 +208,7 @@ void read_code_point(ParserState& ps, Consumer consumer) {
   uint16_t result = 0;
   ascii_to_int<16, uint16_t> f;
   auto read_hex_digit = [&result, &f](char ch) {
-    result = 16 * result + f(ch);
+    result = static_cast<uint16_t>(16 * result) + static_cast<uint16_t>(f(ch));
   };
   // clang-format off
   start();
@@ -243,7 +243,7 @@ struct obj_consumer;
 struct arr_consumer;
 
 struct val_consumer {
-  monotonic_buffer_resource* storage;
+  std::pmr::memory_resource* storage;
   json::value* ptr;
 
   template <class T>
@@ -257,7 +257,7 @@ struct val_consumer {
 };
 
 struct key_consumer {
-  monotonic_buffer_resource* storage;
+  std::pmr::memory_resource* storage;
   std::string_view* ptr;
 
   void value(std::string_view str) {
@@ -266,7 +266,7 @@ struct key_consumer {
 };
 
 struct member_consumer {
-  monotonic_buffer_resource* storage;
+  std::pmr::memory_resource* storage;
   json::member* ptr;
 
   key_consumer begin_key() {
@@ -284,7 +284,7 @@ struct obj_consumer {
 
   member_consumer begin_member() {
     auto& new_member = ptr->emplace_back();
-    return {ptr->get_allocator().resource(), &new_member};
+    return {ptr->resource(), &new_member};
   }
 };
 
@@ -293,18 +293,18 @@ struct arr_consumer {
 
   val_consumer begin_value() {
     auto& new_element = ptr->emplace_back();
-    return {ptr->get_allocator().resource(), &new_element};
+    return {ptr->resource(), &new_element};
   }
 };
 
 arr_consumer val_consumer::begin_array() {
-  ptr->data = json::array(json::value::array_allocator{storage});
+  ptr->data = json::array{storage};
   auto& arr = std::get<json::array>(ptr->data);
   return {&arr};
 }
 
 obj_consumer val_consumer::begin_object() {
-  ptr->data = json::object(json::value::object_allocator{storage});
+  ptr->data = json::object{storage};
   auto& obj = std::get<json::object>(ptr->data);
   return {&obj};
 }
@@ -586,18 +586,17 @@ namespace caf::detail::json {
 namespace {
 
 template <class T>
-void init(linked_list<T>* ptr, monotonic_buffer_resource* storage) {
-  using allocator_type = typename linked_list<T>::allocator_type;
-  new (ptr) linked_list<T>(allocator_type{storage});
+void init(linked_list<T>* ptr, std::pmr::memory_resource* storage) {
+  new (ptr) linked_list<T>(storage);
 }
 
-void init(value* ptr, monotonic_buffer_resource*) {
+void init(value* ptr, std::pmr::memory_resource*) {
   new (ptr) value();
 }
 
 template <class T>
-T* make_impl(monotonic_buffer_resource* storage) {
-  monotonic_buffer_resource::allocator<T> alloc{storage};
+T* make_impl(std::pmr::memory_resource* storage) {
+  std::pmr::polymorphic_allocator<T> alloc{storage};
   auto result = alloc.allocate(1);
   init(result, storage);
   return result;
@@ -605,19 +604,26 @@ T* make_impl(monotonic_buffer_resource* storage) {
 
 } // namespace
 
-std::string_view realloc(std::string_view str, monotonic_buffer_resource* res) {
-  using alloc_t = detail::monotonic_buffer_resource::allocator<char>;
-  auto buf = alloc_t{res}.allocate(str.size());
+bool value::equals(const value::member& lhs, const value::member& rhs) {
+  if (lhs.key == rhs.key && lhs.val != nullptr && rhs.val != nullptr) {
+    return *lhs.val == *rhs.val;
+  }
+  return false;
+}
+
+std::string_view realloc(std::string_view str, std::pmr::memory_resource* res) {
+  std::pmr::polymorphic_allocator<char> alloc{res};
+  auto buf = alloc.allocate(str.size());
   strncpy(buf, str.data(), str.size());
   return std::string_view{buf, str.size()};
 }
 
 std::string_view concat(std::initializer_list<std::string_view> xs,
-                        monotonic_buffer_resource* res) {
+                        std::pmr::memory_resource* res) {
   auto get_size = [](size_t x, std::string_view str) { return x + str.size(); };
   auto total_size = std::accumulate(xs.begin(), xs.end(), size_t{0}, get_size);
-  using alloc_t = detail::monotonic_buffer_resource::allocator<char>;
-  auto* buf = alloc_t{res}.allocate(total_size);
+  std::pmr::polymorphic_allocator<char> alloc{res};
+  auto* buf = alloc.allocate(total_size);
   auto* pos = buf;
   for (auto str : xs) {
     strncpy(pos, str.data(), str.size());
@@ -626,54 +632,54 @@ std::string_view concat(std::initializer_list<std::string_view> xs,
   return std::string_view{buf, total_size};
 }
 
-value* make_value(monotonic_buffer_resource* storage) {
+value* make_value(std::pmr::memory_resource* storage) {
   return make_impl<value>(storage);
 }
 
-array* make_array(monotonic_buffer_resource* storage) {
+array* make_array(std::pmr::memory_resource* storage) {
   auto result = make_impl<array>(storage);
   return result;
 }
 
-object* make_object(monotonic_buffer_resource* storage) {
+object* make_object(std::pmr::memory_resource* storage) {
   auto result = make_impl<object>(storage);
   return result;
 }
 
-value* parse(string_parser_state& ps, monotonic_buffer_resource* storage) {
+value* parse(string_parser_state& ps, std::pmr::memory_resource* storage) {
   unit_t scratch_space;
   parser::regular_unescaper unescaper;
-  monotonic_buffer_resource::allocator<value> alloc{storage};
+  std::pmr::polymorphic_allocator<value> alloc{storage};
   auto result = new (alloc.allocate(1)) value();
   parser::read_value(ps, scratch_space, unescaper, 0, {storage, result});
   return result;
 }
 
-value* parse(file_parser_state& ps, monotonic_buffer_resource* storage) {
+value* parse(file_parser_state& ps, std::pmr::memory_resource* storage) {
   std::vector<char> scratch_space;
   scratch_space.reserve(64);
   parser::regular_unescaper unescaper;
-  monotonic_buffer_resource::allocator<value> alloc{storage};
+  std::pmr::polymorphic_allocator<value> alloc{storage};
   auto result = new (alloc.allocate(1)) value();
   parser::read_value(ps, scratch_space, unescaper, 0, {storage, result});
   return result;
 }
 
 value* parse_shallow(string_parser_state& ps,
-                     monotonic_buffer_resource* storage) {
+                     std::pmr::memory_resource* storage) {
   unit_t scratch_space;
   parser::shallow_unescaper unescaper;
-  monotonic_buffer_resource::allocator<value> alloc{storage};
+  std::pmr::polymorphic_allocator<value> alloc{storage};
   auto result = new (alloc.allocate(1)) value();
   parser::read_value(ps, scratch_space, unescaper, 0, {storage, result});
   return result;
 }
 
 value* parse_in_situ(mutable_string_parser_state& ps,
-                     monotonic_buffer_resource* storage) {
+                     std::pmr::memory_resource* storage) {
   unit_t scratch_space;
   parser::in_situ_unescaper unescaper;
-  monotonic_buffer_resource::allocator<value> alloc{storage};
+  std::pmr::polymorphic_allocator<value> alloc{storage};
   auto result = new (alloc.allocate(1)) value();
   parser::read_value(ps, scratch_space, unescaper, 0, {storage, result});
   return result;

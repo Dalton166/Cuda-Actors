@@ -6,6 +6,7 @@
 #include "caf/io/network/multiplexer.hpp"
 
 #include "caf/actor_system.hpp"
+#include "caf/byte_span.hpp"
 #include "caf/config.hpp"
 #include "caf/detail/assert.hpp"
 #include "caf/detail/scope_guard.hpp"
@@ -14,7 +15,6 @@
 #include "caf/log/io.hpp"
 #include "caf/make_counted.hpp"
 #include "caf/none.hpp"
-#include "caf/span.hpp"
 
 namespace caf::io {
 
@@ -82,7 +82,7 @@ void abstract_broker::write(connection_handle hdl, size_t bs, const void* buf) {
   out.insert(out.end(), first, last);
 }
 
-void abstract_broker::write(connection_handle hdl, span<const std::byte> buf) {
+void abstract_broker::write(connection_handle hdl, const_byte_span buf) {
   write(hdl, buf.size(), buf.data());
 }
 

@@ -20,6 +20,7 @@
 #include "caf/flow/op/base.hpp"
 #include "caf/flow/op/buffer.hpp"
 #include "caf/flow/op/concat.hpp"
+#include "caf/flow/op/debounce.hpp"
 #include "caf/flow/op/fail.hpp"
 #include "caf/flow/op/from_resource.hpp"
 #include "caf/flow/op/from_steps.hpp"
@@ -32,6 +33,7 @@
 #include "caf/flow/op/publish.hpp"
 #include "caf/flow/op/retry.hpp"
 #include "caf/flow/op/sample.hpp"
+#include "caf/flow/op/throttle_first.hpp"
 #include "caf/flow/op/zip_with.hpp"
 #include "caf/flow/step/all.hpp"
 #include "caf/flow/subscription.hpp"
@@ -195,8 +197,8 @@ public:
   observable_def(observable_def&&) = default;
   observable_def& operator=(observable_def&&) = default;
 
-  template <size_t N = sizeof...(Steps), class = std::enable_if_t<N == 0>>
   explicit observable_def(Materializer&& materializer)
+    requires(sizeof...(Steps) == 0)
     : materializer_(std::move(materializer)) {
     // nop
   }
@@ -263,20 +265,35 @@ public:
     return materialize().buffer(count);
   }
 
-  auto buffer(size_t count, timespan period) {
+  auto buffer(size_t count, timespan period) && {
     return materialize().buffer(count, period);
   }
 
   /// @copydoc observable::on_error_resume_next
   template <class Predicate, class Fallback>
-  auto on_error_resume_next(Predicate&& predicate, Fallback&& fallback) {
+  auto on_error_resume_next(Predicate&& predicate, Fallback&& fallback) && {
     return materialize().on_error_resume_next(
       std::forward<Predicate>(predicate), std::forward<Fallback>(fallback));
   }
 
+  /// @copydoc observable::debounce
+  auto debounce(timespan period) && {
+    return materialize().debounce(period);
+  }
+
   /// @copydoc observable::sample
-  auto sample(timespan period) {
+  auto sample(timespan period) && {
     return materialize().sample(period);
+  }
+
+  /// @copydoc observable::throttle_first
+  auto throttle_first(timespan period) && {
+    return materialize().throttle_first(period);
+  }
+
+  /// @copydoc observable::throttle_last
+  auto throttle_last(timespan period) && {
+    return materialize().throttle_last(period);
   }
 
   template <class Predicate>
@@ -305,7 +322,7 @@ public:
 
   /// @copydoc observable::retry
   template <class Predicate>
-  auto retry(Predicate predicate) {
+  auto retry(Predicate predicate) && {
     return materialize().retry(predicate);
   }
 
@@ -356,15 +373,15 @@ public:
   /// @copydoc observable::on_backpressure_buffer
   auto on_backpressure_buffer(size_t buffer_size,
                               backpressure_overflow_strategy strategy
-                              = backpressure_overflow_strategy::fail) {
+                              = backpressure_overflow_strategy::fail) && {
     return materialize().on_backpressure_buffer(buffer_size, strategy);
   }
 
-  auto on_error_complete() {
+  auto on_error_complete() && {
     return add_step(step::on_error_complete<output_type>{});
   }
 
-  auto on_error_return_item(output_type item) {
+  auto on_error_return_item(output_type item) && {
     return add_step(step::on_error_return_item<output_type>{std::move(item)});
   }
 
@@ -436,7 +453,7 @@ public:
 
   /// @copydoc observable::zip_with
   template <class F, class T0, class... Ts>
-  auto zip_with(F fn, T0 input0, Ts... inputs) {
+  auto zip_with(F fn, T0 input0, Ts... inputs) && {
     return materialize().zip_with(std::move(fn), std::move(input0),
                                   std::move(inputs)...);
   }
@@ -832,12 +849,34 @@ observable<cow_vector<T>> observable<T>::buffer(size_t count, timespan period) {
 }
 
 template <class T>
+observable<T> observable<T>::debounce(timespan period) {
+  using impl_t = op::debounce<T>;
+  auto* pptr = parent();
+  return pptr->add_child_hdl(std::in_place_type<impl_t>, *this,
+                             std::move(period));
+}
+
+template <class T>
 observable<T> observable<T>::sample(timespan period) {
   using impl_t = op::sample<T>;
   auto* pptr = parent();
   auto obs = pptr->add_child_hdl(std::in_place_type<op::interval>, period,
                                  period);
   return pptr->add_child_hdl(std::in_place_type<impl_t>, *this, std::move(obs));
+}
+
+template <class T>
+observable<T> observable<T>::throttle_first(timespan period) {
+  using impl_t = op::throttle_first<T>;
+  auto* pptr = parent();
+  auto obs = pptr->add_child_hdl(std::in_place_type<op::interval>, period,
+                                 period);
+  return pptr->add_child_hdl(std::in_place_type<impl_t>, *this, std::move(obs));
+}
+
+template <class T>
+observable<T> observable<T>::throttle_last(timespan period) {
+  return sample(period);
 }
 
 template <class T>
@@ -978,7 +1017,7 @@ auto observable<T>::flat_map(F f, size_t max_concurrent) {
              return fn(x).as_observable();
            })
       .merge(max_concurrent);
-  } else if constexpr (detail::is_optional_v<res_t>) {
+  } else if constexpr (detail::is_optional<res_t>) {
     return map([fn = std::move(f)](const Out& x) mutable { return fn(x); })
       .filter([](const res_t& x) { return x.has_value(); })
       .map([](const res_t& x) { return *x; });
@@ -987,7 +1026,7 @@ auto observable<T>::flat_map(F f, size_t max_concurrent) {
     // output is probably not what anyone would expect and since the values are
     // all available immediately, there is no good reason to mess up the emitted
     // order of values.
-    static_assert(detail::is_iterable_v<res_t>);
+    static_assert(detail::iterable<res_t>);
     return map([cptr = parent(), fn = std::move(f)](const Out& x) mutable {
              return cptr->make_observable().from_container(fn(x));
            })
@@ -1010,12 +1049,12 @@ auto observable<T>::concat_map(F f) {
              return fn(x).as_observable();
            })
       .concat();
-  } else if constexpr (detail::is_optional_v<res_t>) {
+  } else if constexpr (detail::is_optional<res_t>) {
     return map([fn = std::move(f)](const Out& x) mutable { return fn(x); })
       .filter([](const res_t& x) { return x.has_value(); })
       .map([](const res_t& x) { return *x; });
   } else {
-    static_assert(detail::is_iterable_v<res_t>);
+    static_assert(detail::iterable<res_t>);
     return map([cptr = parent(), fn = std::move(f)](const Out& x) mutable {
              return cptr->make_observable().from_container(fn(x));
            })
