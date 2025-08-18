@@ -34,7 +34,11 @@ program_ptr manager::create_program(const char * kernel,
 
 	//the compiled program can be accessed via ptx.data() afterwards
 	std::vector<char> ptx;
-	compile_nvrtc_program(kernel,current_device,ptx);
+        if (!compile_nvrtc_program(kernel,current_device,ptx)) {
+	
+		throw std::runtime_error("Program failed to compile\n");
+	
+	}
 	program_ptr prog = make_counted<program>(name, ptx);
 	return prog;
 }
