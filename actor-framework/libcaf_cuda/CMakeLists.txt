@@ -23,6 +23,7 @@ set(LIBCAF_CUDA_SRCS
   src/helpers.cpp
   #src/command.cpp
   src/test.cpp
+  src/scheduler.cpp
 )
 
 # -- add targets ---------------------------------------------------------------
