@@ -8,13 +8,14 @@
 #include "caf/detail/core_export.hpp"
 #include "caf/detail/format.hpp"
 #include "caf/detail/mbr_list.hpp"
-#include "caf/detail/monotonic_buffer_resource.hpp"
 #include "caf/detail/source_location.hpp"
 #include "caf/fwd.hpp"
 #include "caf/intrusive_ptr.hpp"
 #include "caf/ref_counted.hpp"
 
+#include <concepts>
 #include <cstdint>
+#include <memory_resource>
 #include <optional>
 #include <string_view>
 #include <thread>
@@ -202,7 +203,7 @@ private:
   const field_node* first_field_ = nullptr;
 
   /// Storage for string chunks and fields.
-  detail::monotonic_buffer_resource resource_;
+  std::pmr::monotonic_buffer_resource resource_;
 };
 
 /// Builds list of user-defined fields for a log event.
@@ -225,11 +226,9 @@ public:
 
   using list_type = detail::mbr_list<event::field>;
 
-  using resource_type = detail::monotonic_buffer_resource;
-
   // -- constructors, destructors, and assignment operators --------------------
 
-  explicit event_fields_builder(resource_type* resource) noexcept;
+  explicit event_fields_builder(std::pmr::memory_resource* resource) noexcept;
 
   ~event_fields_builder() noexcept {
     // nop
@@ -238,9 +237,8 @@ public:
   // -- add fields -------------------------------------------------------------
 
   /// Adds a boolean or integer field.
-  template <class T>
-  std::enable_if_t<std::is_integral_v<T>, event_fields_builder&>
-  field(std::string_view key, T value) {
+  template <std::integral T>
+  event_fields_builder& field(std::string_view key, T value) {
     auto& field = fields_.emplace_back(std::string_view{},
                                        lift_integral(value));
     field.key = deep_copy(key);
@@ -277,12 +275,9 @@ public:
   }
 
   /// Adds nested fields.
-  template <class SubFieldsInitializer>
-  auto field(std::string_view key, SubFieldsInitializer&& init) //
-    -> std::enable_if_t<
-      std::is_same_v<decltype(init(std::declval<event_fields_builder&>())),
-                     void>,
-      event_fields_builder&> {
+  template <std::invocable<event_fields_builder&> SubFieldsInitializer>
+  event_fields_builder&
+  field(std::string_view key, SubFieldsInitializer&& init) {
     auto& field = fields_.emplace_back(std::string_view{}, std::nullopt);
     field.key = deep_copy(key);
     event_fields_builder nested_builder{resource()};
@@ -308,8 +303,8 @@ private:
 
   void field(std::string_view key, event::field_list);
 
-  [[nodiscard]] resource_type* resource() noexcept {
-    return fields_.get_allocator().resource();
+  [[nodiscard]] std::pmr::memory_resource* resource() noexcept {
+    return fields_.resource();
   }
 
   [[nodiscard]] std::string_view deep_copy(std::string_view str);
@@ -323,10 +318,6 @@ private:
 /// sends it to the current logger.
 class CAF_CORE_EXPORT event_sender {
 public:
-  // -- member types -----------------------------------------------------------
-
-  using resource_type = detail::monotonic_buffer_resource;
-
   // -- constructors, destructors, and assignment operators --------------------
 
   event_sender() : fields_(nullptr) {
@@ -347,9 +338,8 @@ public:
   // -- add fields -------------------------------------------------------------
 
   /// Adds a boolean or integer field.
-  template <class T>
-  std::enable_if_t<std::is_integral_v<T>, event_sender&&>
-  field(std::string_view key, T value) && {
+  template <std::integral T>
+  event_sender&& field(std::string_view key, T value) && {
     if (logger_)
       fields_.field(key, value);
     return std::move(*this);
@@ -380,12 +370,8 @@ public:
   }
 
   /// Adds nested fields.
-  template <class SubFieldsInitializer>
-  auto field(std::string_view key, SubFieldsInitializer&& init) //
-    -> std::enable_if_t<
-      std::is_same_v<decltype(init(std::declval<event_fields_builder&>())),
-                     void>,
-      event_sender&&> {
+  template <std::invocable<event_fields_builder&> SubFieldsInitializer>
+  event_sender&& field(std::string_view key, SubFieldsInitializer&& init) {
     if (logger_)
       fields_.field(key, std::forward<SubFieldsInitializer>(init));
     return std::move(*this);
@@ -397,7 +383,7 @@ public:
   void send() &&;
 
 private:
-  [[nodiscard]] resource_type* resource() noexcept {
+  [[nodiscard]] std::pmr::memory_resource* resource() noexcept {
     return &event_->resource_;
   }
 

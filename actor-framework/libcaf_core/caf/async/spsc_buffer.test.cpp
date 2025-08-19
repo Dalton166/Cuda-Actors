@@ -148,7 +148,7 @@ TEST("resources may be moved") {
 }
 
 SCENARIO("SPSC buffers may go past their capacity") {
-  GIVEN("an SPSC buffer with consumer and produer") {
+  GIVEN("an SPSC buffer with consumer and producer") {
     auto prod = make_counted<dummy_producer>();
     auto cons = make_counted<dummy_consumer>();
     auto buf = make_counted<async::spsc_buffer<int>>(10, 2);
@@ -166,7 +166,7 @@ SCENARIO("SPSC buffers may go past their capacity") {
       check_eq(cons->producer_wakeups, 1u);
       THEN("excess items are stored but do not trigger demand when consumed") {
         auto tmp = std::vector<int>{3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
-        buf->push(make_span(tmp));
+        buf->push(std::span{tmp});
         prod->demand = 0;
         check_eq(cons->producer_wakeups, 1u);
       }
@@ -191,7 +191,7 @@ SCENARIO("SPSC buffers may go past their capacity") {
 }
 
 SCENARIO("the prioritize_errors policy skips processing of pending items") {
-  GIVEN("an SPSC buffer with consumer and produer") {
+  GIVEN("an SPSC buffer with consumer and producer") {
     auto prod = make_counted<dummy_producer>();
     auto cons = make_counted<dummy_consumer>();
     auto buf = make_counted<async::spsc_buffer<int>>(10, 2);
@@ -199,7 +199,7 @@ SCENARIO("the prioritize_errors policy skips processing of pending items") {
     WHEN("pushing into the buffer and then aborting") {
       THEN("pulling items with prioritize_errors skips remaining items") {
         buf->set_producer(prod);
-        buf->push(make_span(tmp));
+        buf->push(std::span{tmp});
         buf->set_consumer(cons);
         check_eq(cons->producer_wakeups, 1u);
       }

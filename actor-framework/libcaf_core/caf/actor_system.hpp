@@ -8,7 +8,6 @@
 #include "caf/actor_cast.hpp"
 #include "caf/actor_config.hpp"
 #include "caf/actor_system_module.hpp"
-#include "caf/detail/actor_local_printer.hpp"
 #include "caf/detail/core_export.hpp"
 #include "caf/detail/format.hpp"
 #include "caf/detail/init_fun_factory.hpp"
@@ -28,6 +27,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <span>
 #include <string>
 #include <thread>
 
@@ -87,7 +87,6 @@ namespace caf {
 class CAF_CORE_EXPORT actor_system {
 public:
   friend class abstract_actor;
-  friend class actor_ostream;
   friend class detail::actor_system_access;
   friend class local_actor;
   friend class logger;
@@ -161,10 +160,7 @@ public:
     telemetry::int_counter* rejected_messages;
 
     /// Counts the total number of processed messages.
-    telemetry::int_counter* processed_messages;
-
-    /// Tracks the current number of running actors in the system.
-    telemetry::int_gauge* running_actors;
+    telemetry::int_counter_family* processed_messages;
 
     /// Counts the total number of messages that wait in a mailbox.
     telemetry::int_gauge* queued_messages;
@@ -217,7 +213,8 @@ public:
   /// A message passing interface (MPI) in run-time checkable representation.
   using mpi = std::set<std::string>;
 
-  template <class T, class E = std::enable_if_t<!is_typed_actor_v<T>>>
+  template <class T>
+    requires(!is_typed_actor_v<T>)
   mpi message_types(type_list<T>) const {
     return mpi{};
   }
@@ -229,7 +226,8 @@ public:
       typename typed_actor<Ts...>::signatures{});
   }
 
-  template <class T, class E = std::enable_if_t<!detail::is_type_list_v<T>>>
+  template <class T>
+    requires(!detail::is_type_list_v<T>)
   mpi message_types(const T&) const {
     type_list<T> token;
     return message_types(token);
@@ -273,11 +271,18 @@ public:
   /// Returns the global meta objects guard.
   detail::global_meta_objects_guard_type meta_objects_guard() const noexcept;
 
-  /// Returns the `caf.metrics-filters.actors.includes` parameter.
-  span<const std::string> metrics_actors_includes() const noexcept;
+  /// Returns the `caf.metrics.filters.actors.includes` parameter.
+  std::span<const std::string> metrics_actors_includes() const noexcept;
 
-  /// Returns the `caf.metrics-filters.actors.excludes` parameter.
-  span<const std::string> metrics_actors_excludes() const noexcept;
+  /// Returns the `caf.metrics.filters.actors.excludes` parameter.
+  std::span<const std::string> metrics_actors_excludes() const noexcept;
+
+  /// Returns whether the system collects metrics about how many actors are
+  /// running per actor type.
+  bool collect_running_actors_metrics() const noexcept;
+
+  /// Returns the metric family for the `caf.running-actors` metric.
+  telemetry::int_gauge_family* running_actors_metric_family() const noexcept;
 
   /// Returns the configuration of this actor system.
   const actor_system_config& config() const;
@@ -440,7 +445,8 @@ public:
   /// Returns a new actor with run-time type `name`, constructed
   /// with the arguments stored in `args`.
   /// @experimental
-  template <class Handle, class E = std::enable_if_t<is_handle_v<Handle>>>
+  template <class Handle>
+    requires is_handle_v<Handle>
   expected<Handle>
   spawn(const std::string& name, message args, caf::scheduler* ctx = nullptr,
         bool check_interface = true, const mpi* expected_ifs = nullptr) {
@@ -625,8 +631,6 @@ public:
 
   void release_private_thread(detail::private_thread*);
 
-  virtual detail::actor_local_printer_ptr printer_for(local_actor* self);
-
   using custom_setup_fn = void (*)(actor_system&, actor_system_config&, void*);
 
   actor_system(actor_system_config& cfg, custom_setup_fn custom_setup,
@@ -659,8 +663,6 @@ private:
 
   void do_print(term color, const char* buf, size_t num_bytes);
 
-  strong_actor_ptr legacy_printer_actor() const;
-
   // -- callbacks for actor_system_access --------------------------------------
 
   void set_logger(intrusive_ptr<caf::logger> ptr);
@@ -668,8 +670,6 @@ private:
   void set_clock(std::unique_ptr<actor_clock> ptr);
 
   void set_scheduler(std::unique_ptr<caf::scheduler> ptr);
-
-  void set_legacy_printer_actor(strong_actor_ptr ptr);
 
   void set_node(node_id id);
 

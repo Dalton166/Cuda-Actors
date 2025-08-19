@@ -10,12 +10,12 @@
 
 #include "caf/actor_system.hpp"
 #include "caf/actor_system_config.hpp"
+#include "caf/byte_span.hpp"
 #include "caf/caf_main.hpp"
 #include "caf/detail/latch.hpp"
 #include "caf/event_based_actor.hpp"
 #include "caf/ipv4_address.hpp"
 #include "caf/scheduled_actor/flow.hpp"
-#include "caf/span.hpp"
 #include "caf/uuid.hpp"
 
 #include <cassert>
@@ -75,9 +75,10 @@ int caf_main(caf::actor_system& sys, const config& cfg) {
   auto result
     = http::with(sys)
         // Lazy load TLS when connecting to HTTPS endpoints.
-        .context_factory([ca_file]() {
-          return ssl::emplace_client(ssl::tls::v1_2)().and_then(
-            ssl::load_verify_file_if(ca_file));
+        .context_factory([ca_file, resource]() {
+          return ssl::emplace_client(ssl::tls::v1_2)()
+            .and_then(ssl::load_verify_file_if(ca_file))
+            .and_then(ssl::use_sni_hostname(resource));
         })
         // Connect to the address of the resource.
         .connect(resource)

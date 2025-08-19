@@ -16,12 +16,12 @@
 #include "caf/raise_error.hpp"
 #include "caf/ref_counted.hpp"
 #include "caf/sec.hpp"
-#include "caf/span.hpp"
 #include "caf/unit.hpp"
 
 #include <condition_variable>
 #include <cstdlib>
 #include <mutex>
+#include <span>
 
 namespace caf::async {
 
@@ -50,7 +50,7 @@ public:
     bool canceled : 1;
   };
 
-  spsc_buffer(uint32_t capacity, uint32_t min_pull_size)
+  spsc_buffer(size_t capacity, size_t min_pull_size)
     : capacity_(capacity), min_pull_size_(min_pull_size) {
     memset(&flags_, 0, sizeof(flags));
     // Allocate some extra space in the buffer in case the producer goes beyond
@@ -65,7 +65,7 @@ public:
   /// Appends to the buffer and calls `on_producer_wakeup` on the consumer if
   /// the buffer becomes non-empty.
   /// @returns the remaining capacity after inserting the items.
-  size_t push(span<const T> items) {
+  size_t push(std::span<const T> items) {
     lock_type guard{mtx_};
     CAF_ASSERT(producer_ != nullptr);
     CAF_ASSERT(!flags_.closed);
@@ -79,7 +79,7 @@ public:
   }
 
   size_t push(const T& item) {
-    return push(make_span(&item, 1));
+    return push(std::span{&item, 1});
   }
 
   /// Consumes up to `demand` items from the buffer.
@@ -248,7 +248,7 @@ public:
         signal_demand(n - overflow);
       }
       guard.unlock();
-      auto items = span<const T>{consumer_buf_.data(), n};
+      auto items = std::span<const T>{consumer_buf_.data(), n};
       for (auto& item : items)
         dst.on_next(item);
       demand -= n;
@@ -281,7 +281,7 @@ private:
     }
   }
 
-  void signal_demand(uint32_t new_demand) {
+  void signal_demand(size_t new_demand) {
     demand_ += new_demand;
     if (demand_ >= min_pull_size_ && producer_) {
       producer_->on_consumer_demand(demand_);
@@ -296,14 +296,14 @@ private:
   std::vector<T> buf_;
 
   /// Stores how many items the buffer may hold at any time.
-  uint32_t capacity_;
+  size_t capacity_;
 
   /// Configures the minimum amount of free buffer slots that we signal to the
   /// producer.
-  uint32_t min_pull_size_;
+  size_t min_pull_size_;
 
   /// Demand that has not yet been signaled back to the producer.
-  uint32_t demand_ = 0;
+  size_t demand_ = 0;
 
   /// Stores whether `close` has been called.
   flags flags_;

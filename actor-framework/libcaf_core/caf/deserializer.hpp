@@ -8,10 +8,11 @@
 #include "caf/detail/squashed_int.hpp"
 #include "caf/fwd.hpp"
 #include "caf/load_inspector_base.hpp"
-#include "caf/span.hpp"
 #include "caf/type_id.hpp"
 
+#include <concepts>
 #include <cstddef>
+#include <span>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -28,23 +29,15 @@ public:
 
   // -- constructors, destructors, and assignment operators --------------------
 
-  deserializer() noexcept = default;
-
-  explicit deserializer(actor_system& sys) noexcept : context_(&sys) {
-    // nop
-  }
-
   virtual ~deserializer();
 
   // -- properties -------------------------------------------------------------
 
-  actor_system* context() const noexcept {
-    return context_;
-  }
+  /// Returns the actor system associated with this deserializer if available.
+  virtual caf::actor_system* sys() const noexcept = 0;
 
-  bool has_human_readable_format() const noexcept {
-    return has_human_readable_format_;
-  }
+  /// Returns whether the serialization format is human-readable.
+  virtual bool has_human_readable_format() const noexcept = 0;
 
   // -- interface functions ----------------------------------------------------
 
@@ -86,12 +79,12 @@ public:
 
   virtual bool begin_field(std::string_view, bool& is_present) = 0;
 
-  virtual bool
-  begin_field(std::string_view name, span<const type_id_t> types, size_t& index)
+  virtual bool begin_field(std::string_view name,
+                           std::span<const type_id_t> types, size_t& index)
     = 0;
 
   virtual bool begin_field(std::string_view name, bool& is_present,
-                           span<const type_id_t> types, size_t& index)
+                           std::span<const type_id_t> types, size_t& index)
     = 0;
 
   virtual bool end_field() = 0;
@@ -158,8 +151,8 @@ public:
   virtual bool value(uint64_t& x) = 0;
 
   /// @copydoc value
-  template <class T>
-  std::enable_if_t<std::is_integral_v<T>, bool> value(T& x) noexcept {
+  template <std::integral T>
+  bool value(T& x) noexcept {
     auto tmp = detail::squashed_int_t<T>{0};
     if (value(tmp)) {
       x = static_cast<T>(tmp);
@@ -189,7 +182,13 @@ public:
   /// Reads a byte sequence from the input.
   /// @param x The byte sequence.
   /// @returns A non-zero error code on failure, `sec::success` otherwise.
-  virtual bool value(span<std::byte> x) = 0;
+  virtual bool value(byte_span x) = 0;
+
+  /// @copydoc value
+  virtual bool value(strong_actor_ptr& ptr);
+
+  /// @copydoc value
+  virtual bool value(weak_actor_ptr& ptr);
 
   using super::list;
 
@@ -197,13 +196,6 @@ public:
   /// member function to pack the booleans, for example to avoid using one
   /// byte for each value in a binary output format.
   virtual bool list(std::vector<bool>& xs);
-
-protected:
-  /// Provides access to the ::proxy_registry and to the ::actor_system.
-  actor_system* context_ = nullptr;
-
-  /// Configures whether client code should assume human-readable output.
-  bool has_human_readable_format_ = false;
 };
 
 } // namespace caf

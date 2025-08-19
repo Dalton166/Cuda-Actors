@@ -31,7 +31,13 @@ bool inspect(Inspector& f, dummy_user& x) {
 
 template <class... Args>
 auto do_render(const Args&... args) {
-  return stringification_inspector::render(args...);
+  std::string result;
+  stringification_inspector f{result};
+  auto ok = (f.apply(detail::as_mutable_ref(args)) && ...);
+  if (!ok) {
+    return to_string(f.get_error());
+  }
+  return result;
 }
 
 } // namespace
@@ -61,10 +67,10 @@ TEST("stringification of booleans") {
 }
 
 TEST("stringification of std::string") {
-  check_eq(do_render(""s), R"()"s);
-  check_eq(do_render(R"(hello)"s), R"(hello)"s);
-  check_eq(do_render(R"(hello "world")"s), R"(hello "world")"s);
-  check_eq(do_render(R"(hello\world)"s), R"(hello\world)"s);
+  check_eq(do_render(""s), R"__("")__");
+  check_eq(do_render(R"(hello)"s), R"__("hello")__");
+  check_eq(do_render(R"(hello "world")"s), R"__("hello \"world\"")__");
+  check_eq(do_render(R"(hello\world)"s), R"__("hello\\world")__");
 }
 
 TEST("stringification of objects with type_name") {
@@ -101,7 +107,7 @@ TEST("stringification of std::chrono::duration") {
 TEST("stringification of byte span") {
   check_eq(do_render(std::byte{42}), "2A"s);
   auto hello = "hello"sv;
-  check_eq(do_render(as_bytes(make_span(hello))), "68656C6C6F"s);
+  check_eq(do_render(as_bytes(std::span{hello})), "68656C6C6F"s);
 }
 
 TEST("stringification of custom types") {
