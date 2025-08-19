@@ -6,7 +6,7 @@
 #include <caf/cuda/command_runner.hpp>
 #include <caf/cuda/mem_ref.hpp>
 #include <caf/cuda/device.hpp>
-#include <caf/cuda/StreamPool.hpp>
+#include <caf/cuda/streampool.hpp>
 #include <caf/cuda/program.hpp>
 #include <caf/cuda/nd_range.hpp>
 #include <caf/cuda/platform.hpp>
