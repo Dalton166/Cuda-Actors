@@ -638,9 +638,9 @@ void test_compare_strings([[maybe_unused]] caf::actor_system& sys) {
   // String comparison kernel
   const char* kernel_src = R"(
   extern "C" __global__
-  void compare_strings(const char* a, const char* b, int* result, int* length) {
+  void compare_strings(const char* a, const char* b, int* result, int length) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < *length) {
+    if (idx < length) {
       result[idx] = (a[idx] == b[idx]) ? 1 : 0;
     }
   }
@@ -661,10 +661,10 @@ void test_compare_strings([[maybe_unused]] caf::actor_system& sys) {
   std::vector<int> expected = {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1};
   
   nd_range dims(size / 4, 1, 1, 4, 1, 1);  // 4 blocks, 4 threads each
-  command_runner<out<int>, in<char>, in<char>, in<int>> runner;
+  command_runner<in<char>, in<char>, out<int>, in<int>> runner;
   
-  auto outputs = runner.run(prog, dims, 1 /* actor_id */, create_out_arg_with_size<int>(size),
-                           create_in_arg(str_a), create_in_arg(str_b), create_in_arg(size));
+  auto outputs = runner.run(prog, dims, 1 /* actor_id */,
+                           create_in_arg(str_a), create_in_arg(str_b), create_out_arg_with_size<int>(size), create_in_arg(size));
   assert(outputs.size() == 1u);
   auto result = extract_vector<int>(outputs);
   assert(result.size() == size);
