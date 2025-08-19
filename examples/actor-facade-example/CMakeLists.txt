@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS      OFF)
 
 # 2) Set CAF source and build directories
-set(CAF_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../actor-framework")
+set(CAF_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../../actor-framework")
 set(CAF_BUILD "${CAF_SRC}/build")
 
 
@@ -24,13 +24,13 @@ include_directories(
   "${CAF_SRC}/libcaf_io"
   "${CAF_SRC}/libcaf_core"
   "${CAF_SRC}/libcaf_opencl"
-  "${CAF_BUILD}/libcaf_core"  # for generated build_config.hpp  
+  "${CAF_BUILD}/libcaf_core"  
   "${CAF_SRC}/libcaf_cuda"
 )
 
 
 # 5) Declare your executable
-add_executable(test main.test.cpp)
+add_executable(test mmul.example.cpp)
 target_compile_definitions(test PRIVATE CAF_ENABLE_LOGGING)
 
 target_link_libraries(test
@@ -41,7 +41,3 @@ target_link_libraries(test
     CUDA::nvrtc
 )
 
-# — Optional: extra include dirs (e.g., ViennaCL) —
-# target_include_directories(laSolv PRIVATE
-#   "/student/nqr159/opencl-actors/OpenCL/code/viennacl-dev"
-# )
