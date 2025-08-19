@@ -69,7 +69,7 @@ public:
         return false;
       // A multimap returns an iterator, a regular map returns a pair.
       auto emplace_result = xs.emplace(std::move(key), std::move(val));
-      if constexpr (detail::is_pair<decltype(emplace_result)>::value) {
+      if constexpr (detail::is_pair<decltype(emplace_result)>) {
         if (!emplace_result.second) {
           super::emplace_error(sec::runtime_error, "multiple key definitions");
           return false;
@@ -140,7 +140,7 @@ public:
         if (auto err = set(std::move(tmp)); !err) {
           return true;
         } else {
-          super::set_error(std::move(err));
+          dref().set_error(std::move(err));
           return false;
         }
       } else {

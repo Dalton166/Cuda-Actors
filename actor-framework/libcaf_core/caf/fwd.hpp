@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <span>
 #include <string_view>
 #include <utility>
 #include <variant>
@@ -31,7 +32,6 @@ template <class> class expected;
 template <class> class function_view;
 template <class> class intrusive_cow_ptr;
 template <class> class intrusive_ptr;
-template <class> class span;
 template <class> class typed_stream;
 template <class> class weak_intrusive_ptr;
 
@@ -193,8 +193,8 @@ enum class thread_owner;
 
 using actor_id = uint64_t;
 using byte_buffer = std::vector<std::byte>;
-using byte_span = span<std::byte>;
-using const_byte_span = span<const std::byte>;
+using byte_span = std::span<std::byte>;
+using const_byte_span = std::span<const std::byte>;
 using cow_string = basic_cow_string<char>;
 using cow_u16string = basic_cow_string<char16_t>;
 using cow_u32string = basic_cow_string<char32_t>;
@@ -231,8 +231,6 @@ struct subscriber_base;
 namespace telemetry {
 
 class component;
-class dbl_gauge;
-class int_gauge;
 class label;
 class label_view;
 class metric;
@@ -246,6 +244,9 @@ template <class ValueType>
 class counter;
 
 template <class ValueType>
+class gauge;
+
+template <class ValueType>
 class histogram;
 
 template <class Type>
@@ -255,8 +256,10 @@ template <class Type>
 class metric_impl;
 
 using dbl_counter = counter<double>;
+using dbl_gauge = gauge<double>;
 using dbl_histogram = histogram<double>;
 using int_counter = counter<int64_t>;
+using int_gauge = gauge<int64_t>;
 using int_histogram = histogram<int64_t>;
 
 using dbl_counter_family = metric_family_impl<dbl_counter>;
@@ -270,36 +273,13 @@ using int_gauge_family = metric_family_impl<int_gauge>;
 
 namespace detail {
 
+struct make_actor_util;
+
 class actor_system_access;
 class actor_system_config_access;
 class mailbox_factory;
-class monotonic_buffer_resource;
-
-template <class>
-struct gauge_oracle;
-
-template <>
-struct gauge_oracle<double> {
-  using type = telemetry::dbl_gauge;
-};
-
-template <>
-struct gauge_oracle<int64_t> {
-  using type = telemetry::int_gauge;
-};
-
-/// Convenience alias for `detail::gauge_oracle<ValueType>::type`.
-template <class ValueType>
-using gauge_oracle_t = typename gauge_oracle<ValueType>::type;
 
 } // namespace detail
-
-namespace telemetry {
-
-template <class ValueType>
-using gauge = detail::gauge_oracle_t<ValueType>;
-
-} // namespace telemetry
 
 // -- I/O classes --------------------------------------------------------------
 
@@ -387,8 +367,11 @@ using strong_actor_ptr = intrusive_ptr<actor_control_block>;
 
 using mailbox_element_ptr = std::unique_ptr<mailbox_element>;
 
-// -- shared pointer aliases ---------------------------------------------------
-
-using shared_action_ptr = std::shared_ptr<callback<void()>>;
-
 } // namespace caf
+
+namespace caf::meta {
+
+struct handler;
+struct handler_list;
+
+} // namespace caf::meta

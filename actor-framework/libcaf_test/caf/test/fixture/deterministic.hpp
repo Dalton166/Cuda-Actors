@@ -11,9 +11,9 @@
 #include "caf/actor_system_config.hpp"
 #include "caf/binary_deserializer.hpp"
 #include "caf/binary_serializer.hpp"
+#include "caf/detail/concepts.hpp"
 #include "caf/detail/source_location.hpp"
 #include "caf/detail/test_export.hpp"
-#include "caf/detail/type_traits.hpp"
 #include "caf/mailbox_element.hpp"
 #include "caf/resumable.hpp"
 #include "caf/scheduled_actor.hpp"
@@ -66,8 +66,8 @@ private:
     }
 
     template <class U>
-    explicit value_predicate(
-      U value, std::enable_if_t<detail::is_comparable_v<T, U>>* = nullptr) {
+      requires detail::is_comparable<T, U>
+    explicit value_predicate(U value) {
       predicate_ = [value](const T& found) { return found == value; };
     }
 
@@ -78,11 +78,11 @@ private:
       };
     }
 
-    template <
-      class Predicate,
-      class = std::enable_if_t<std::is_same_v<
-        bool, decltype(std::declval<Predicate>()(std::declval<const T&>()))>>>
-    explicit value_predicate(Predicate predicate) {
+    template <class Predicate>
+    explicit value_predicate(Predicate predicate)
+      requires std::is_same_v<bool,
+                              decltype(predicate(std::declval<const T&>()))>
+    {
       predicate_ = std::move(predicate);
     }
 
@@ -167,17 +167,12 @@ public:
   public:
     system_impl(actor_system_config& cfg, deterministic* fix);
 
-    detail::actor_local_printer_ptr printer_for(local_actor* self) override;
-
   private:
     static actor_system_config& prepare(actor_system_config& cfg,
                                         deterministic* fix);
 
     static void custom_setup(actor_system& sys, actor_system_config& cfg,
                              void* custom_setup_data);
-
-    /// Maps actors to their designated printer.
-    std::map<actor_id, detail::actor_local_printer_ptr> printers_;
   };
 
   /// Configures the algorithm to evaluate for an `evaluator` instances.

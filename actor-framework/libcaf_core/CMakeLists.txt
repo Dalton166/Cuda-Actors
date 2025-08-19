@@ -84,7 +84,6 @@ caf_add_component(
     caf/actor_control_block.cpp
     caf/actor_factory.test.cpp
     caf/actor_from_state.test.cpp
-    caf/actor_ostream.cpp
     caf/actor_pool.cpp
     caf/actor_pool.test.cpp
     caf/actor_proxy.cpp
@@ -118,10 +117,13 @@ caf_add_component(
     caf/blocking_actor.cpp
     caf/blocking_actor.test.cpp
     caf/blocking_mail.test.cpp
+    caf/byte_reader.cpp
     caf/byte_span.cpp
+    caf/byte_writer.cpp
     caf/chrono.cpp
     caf/chrono.test.cpp
     caf/chunk.cpp
+    caf/chunk.test.cpp
     caf/chunked_string.cpp
     caf/chunked_string.test.cpp
     caf/config_option.cpp
@@ -144,9 +146,9 @@ caf_add_component(
     caf/detached_actors.test.cpp
     caf/detail/abstract_worker.cpp
     caf/detail/abstract_worker_hub.cpp
-    caf/detail/actor_local_printer.cpp
     caf/detail/actor_system_access.cpp
     caf/detail/actor_system_config_access.cpp
+    caf/detail/aligned_alloc.cpp
     caf/detail/assert.cpp
     caf/detail/atomic_ref_counted.cpp
     caf/detail/base64.cpp
@@ -182,8 +184,6 @@ caf_add_component(
     caf/detail/meta_object.cpp
     caf/detail/meta_object.test.cpp
     caf/detail/monitor_action.cpp
-    caf/detail/monotonic_buffer_resource.cpp
-    caf/detail/monotonic_buffer_resource.test.cpp
     caf/detail/parse.cpp
     caf/detail/parse.test.cpp
     caf/detail/parser/chars.cpp
@@ -211,10 +211,9 @@ caf_add_component(
     caf/detail/stringification_inspector.test.cpp
     caf/detail/sync_request_bouncer.cpp
     caf/detail/sync_ring_buffer.test.cpp
-    caf/detail/test_coordinator.cpp
-    caf/detail/thread_safe_actor_clock.cpp
     caf/detail/type_id_list_builder.cpp
     caf/detail/type_id_list_builder.test.cpp
+    caf/detail/type_list.test.cpp
     caf/detail/unique_function.test.cpp
     caf/dictionary.test.cpp
     caf/disposable.cpp
@@ -243,6 +242,7 @@ caf_add_component(
     caf/flow/op/on_error_resume_next.test.cpp
     caf/flow/op/cell.test.cpp
     caf/flow/op/concat.test.cpp
+    caf/flow/op/debounce.test.cpp
     caf/flow/op/defer.test.cpp
     caf/flow/op/empty.test.cpp
     caf/flow/op/fail.test.cpp
@@ -257,6 +257,7 @@ caf_add_component(
     caf/flow/op/pullable.cpp
     caf/flow/op/retry.test.cpp
     caf/flow/op/sample.test.cpp
+    caf/flow/op/throttle_first.test.cpp
     caf/flow/op/ucast.test.cpp
     caf/flow/op/zip_with.test.cpp
     caf/flow/scoped_coordinator.cpp
@@ -320,9 +321,10 @@ caf_add_component(
     caf/message_id.test.cpp
     caf/message_lifetime.test.cpp
     caf/messaging.test.cpp
+    caf/meta/handler.cpp
+    caf/meta/handler.test.cpp
     caf/metaprogramming.test.cpp
     caf/mixin/requester.test.cpp
-    caf/mixin/sender.test.cpp
     caf/monitor.test.cpp
     caf/mtl.test.cpp
     caf/node_id.cpp
@@ -358,7 +360,6 @@ caf_add_component(
     caf/settings.cpp
     caf/settings.test.cpp
     caf/skip.cpp
-    caf/span.test.cpp
     caf/stateful_actor.test.cpp
     caf/stream.cpp
     caf/stream.test.cpp

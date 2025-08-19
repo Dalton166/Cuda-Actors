@@ -11,8 +11,8 @@
 #include "caf/init_global_meta_objects.hpp"
 #include "caf/json_value.hpp"
 #include "caf/log/test.hpp"
-#include "caf/span.hpp"
 
+#include <span>
 #include <string_view>
 
 using namespace caf;
@@ -73,7 +73,7 @@ bool inspect(Inspector& f, rectangle& x) {
 
 struct span_less {
   template <class T>
-  bool operator()(const span<T>& lhs, const span<T>& rhs) const {
+  bool operator()(const std::span<T>& lhs, const std::span<T>& rhs) const {
     return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(),
                                         rhs.end());
   }
@@ -143,22 +143,6 @@ TEST("integer") {
   check_eq(val.to_integer(), 42);
 }
 
-TEST("float") {
-  SECTION("value") {
-    check(builder.value(4.2f));
-    auto val = builder.seal();
-    check(val.is_double());
-    check_eq(val.to_double(), test::approx{4.2f});
-  }
-  SECTION("array") {
-    auto xs = std::vector{4.2f, 4.2f, 4.2f};
-    check(builder.apply(xs));
-    auto val = builder.seal();
-    check(val.is_array());
-    check_eq(printed(val), "[4.2, 4.2, 4.2]"sv);
-  }
-}
-
 TEST("double") {
   check(builder.value(4.2));
   auto val = builder.seal();
@@ -226,13 +210,13 @@ TEST("byte span") {
   auto bytes = std::vector<std::byte>{std::byte{'A'}, std::byte{'B'},
                                       std::byte{'C'}};
   SECTION("value") {
-    check(builder.value(make_span(bytes)));
+    check(builder.value(std::span{bytes}));
     auto val = builder.seal();
     check(val.is_string());
     check_eq(val.to_string(), "414243"sv);
   }
   SECTION("array") {
-    auto xs = std::vector{make_span(bytes), make_span(bytes)};
+    auto xs = std::vector{std::span{bytes}, std::span{bytes}};
     check(builder.apply(xs));
     auto val = builder.seal();
     check(val.is_array());
@@ -241,7 +225,7 @@ TEST("byte span") {
   SECTION("error") {
     check(builder.apply(int64_t{42}));
     auto val = builder.seal();
-    check(!builder.value(make_span(bytes)));
+    check(!builder.value(std::span{bytes}));
   }
 }
 
@@ -305,15 +289,15 @@ TEST("begin field") {
   SECTION("is present") {
     SECTION("missing index") {
       auto circle_type = std::vector<uint16_t>{295};
-      check(!builder.begin_field("foo", true, make_span(circle_type), 1));
+      check(!builder.begin_field("foo", true, std::span{circle_type}, 1));
     }
     SECTION("missing query type") {
       auto circle_type = std::vector<uint16_t>{1000};
-      check(!builder.begin_field("foo", true, make_span(circle_type), 0));
+      check(!builder.begin_field("foo", true, std::span{circle_type}, 0));
     }
     SECTION("present query type") {
       auto circle_type = std::vector<uint16_t>{295};
-      check(builder.begin_field("foo", true, make_span(circle_type), 0));
+      check(builder.begin_field("foo", true, std::span{circle_type}, 0));
       check(builder.value(42));
       check(builder.end_field());
       check(builder.end_object());
@@ -326,7 +310,7 @@ TEST("begin field") {
     auto circle_type = std::vector<uint16_t>{295};
     SECTION("don't skip empty fields") {
       builder.skip_empty_fields(false);
-      check(builder.begin_field("foo", false, make_span(circle_type), 0));
+      check(builder.begin_field("foo", false, std::span{circle_type}, 0));
       check(!builder.value(42));
       check(builder.end_field());
       check(builder.end_object());
@@ -335,7 +319,7 @@ TEST("begin field") {
       check_eq(printed(val), R"_({"foo": null})_");
     }
     SECTION("skip empty fields") {
-      check(builder.begin_field("foo", false, make_span(circle_type), 0));
+      check(builder.begin_field("foo", false, std::span{circle_type}, 0));
       check(!builder.value(42));
       check(builder.end_field());
       check(builder.end_object());
@@ -352,7 +336,7 @@ TEST("begin associative array") {
     check(builder.begin_tuple(1));
     check(builder.begin_associative_array(1));
     builder.skip_empty_fields(false);
-    check(builder.begin_field("foo", false, make_span(circle_type), 0));
+    check(builder.begin_field("foo", false, std::span{circle_type}, 0));
     auto val = builder.seal();
     check(val.is_array());
     check_eq(printed(val), R"_([{"foo": null}])_");
@@ -370,7 +354,7 @@ TEST("begin sequence") {
     auto circle_type = std::vector<uint16_t>{295};
     check(builder.begin_sequence(1));
     check(builder.begin_sequence(1));
-    check(!builder.begin_field("foo", false, make_span(circle_type), 0));
+    check(!builder.begin_field("foo", false, std::span{circle_type}, 0));
     check(builder.end_sequence());
     check(builder.end_sequence());
     auto val = builder.seal();
@@ -386,7 +370,7 @@ TEST("begin sequence") {
 
 TEST("unexpected object") {
   auto circle_type = std::vector<uint16_t>{295};
-  check(!builder.begin_field("foo", false, make_span(circle_type), 0));
+  check(!builder.begin_field("foo", false, std::span{circle_type}, 0));
 }
 
 SCENARIO("json_builder can build json for maps with keys") {
@@ -425,8 +409,8 @@ SCENARIO("json_builder can build json for maps with keys") {
   }
   GIVEN("a map with byte span as keys") {
     auto bytes = std::vector<std::byte>{std::byte{'A'}, std::byte{'B'}};
-    std::map<span<const std::byte>, int, span_less> span_map{
-      {make_span(bytes), 1},
+    std::map<const_byte_span, int, span_less> span_map{
+      {std::span{bytes}, 1},
     };
     WHEN("building the map") {
       THEN("the map is built correctly") {

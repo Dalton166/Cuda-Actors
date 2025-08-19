@@ -6,9 +6,9 @@
 
 #include "caf/attachable.hpp"
 #include "caf/detail/assert.hpp"
+#include "caf/detail/concepts.hpp"
 #include "caf/detail/core_export.hpp"
 #include "caf/detail/functor_attachable.hpp"
-#include "caf/detail/type_traits.hpp"
 #include "caf/exit_reason.hpp"
 #include "caf/fwd.hpp"
 #include "caf/intrusive_ptr.hpp"
@@ -48,9 +48,6 @@ constexpr actor_id invalid_actor_id = 0;
 class CAF_CORE_EXPORT abstract_actor {
 public:
   // -- friends ----------------------------------------------------------------
-
-  template <class T>
-  friend class actor_storage;
 
   template <class>
   friend class caf::io::basp::remote_message_handler;
@@ -147,13 +144,6 @@ public:
   ///       with remote actors.
   virtual bool enqueue(mailbox_element_ptr what, scheduler* sched) = 0;
 
-  /// Called by the testing DSL to peek at the next element in the mailbox. Do
-  /// not call this function in production code! The default implementation
-  /// always returns `nullptr`.
-  /// @returns A pointer to the next mailbox element or `nullptr` if the
-  ///          mailbox is empty or the actor does not have a mailbox.
-  virtual mailbox_element* peek_at_next_mailbox_element();
-
   /// Called by the runtime system to perform cleanup actions for this actor.
   /// Subtypes should always call this member function when overriding it.
   /// This member function is thread-safe, and if the actor has already exited
@@ -183,10 +173,6 @@ public:
 
   /// Indicates that the actor collects metrics.
   static constexpr int collects_metrics_flag = 0b0000'0010'0000;
-
-  /// Indicates that the actor has used aout at least once and thus needs to
-  /// call `flush` when shutting down.
-  static constexpr int has_used_aout_flag = 0b0000'0100'0000;
 
   /// Indicates that the actor has terminated and waits for its destructor to
   /// run.

@@ -5,97 +5,59 @@
 #pragma once
 
 #include "caf/detail/core_export.hpp"
-#include "caf/detail/squashed_int.hpp"
-#include "caf/error_code.hpp"
 #include "caf/fwd.hpp"
 #include "caf/load_inspector_base.hpp"
-#include "caf/sec.hpp"
-#include "caf/span.hpp"
 
+#include <concepts>
 #include <cstddef>
-#include <string>
-#include <string_view>
-#include <tuple>
-#include <type_traits>
-#include <utility>
+#include <span>
 
 namespace caf {
 
 /// Deserializes C++ objects from sequence of bytes. Does not perform
 /// run-time type checks.
-class CAF_CORE_EXPORT binary_deserializer
+class CAF_CORE_EXPORT binary_deserializer final
   : public load_inspector_base<binary_deserializer> {
 public:
-  // -- member types -----------------------------------------------------------
-
-  using super = load_inspector_base<binary_deserializer>;
-
   // -- constructors, destructors, and assignment operators --------------------
 
-  template <class Container>
-  explicit binary_deserializer(const Container& input) noexcept {
-    reset(as_bytes(make_span(input)));
-  }
+  explicit binary_deserializer(const_byte_span input) noexcept;
 
-  template <class Container>
-  binary_deserializer(actor_system& sys, const Container& input) noexcept
-    : context_(&sys) {
-    reset(as_bytes(make_span(input)));
-  }
+  binary_deserializer(actor_system& sys, const_byte_span input) noexcept;
 
-  template <class Container>
-  [[deprecated("use the single-argument constructor instead")]] //
-  binary_deserializer(std::nullptr_t, const Container& input) noexcept {
-    reset(as_bytes(make_span(input)));
-  }
+  binary_deserializer(const void* buf, size_t size) noexcept;
 
-  binary_deserializer(const void* buf, size_t size) noexcept {
-    reset(make_span(static_cast<const std::byte*>(buf), size));
-  }
+  binary_deserializer(actor_system& sys, const void* buf, size_t size) noexcept;
 
-  [[deprecated("use the two-argument constructor instead")]] //
-  binary_deserializer(std::nullptr_t, const void* buf, size_t size) noexcept {
-    reset(make_span(static_cast<const std::byte*>(buf), size));
-  }
+  ~binary_deserializer() override;
 
-  binary_deserializer(actor_system& sys, const void* buf, size_t size) noexcept
-    : context_(&sys) {
-    reset(make_span(static_cast<const std::byte*>(buf), size));
-  }
+  binary_deserializer(const binary_deserializer&) = delete;
+
+  binary_deserializer& operator=(const binary_deserializer&) = delete;
 
   // -- properties -------------------------------------------------------------
 
   /// Returns how many bytes are still available to read.
-  size_t remaining() const noexcept {
-    return static_cast<size_t>(end_ - current_);
-  }
+  size_t remaining() const noexcept;
 
   /// Returns the remaining bytes.
-  span<const std::byte> remainder() const noexcept {
-    return make_span(current_, end_);
-  }
+  const_byte_span remainder() const noexcept;
 
   /// Returns the current execution unit.
-  actor_system* context() const noexcept {
-    return context_;
-  }
+  actor_system* context() const noexcept;
 
   /// Jumps `num_bytes` forward.
   /// @pre `num_bytes <= remaining()`
   void skip(size_t num_bytes);
 
   /// Assigns a new input.
-  void reset(span<const std::byte> bytes) noexcept;
+  void reset(const_byte_span bytes) noexcept;
 
   /// Returns the current read position.
-  const std::byte* current() const noexcept {
-    return current_;
-  }
+  const std::byte* current() const noexcept;
 
   /// Returns the end of the assigned memory block.
-  const std::byte* end() const noexcept {
-    return end_;
-  }
+  const std::byte* end() const noexcept;
 
   static constexpr bool has_human_readable_format() noexcept {
     return false;
@@ -103,61 +65,43 @@ public:
 
   // -- overridden member functions --------------------------------------------
 
+  void set_error(error stop_reason) override;
+
+  error& get_error() noexcept override;
+
   bool fetch_next_object_type(type_id_t& type) noexcept;
 
-  constexpr bool begin_object(type_id_t, std::string_view) noexcept {
-    return true;
-  }
+  bool begin_object(type_id_t, std::string_view) noexcept;
 
-  constexpr bool end_object() noexcept {
-    return true;
-  }
+  bool end_object() noexcept;
 
-  constexpr bool begin_field(std::string_view) noexcept {
-    return true;
-  }
+  bool begin_field(std::string_view) noexcept;
 
   bool begin_field(std::string_view name, bool& is_present) noexcept;
 
-  bool begin_field(std::string_view name, span<const type_id_t> types,
+  bool begin_field(std::string_view name, std::span<const type_id_t> types,
                    size_t& index) noexcept;
 
   bool begin_field(std::string_view name, bool& is_present,
-                   span<const type_id_t> types, size_t& index) noexcept;
+                   std::span<const type_id_t> types, size_t& index) noexcept;
 
-  constexpr bool end_field() {
-    return true;
-  }
+  bool end_field();
 
-  constexpr bool begin_tuple(size_t) noexcept {
-    return true;
-  }
+  bool begin_tuple(size_t) noexcept;
 
-  constexpr bool end_tuple() noexcept {
-    return true;
-  }
+  bool end_tuple() noexcept;
 
-  constexpr bool begin_key_value_pair() noexcept {
-    return true;
-  }
+  bool begin_key_value_pair() noexcept;
 
-  constexpr bool end_key_value_pair() noexcept {
-    return true;
-  }
+  bool end_key_value_pair() noexcept;
 
   bool begin_sequence(size_t& list_size) noexcept;
 
-  constexpr bool end_sequence() noexcept {
-    return true;
-  }
+  bool end_sequence() noexcept;
 
-  bool begin_associative_array(size_t& size) noexcept {
-    return begin_sequence(size);
-  }
+  bool begin_associative_array(size_t& size) noexcept;
 
-  bool end_associative_array() noexcept {
-    return end_sequence();
-  }
+  bool end_associative_array() noexcept;
 
   bool value(bool& x) noexcept;
 
@@ -179,8 +123,8 @@ public:
 
   bool value(uint64_t& x) noexcept;
 
-  template <class T>
-  std::enable_if_t<std::is_integral_v<T>, bool> value(T& x) noexcept {
+  template <std::integral T>
+  bool value(T& x) noexcept {
     auto tmp = detail::squashed_int_t<T>{0};
     if (value(tmp)) {
       x = static_cast<T>(tmp);
@@ -202,26 +146,17 @@ public:
 
   bool value(std::u32string& x);
 
-  bool value(span<std::byte> x) noexcept;
+  bool value(byte_span x) noexcept;
 
   bool value(std::vector<bool>& x);
 
+  virtual bool value(strong_actor_ptr& ptr);
+
+  virtual bool value(weak_actor_ptr& ptr);
+
 private:
-  explicit binary_deserializer(actor_system& sys) noexcept;
-
-  /// Checks whether we can read `read_size` more bytes.
-  bool range_check(size_t read_size) const noexcept {
-    return current_ + read_size <= end_;
-  }
-
-  /// Points to the current read position.
-  const std::byte* current_;
-
-  /// Points to the end of the assigned memory block.
-  const std::byte* end_;
-
-  /// Provides access to the ::proxy_registry and to the ::actor_system.
-  actor_system* context_;
+  /// Storage for the implementation object.
+  alignas(std::max_align_t) std::byte impl_[48];
 };
 
 } // namespace caf

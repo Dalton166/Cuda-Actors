@@ -7,6 +7,62 @@ is based on [Keep a Changelog](https://keepachangelog.com).
 
 ### Changed
 
+- CAF now requires C++20 to build.
+- When using the HTTP client API, SSL hostname validation is now enabled by
+  default. Users can disable it by setting `hostname_validation` to `false` if
+  necessary. This change was made to improve security by default.
+- Serializer interfaces have received an overhaul to allow custom serialization
+  of actor handles. There are also two new base types for serialization:
+  `byte_reader` and `byte_writer`. These new types allow users to write generic
+  code for serializers that operate on byte sequences.
+- The metric `caf.system.running-actors` now has a label dimension `name` that
+  allows users to identify which kinds of actors are currently active. Since
+  tracking this metric has become slightly more expensive due to the new label,
+  collecting it can now be disabled via the configuration option
+  `caf.metrics.disable-running-actors`.
+- The configuration options under `caf.metrics-filters` have been moved to
+  `caf.metrics.filters`. This change was made to make the configuration options
+  more consistent.
+- The default maximum message size for the length-prefix framing has been
+  reduced to 64 MB. This change was made to improve security by default.
+
+### Deprecated
+
+- The type `caf::span` and the utility function `make_span` are now deprecated
+  and will be removed in the next major release. Now that CAF updated its
+  minimum required C++ standard to C++20, we have switched to using `std::span`
+  throughout the code base and users should do the same.
+- The alias `caf::net::lp::frame` is now deprecated and will be removed in the
+  next major release. Users should use `caf::chunk` directly instead.
+
+### Added
+
+- Added `monitor` API to WebSocket and HTTP servers in the `with` DSL (#2026).
+- When starting a server or client using length-prefix framing, users can now
+  specify the maximum message size via `max_message_size` and the number of
+  bytes for the length prefix via `size_field`.
+- The namespace `caf::net::http` now contains two new classes for dealing with
+  HTTP multipart requests and responses: `multipart_reader` and
+  `multipart_writer`.
+
+### Fixed
+
+- Errors that arise during the `with` DSL setup of servers and clients now
+  properly call `on_error` (#2026).
+- Fix UBSan finding regarding non-aligned memory allocation when spawning
+  actors.
+
+### Removed
+
+- Removed the with DSL building base classes form `caf/net/dsl/` (#2026).
+- Removed the deprecated `actor_ostream` class and the `aout` utility. They have
+  been deprecated since CAF 1.0.0. Users should now use `println` instead, which
+  is available on actors as well as on the `actor_system`.
+
+## [1.1.0] - 2025-07-25
+
+### Changed
+
 - Add intermediary types for the `mail` API as `[[nodiscard]]` to make it easier
   to spot mistakes when chaining calls.
 - The `merge` and `flat_map` operators now accept an optional unsigned integer
@@ -17,13 +73,25 @@ is based on [Keep a Changelog](https://keepachangelog.com).
   code. This change makes it easier to handle errors in a consistent way and to
   distinguish between requests that have been dropped and those that resulted in
   an error while processing the request (#2070).
+- The URI parser in CAF now accepts URIs that use reserved characters such as
+  `*`, `/` or `?` in the query string. This change follows the recommendation in
+  the RFC 3986, which states that "query components are often used to carry
+  identifying information in the form of key=value pairs and one frequently used
+  value is a reference to another URI".
+- CAF now respects CPU limits when running in a container to determine the
+  thread pool size for the scheduler (#2061).
 
 ### Added
 
-- New flow operators: `retry`, `combine_latest` and `on_error_resume_next`.
+- New flow operators: `retry`, `combine_latest`, `debounce`, `throttle_first`
+  and `on_error_resume_next`.
 - New `with_userinfo` member function for URIs that allows setting the user-info
   sub-component without going through an URI builder.
 - CAF now supports chunked encoding for HTTP clients (#2038).
+- Added a missing configuration option to the HTTP client API that allows
+  users to set the maximum size of the response.
+- Add functions to the SSL API to enable Server Name Indication (SNI, #2084).
+- Add `throttle_last` to observables: an alias for `sample`.
 
 ### Fixed
 
@@ -61,6 +129,19 @@ is based on [Keep a Changelog](https://keepachangelog.com).
   context regardless, resulting in an OpenSSL error.
 - Fix a bug in the HTTP parser that could cause the parser to try parsing the
   payload as a new request.
+- Fix a startup issue when configuring Prometheus export on `caf.net` (#2060).
+  This bug caused the Prometheus server to never start up unless starting at
+  least one other asynchronous server or client using the `caf.net` API.
+- Fix a bug in the URI parser that could crash the application when parsing an
+  URI with a percent-encoded character at the end of the string (#2080).
+- Fix parsing of HTTP request headers that do not use the absolute path syntax
+  in the first line (#2074).
+- Optimize templates for compile-time checks used by typed behaviors. This
+  drastically reduces memory usage during compilation and avoids OOM errors when
+  spawning typed actors with a large number of message handlers (#1970).
+- BDD outlines now properly handle multiple `WHEN` blocks in a single
+  scenario (#1776).
+- Fix build issues on Clang 20 when building in C++20 mode (#2092).
 
 ## [1.0.2] - 2024-10-30
 
@@ -1434,6 +1515,7 @@ is based on [Keep a Changelog](https://keepachangelog.com).
 - Setting the log level to `quiet` now properly suppresses any log output.
 - Configuring colored terminal output should now print colored output.
 
+[1.1.0]: https://github.com/actor-framework/actor-framework/releases/1.1.0
 [1.0.2]: https://github.com/actor-framework/actor-framework/releases/1.0.2
 [1.0.1]: https://github.com/actor-framework/actor-framework/releases/1.0.1
 [1.0.0]: https://github.com/actor-framework/actor-framework/releases/1.0.0

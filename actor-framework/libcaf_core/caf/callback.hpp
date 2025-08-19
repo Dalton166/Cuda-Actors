@@ -5,9 +5,8 @@
 #pragma once
 
 #include "caf/allowed_unsafe_message_type.hpp"
-#include "caf/config.hpp"
-#include "caf/detail/type_traits.hpp"
-#include "caf/error.hpp"
+#include "caf/detail/callable_trait.hpp"
+#include "caf/detail/concepts.hpp"
 
 #include <memory>
 
@@ -64,6 +63,30 @@ private:
   F f_;
 };
 
+/// Utility class for wrapping a function object of type `F` by reference.
+template <class F, class Signature>
+class callback_ref_impl;
+
+template <class F, class Result, class... Ts>
+class callback_ref_impl<F, Result(Ts...)> final
+  : public callback<Result(Ts...)> {
+public:
+  explicit callback_ref_impl(F& f) : f_(&f) {
+    // nop
+  }
+
+  callback_ref_impl(callback_ref_impl&&) = default;
+
+  callback_ref_impl& operator=(callback_ref_impl&&) = default;
+
+  Result operator()(Ts... xs) override {
+    return (*f_)(std::forward<Ts>(xs)...);
+  }
+
+private:
+  F* f_;
+};
+
 /// Wraps `fun` into a @ref callback function object.
 /// @relates callback
 template <class F>
@@ -92,10 +115,4 @@ auto make_shared_type_erased_callback(F fun) {
   return shared_callback_ptr<signature>{std::move(res)};
 }
 
-/// Convenience type alias for an action with shared ownership.
-/// @relates callback
-using shared_action_ptr = shared_callback_ptr<void()>;
-
 } // namespace caf
-
-CAF_ALLOW_UNSAFE_MESSAGE_TYPE(caf::shared_action_ptr)

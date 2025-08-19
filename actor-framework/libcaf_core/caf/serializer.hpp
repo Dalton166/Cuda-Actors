@@ -9,10 +9,11 @@
 #include "caf/fwd.hpp"
 #include "caf/save_inspector_base.hpp"
 #include "caf/sec.hpp"
-#include "caf/span.hpp"
 
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -30,23 +31,15 @@ public:
 
   // -- constructors, destructors, and assignment operators --------------------
 
-  serializer() noexcept = default;
-
-  explicit serializer(actor_system& sys) noexcept : context_(&sys) {
-    // nop
-  }
-
   virtual ~serializer();
 
   // -- properties -------------------------------------------------------------
 
-  actor_system* context() const noexcept {
-    return context_;
-  }
+  /// Returns the actor system associated with this serializer if available.
+  virtual caf::actor_system* sys() const noexcept = 0;
 
-  bool has_human_readable_format() const noexcept {
-    return has_human_readable_format_;
-  }
+  /// Returns whether the serialization format is human-readable.
+  virtual bool has_human_readable_format() const noexcept = 0;
 
   // -- interface functions ----------------------------------------------------
 
@@ -62,12 +55,12 @@ public:
 
   virtual bool begin_field(std::string_view name, bool is_present) = 0;
 
-  virtual bool
-  begin_field(std::string_view name, span<const type_id_t> types, size_t index)
+  virtual bool begin_field(std::string_view name,
+                           std::span<const type_id_t> types, size_t index)
     = 0;
 
   virtual bool begin_field(std::string_view name, bool is_present,
-                           span<const type_id_t> types, size_t index)
+                           std::span<const type_id_t> types, size_t index)
     = 0;
 
   virtual bool end_field() = 0;
@@ -134,8 +127,8 @@ public:
   virtual bool value(uint64_t x) = 0;
 
   /// @copydoc value
-  template <class T>
-  std::enable_if_t<std::is_integral_v<T>, bool> value(T x) {
+  template <std::integral T>
+  bool value(T x) {
     return value(static_cast<detail::squashed_int_t<T>>(x));
   }
 
@@ -160,7 +153,11 @@ public:
   /// Adds `x` as raw byte block to the output.
   /// @param x The byte sequence.
   /// @returns A non-zero error code on failure, `sec::success` otherwise.
-  virtual bool value(span<const std::byte> x) = 0;
+  virtual bool value(const_byte_span x) = 0;
+
+  virtual bool value(const strong_actor_ptr& ptr);
+
+  virtual bool value(const weak_actor_ptr& ptr);
 
   using super::list;
 
@@ -168,13 +165,6 @@ public:
   /// member function to pack the booleans, for example to avoid using one
   /// byte for each value in a binary output format.
   virtual bool list(const std::vector<bool>& xs);
-
-protected:
-  /// Provides access to the ::proxy_registry and to the ::actor_system.
-  actor_system* context_ = nullptr;
-
-  /// Configures whether client code should assume human-readable output.
-  bool has_human_readable_format_ = false;
 };
 
 } // namespace caf

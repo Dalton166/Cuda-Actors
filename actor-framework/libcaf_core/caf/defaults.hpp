@@ -162,8 +162,14 @@ namespace caf::defaults::net {
 /// previous connection has been closed.
 constexpr auto max_connections = make_parameter("max-connections", size_t{64});
 
+constexpr auto max_consecutive_reads = make_parameter("max-consecutive-reads",
+                                                      size_t{50});
+
 /// Default maximum size for incoming HTTP requests: 64KiB.
-constexpr auto http_max_request_size = uint32_t{65'536};
+constexpr auto http_max_request_size = uint32_t{64 * 1024};
+
+/// Default maximum size for incoming HTTP response: 512KiB.
+constexpr auto http_max_response_size = uint32_t{512 * 1024};
 
 /// The default port for HTTP servers.
 constexpr auto http_default_port = uint16_t{80};
@@ -173,5 +179,8 @@ constexpr auto https_default_port = uint16_t{443};
 
 /// The default buffer size for reading and writing octet streams.
 constexpr auto octet_stream_buffer_size = uint32_t{1024};
+
+/// The default lp maximum message size: 64MB
+constexpr auto lp_max_message_size = size_t{64 * 1024 * 1024};
 
 } // namespace caf::defaults::net
