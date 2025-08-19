@@ -18,7 +18,7 @@
 
 #include "caf/cuda/global.hpp"
 #include "caf/cuda/types.hpp"
-#include "caf/cuda/StreamPool.hpp"
+#include "caf/cuda/streampool.hpp"
 #include "caf/cuda/mem_ref.hpp"
 
 namespace caf::cuda {
