@@ -1,3 +1,0 @@
-/student/nqr159/cuda-actors/test/build/CMakeFiles/test.dir
-/student/nqr159/cuda-actors/test/build/CMakeFiles/edit_cache.dir
-/student/nqr159/cuda-actors/test/build/CMakeFiles/rebuild_cache.dir
