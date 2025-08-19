@@ -738,7 +738,7 @@ void benchmark_shared_perf_all(caf::actor_system& sys) {
 void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
 
-  run_mmul_test(sys,100,200);
+  run_mmul_test(sys,100,4000);
   //run_async_mmul_test(sys,100,1);
   //run_async_mmul_perf_test(sys,1024,200);
 
