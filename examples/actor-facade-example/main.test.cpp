@@ -1,3 +1,10 @@
+/* An example file demonstrating how the actor facade works
+ * by showing how to launch a matrix multiplication kernel using the actor facade 
+ * we use managers spawnFromCubin and is recommended that you do too or use spawnFromFatbin
+ * to spawn an actor facade 
+ * since using the spawn method will likely result in an unsupported toolchain error
+ */
+
 
 #include "main.test.hpp"
 
@@ -16,49 +23,6 @@
 
 using namespace caf;
 using namespace std::chrono_literals;
-
-const char* kernel_code = R"(
-extern "C" __global__
-void compare_strings(const char* a, const char* b, int* result, int * length) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < * length) {
-        result[idx] = (a[idx] == b[idx]) ? 1 : 0;
-    }
-}
-)";
-
-const char* matrixMulKernel2 = R"(
-extern "C" __global__
-void matrixMul(const int* a, const int* b, int* c, int *N_val) {
-    int N = *N_val;
-    int row = blockIdx.y * blockDim.y + threadIdx.y;
-    int col = blockIdx.x * blockDim.x + threadIdx.x;
-    if (row < N && col < N) {
-        int temp = 0;
-        for (int k = 0; k < N; ++k) {
-            temp += a[row * N + k] * b[k * N + col];
-        }
-        c[row * N + col] = temp;
-    }
-}
-)";
-
-
-const char* matrixMulKernel = R"(
-extern "C" __global__
-void matrixMul(const int* a, const int* b, int* c, int N) {
-    //printf("%d\n",N);
-    int row = blockIdx.y * blockDim.y + threadIdx.y;
-    int col = blockIdx.x * blockDim.x + threadIdx.x;
-    if (row < N && col < N) {
-        int temp = 0;
-        for (int k = 0; k < N; ++k) {
-            temp += a[row * N + k] * b[k * N + col];
-        }
-        c[row * N + col] = temp;
-    }
-}
-)";
 
 //verification of matrix multiplication on the gpu
 void serial_matrix_multiply(const std::vector<int>& a,
@@ -87,48 +51,63 @@ void test_mmul_from_cubin(caf::actor_system& sys, int N) {
   int THREADS = 32;
   int BLOCKS = (N + THREADS - 1) / THREADS;
 
-  caf::cuda::nd_range dim(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
+  caf::cuda::nd_range dim(
+		  BLOCKS, //grid X dimension
+		  BLOCKS, //grid Y dimension
+		  1, //grid Z dimension
+		  THREADS, // block X dimension 
+		  THREADS, // block Y dimension
+		  1 // block Z dimension
+		  );
 
+
+  // Spawn actor from precompiled cubin file
+  auto gpuActor = mgr.spawnFromCUBIN(
+		  "../mmul.cubin", //kernel file location
+		  "matrixMul", //kernel name 
+		  dim, //kernel dimensions             
+		  in<int>{}, in<int>{}, out<int>{}, in<int>{} //kernel arg tags 
+							      //in order they appear in kernel
+		  );
+
+
+
+
+  //generate random matrices
   std::vector<int> h_a(N * N);
   std::vector<int> h_b(N * N);
   std::vector<int> h_c(N * N, 0);
   std::vector<int> h_ref(N * N, 0);
   std::vector<int> h_n(1, N);
-
   std::generate(h_a.begin(), h_a.end(), []() { return rand() % 10; });
   std::generate(h_b.begin(), h_b.end(), []() { return rand() % 10; });
 
 
-  serial_matrix_multiply(h_a, h_b, h_ref, N);
 
-  auto arg1 = caf::cuda::create_in_arg(h_a);
-  auto arg2 = caf::cuda::create_in_arg(h_b);
-  auto arg3 = caf::cuda::create_out_arg(h_c);
-  auto arg4 = caf::cuda::create_in_arg(N);
+  //tag the arguments 
+  auto arg1 = caf::cuda::create_in_arg(h_a); //matrix A readonly buffer
+  auto arg2 = caf::cuda::create_in_arg(h_b); //matrix B readonly buffer
+  auto arg3 = caf::cuda::create_out_arg_with_size<int>(N*N); //matrix size Writeonly buffer
+  auto arg4 = caf::cuda::create_in_arg(N); // int size, readonly scalar
 
-  // Spawn actor from precompiled cubin file
-  auto gpuActor = mgr.spawnFromCUBIN("../mmul.cubin", "matrixMul", dim,
-                                  in<int>{}, in<int>{}, out<int>{}, in<int>{});
 
   sys.spawn([=](caf::event_based_actor* self_actor) {
     auto start = std::chrono::high_resolution_clock::now();
 
-    self_actor->mail(gpuActor, arg1, arg2, arg3, arg4)
+    //when mailing the gpu actor, the message is in the form of the kernel arguments 
+    //and must be in the order they appear in the kernel parameters 
+    //it will deliever a response promise with the results of that kernel launch
+    self_actor->mail(arg1, arg2, arg3, arg4)
       .request(gpuActor, std::chrono::seconds(10))
       .then([=](const std::vector<output_buffer>& outputs) {
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = end - start;
 
-        std::vector<int> result;
-        for (const auto& out : outputs) {
-          std::visit([&](const auto& vec) {
-            using T = std::decay_t<decltype(vec)>;
-            if constexpr (std::is_same_v<T, std::vector<int>>) {
-              result = vec;
-            }
-          }, out.data);
-        }
+	
+        std::vector<int> result = caf::cuda::extract_vector<int>(outputs); //collect the result buffer from output
 
+
+	serial_matrix_multiply(h_a, h_b, h_ref, N);
         // Compare result with reference
         bool match = (result == h_ref);
         std::cout << "[INFO] Kernel round-trip time: " << elapsed.count() << " seconds\n";
@@ -146,7 +125,8 @@ void test_mmul_from_cubin(caf::actor_system& sys, int N) {
 
 
 void caf_main(caf::actor_system& sys) {
-  caf::cuda::manager::init(sys);
+  caf::cuda::manager::init(sys);  //be sure to initialize the manager
+				  //as certain things need to be startup 
    test_mmul_from_cubin(sys,100);
 
    //test_mmul_from_cubin(sys,50);
