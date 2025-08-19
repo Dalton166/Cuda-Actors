@@ -1,5 +1,6 @@
 #pragma once
 
+#include "caf/cuda/global.hpp"
 #include <vector>
 #include <deque>
 #include <unordered_map>
@@ -19,7 +20,7 @@ namespace caf::cuda {
 ///  - When the pool is exhausted, safely reuse previously-created streams
 ///    (round-robin) from `all_streams_` rather than throwing.
 ///  - Track simple usage metrics (`total_streams` and `in_use`) for monitoring.
-class StreamPool {
+class CAF_CUDA_EXPORT StreamPool {
 public:
   /// Construct pool with a given CUDA context.
   /// @param ctx CUDA context used to create streams.
@@ -69,7 +70,7 @@ private:
 /// `DeviceStreamTable` caches an assigned stream per `actor_id`. This makes the
 /// common case (getting a stream for an actor who already has one) cheap:
 /// a shared lock and hashmap lookup.
-class DeviceStreamTable {
+class CAF_CUDA_EXPORT DeviceStreamTable {
 public:
   explicit DeviceStreamTable(CUcontext ctx, size_t pool_size = 32);
 
