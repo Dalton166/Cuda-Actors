@@ -41,7 +41,4 @@ target_link_libraries(test
     CUDA::nvrtc
 )
 
-# — Optional: extra include dirs (e.g., ViennaCL) —
-# target_include_directories(laSolv PRIVATE
-#   "/student/nqr159/opencl-actors/OpenCL/code/viennacl-dev"
-# )
+
