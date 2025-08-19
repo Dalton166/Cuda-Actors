@@ -15,13 +15,11 @@ file(GLOB_RECURSE CAF_CUDA_HEADERS "caf/*.hpp")
 
 # list cpp files excluding platform-dependent files
 set(LIBCAF_CUDA_SRCS
-  src/device.cpp
   src/global.cpp
   src/manager.cpp
   src/platform.cpp
   src/program.cpp
   src/helpers.cpp
-  #src/command.cpp
   src/test.cpp
   src/scheduler.cpp
   src/streampool.cpp
