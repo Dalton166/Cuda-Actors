@@ -18,6 +18,8 @@
 using namespace caf;
 using namespace caf::cuda;
 
+//file of internal tests, testing each class
+
 int test_actor_id = 0;
 
 void test_platform([[maybe_unused]] actor_system& sys, [[maybe_unused]] platform_ptr plat) {
