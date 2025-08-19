@@ -512,14 +512,18 @@ void test_vector_addition([[maybe_unused]] caf::actor_system& sys) {
   const int size = 128;
   std::vector<int> vec_a(size, 2), vec_b(size, 3);
   nd_range dims(size / 32, 1, 1, 32, 1, 1);  // 4 blocks, 32 threads each
-  command_runner<out<int>, in<int>, in<int>, in<int>> runner;
+  command_runner<in<int>, in<int>, out<int>, in<int>> runner;
   
-  auto outputs = runner.run(prog, dims, 1 /* actor_id */, create_out_arg_with_size<int>(size),
-                           create_in_arg(vec_a), create_in_arg(vec_b), create_in_arg(size));
+  auto outputs = runner.run(prog, dims, 1 /* actor_id */,
+                           create_in_arg(vec_a), 
+			   create_in_arg(vec_b),
+			   create_out_arg_with_size<int>(size),
+			   create_in_arg(size));
   assert(outputs.size() == 1u);
   auto result = extract_vector<int>(outputs);
   assert(result.size() == size);
-  
+ 
+ /* 
   // Debug: Print result vector
   std::cerr << "Result vector: ";
   for (int i = 0; i < size; ++i) {
@@ -527,7 +531,7 @@ void test_vector_addition([[maybe_unused]] caf::actor_system& sys) {
     if (i % 16 == 15) std::cerr << "\n";
   }
   std::cerr << "\n";
-  
+  */
   for (int i = 0; i < size; ++i) {
     if (result[i] != 5) {
       std::cerr << "Assertion failed at index " << i << ": expected 5, got " << result[i] << std::endl;
