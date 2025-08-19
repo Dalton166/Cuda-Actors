@@ -1,5 +1,8 @@
 #include "caf/cuda/manager.hpp"
 #include <stdexcept>
+#include <mutex>
+#include <map>
+
 
 namespace caf::cuda {
 
@@ -13,24 +16,20 @@ device_ptr manager::find_device(std::size_t) const {
   throw std::runtime_error("OpenCL support disabled: manager::find_device");
 }
 
+//finds a device given its id
 device_ptr manager::find_device(int id) {
 
 	return platform_ -> getDevice(id);
 
 }
 
+//creates a program ptr given a kernel and a string 
 program_ptr manager::create_program(const char * kernel,
                                     const std::string& name,
                                     device_ptr device) {
   
 
 	CUdevice current_device = device -> getDevice();;
-
-	/*
-	int d_id = device -> getId();
-	int c_id = device -> getContextId();
-	int s_id = device -> getStreamId();
-	*/
 
 	//the compiled program can be accessed via ptx.data() afterwards
 	std::vector<char> ptx;
@@ -42,10 +41,6 @@ program_ptr manager::create_program(const char * kernel,
 	program_ptr prog = make_counted<program>(name, ptx);
 	return prog;
 }
-
-#include <mutex>
-#include <map>
-
 //this actually doesnt even work do not use 
 program_ptr manager::create_program_from_ptx(const std::string& filename,
                                              const char* kernel_name,
@@ -83,7 +78,7 @@ program_ptr manager::create_program_from_ptx(const std::string& filename,
 }
 
 
-
+//creates a program given a path to a cubin file and the kernels name
 program_ptr manager::create_program_from_cubin(const std::string& filename,
                                                const char* kernel_name,
                                                [[maybe_unused]] device_ptr device) {
@@ -102,6 +97,7 @@ program_ptr manager::create_program_from_cubin(const std::string& filename,
 }
 
 
+//creates a program given a path to a cubin file and the kernels name
 program_ptr manager::create_program_from_cubin(const std::string& filename,
                                                const char* kernel_name) {
   // Open the cubin file in binary mode
@@ -120,6 +116,7 @@ program_ptr manager::create_program_from_cubin(const std::string& filename,
 
 
 
+//creates a program given a path to a fatbin file and the kernels name
 program_ptr manager::create_program_from_fatbin(const std::string& filename,
                                                const char* kernel_name) {
   // Open the fatbin file in binary mode
@@ -136,17 +133,6 @@ program_ptr manager::create_program_from_fatbin(const std::string& filename,
   return prog;
 }
 
-
-
-
-
-
-
-program_ptr manager::create_program_from_file(const std::string&,
-                                              const char*,
-                                              device_ptr) {
-  throw std::runtime_error("OpenCL support disabled: manager::create_program_from_file");
-}
 
 
 
