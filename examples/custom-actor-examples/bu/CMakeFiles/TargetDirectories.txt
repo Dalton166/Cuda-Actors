@@ -1,3 +1,0 @@
-/student/nqr159/cuda-actors/examples/custom-actor-examples/bu/CMakeFiles/test.dir
-/student/nqr159/cuda-actors/examples/custom-actor-examples/bu/CMakeFiles/edit_cache.dir
-/student/nqr159/cuda-actors/examples/custom-actor-examples/bu/CMakeFiles/rebuild_cache.dir
