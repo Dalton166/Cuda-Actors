@@ -24,6 +24,7 @@ set(LIBCAF_CUDA_SRCS
   #src/command.cpp
   src/test.cpp
   src/scheduler.cpp
+  src/streampool.cpp
 )
 
 # -- add targets ---------------------------------------------------------------
