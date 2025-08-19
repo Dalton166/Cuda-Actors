@@ -5,7 +5,9 @@
 #include <unordered_map>
 
 #include <caf/ref_counted.hpp>
-#include "cuda/cuda/global.hpp"
+#include "caf/cuda/global.hpp"
+#include "caf/cuda/platform.hpp"
+#include "caf/cuda/device.hpp"
 
 namespace caf::cuda {
 
