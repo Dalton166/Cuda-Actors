@@ -541,7 +541,8 @@ void benchmark_async_perf_all(caf::actor_system& sys) {
 }
 
 void caf_main(caf::actor_system& sys) {
-  caf::cuda::manager::init(sys);
+  caf::cuda::manager::init(sys); //be sure to initialize the manager
+				 //it needs to do some things before running
 
   //run_mmul_test(sys,100,4000);
   //run_async_mmul_test(sys,100,700);
