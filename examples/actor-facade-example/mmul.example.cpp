@@ -96,6 +96,7 @@ void test_mmul_from_cubin(caf::actor_system& sys, int N) {
   auto arg3 = caf::cuda::create_out_arg_with_size<int>(N*N); //matrix size Writeonly buffer
   auto arg4 = caf::cuda::create_in_arg(N); // int size, readonly scalar
 
+  serial_matrix_multiply(h_a, h_b, h_ref, N);
 
   sys.spawn([=](caf::event_based_actor* self_actor) {
     auto start = std::chrono::high_resolution_clock::now();
@@ -113,7 +114,6 @@ void test_mmul_from_cubin(caf::actor_system& sys, int N) {
         std::vector<int> result = caf::cuda::extract_vector<int>(outputs); //collect the result buffer from output
 
 
-	serial_matrix_multiply(h_a, h_b, h_ref, N);
         // Compare result with reference
         bool match = (result == h_ref);
         std::cout << "[INFO] Kernel round-trip time: " << elapsed.count() << " seconds\n";
