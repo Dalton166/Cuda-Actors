@@ -1,46 +1,52 @@
-/******************************************************************************
- *                       ____    _    _____                                   *
- *                      / ___|  / \  |  ___|    C++                           *
- *                     | |     / _ \ | |_       Actor                         *
- *                     | |___ / ___ \|  _|      Framework                     *
- *                      \____/_/   \_|_|                                      *
- *                                                                            *
- * Copyright (C) 2011 - 2016                                                  *
- *                                                                            *
- * Distributed under the terms and conditions of the BSD 3-Clause License or  *
- * (at your option) under the terms and conditions of the Boost Software      *
- * License 1.0. See accompanying files LICENSE and LICENSE_ALTERNATIVE.       *
- ******************************************************************************/
-
-#include <map>
-#include <vector>
-#include <string>
-#include <cstring>
-#include <iostream>
-
-#include "caf/cuda/manager.hpp"
 #include "caf/cuda/program.hpp"
-
-
-/*
-using namespace std;
 
 namespace caf::cuda {
 
-program::program(detail::raw_context_ptr context,
-                 detail::raw_command_queue_ptr queue,
-                 detail::raw_program_ptr prog,
-                 std::map<std::string, detail::raw_kernel_ptr> available_kernels)
-  : context_(std::move(context)),
-    program_(std::move(prog)),
-    queue_(std::move(queue)),
-    available_kernels_(std::move(available_kernels)) {
-  // nop
+program::program(std::string name, std::vector<char> binary, bool is_fatbin)
+    : name_(std::move(name)), binary_(std::move(binary)) {
+  load_kernels(is_fatbin);
 }
 
-program::~program() {
-  // nop
+void program::load_kernels(bool is_fatbin) {
+  // Create a platform instance to enumerate devices
+  auto plat = platform::create();
+
+  // Load kernel on all available devices
+  for (const auto& dev : plat->devices()) {
+    CUcontext ctx = dev->getContext();
+    CHECK_CUDA(cuCtxPushCurrent(ctx));
+
+    CUmodule module;
+    if (is_fatbin) {
+      // Load fatbinary directly
+      CUresult res = cuModuleLoadFatBinary(&module, binary_.data());
+      if (res != CUDA_SUCCESS) {
+        throw std::runtime_error("Failed to load fatbinary for device " +
+                                 std::to_string(dev->getId()));
+      }
+    } else {
+      // Load PTX (driver will JIT-compile for the device)
+      CHECK_CUDA(cuModuleLoadData(&module, binary_.data()));
+    }
+
+    CUfunction kernel;
+    CHECK_CUDA(cuModuleGetFunction(&kernel, module, name_.c_str()));
+
+    CHECK_CUDA(cuCtxPopCurrent(nullptr));
+
+    // Store the function handle per device
+    kernels_[dev->getId()] = kernel;
+  }
 }
 
-} // namespace caf::opencl
-*/
+CUfunction program::get_kernel(int device_id) {
+  auto it = kernels_.find(device_id);
+  if (it == kernels_.end()) {
+    throw std::runtime_error("Kernel not found for device ID: " +
+                             std::to_string(device_id));
+  }
+  return it->second;
+}
+
+} // namespace caf::cuda
+
