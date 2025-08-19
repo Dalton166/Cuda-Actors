@@ -1,6 +1,7 @@
 /* An example file where we demonstrate how to use cuda actors using
  * the entry point command runner, enabling the user to create their own custom gpu
  * actor
+ * Be sure to run compile_kernels.sh
  * We will show how to create an actor that generates 2 random matrices 
  * then sends it to itself for matrix multiplication and then sends its result 
  * to itself for verification
@@ -141,7 +142,7 @@ caf::behavior mmul_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
 	  std::vector<int> matrixB = caf::cuda::extract_vector<int>(tempB);
 		  
 	  //send the results to ourself	  	  
-	  self->mail(matrixA,matrixB,N).send(actor);
+	  self->mail(matrixA,matrixB,N).send(self);
 
     },
 
@@ -396,7 +397,6 @@ caf::behavior mmul_async_actor_fun_perf(caf::stateful_actor<mmul_actor_state>* s
     [=](int N) {
       // store start time in actor state (no locks)
       self->state().start_time = std::chrono::high_resolution_clock::now();
-      self->state().last_N = N;
 
       caf::cuda::manager& mgr = caf::cuda::manager::get();
       // use the generator fatbin (as in your code)
