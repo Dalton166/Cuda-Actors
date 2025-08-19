@@ -3,7 +3,8 @@
  * we use managers spawnFromCubin and is recommended that you do too or use spawnFromFatbin
  * to spawn an actor facade 
  * since using the spawn method will likely result in an unsupported toolchain error
- */
+ * be sure to run compile_kernels.sh
+ * /
 
 
 #include <caf/all.hpp>  // Includes most CAF essentials
