@@ -12,5 +12,5 @@ can be found in actor-framework/libcaf_cuda.
 - shared memory support
 
 ## Getting started
-If you are new to cuda actors you can check out the example files.
+If you are new to cuda actors you can check out the documentaion documentation.txt or the example files in the examples directory.
 Otherwise use the cmake files to build and run cuda actors 
