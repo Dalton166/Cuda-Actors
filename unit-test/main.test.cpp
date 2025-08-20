@@ -1,3 +1,15 @@
+/*
+ * A file full of caf cuda unit tests
+ * Note that this does use the nvidia run time compiler for these tests
+ * so a possible unsupported toolchain error can occur
+ * If this does that just means the version of nvcc is not the same
+ * as the version your GPU supports
+ * There is no way to change this other than manually rollback nvcc 
+ * to a version that your GPU supports
+ * hence why you should use cubins and fatbins
+ */
+
+
 #include <caf/all.hpp>
 #include <caf/actor_system.hpp>
 #include <caf/cuda/manager.hpp>
