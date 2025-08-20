@@ -29,55 +29,6 @@
 using namespace caf;
 using namespace std::chrono_literals;
 
-
-
-
-const char* kernel_code = R"(
-extern "C" __global__
-void compare_strings(const char* a, const char* b, int* result, int * length) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < * length) {
-        result[idx] = (a[idx] == b[idx]) ? 1 : 0;
-    }
-}
-)";
-
-const char* matrixMulKernel2 = R"(
-extern "C" __global__
-void matrixMul(const int* a, const int* b, int* c, int *N_val) {
-    int N = *N_val;
-    int row = blockIdx.y * blockDim.y + threadIdx.y;
-    int col = blockIdx.x * blockDim.x + threadIdx.x;
-    if (row < N && col < N) {
-        int temp = 0;
-        for (int k = 0; k < N; ++k) {
-            temp += a[row * N + k] * b[k * N + col];
-        }
-        c[row * N + col] = temp;
-    }
-}
-)";
-
-
-const char* matrixMulKernel = R"(
-extern "C" __global__
-void matrixMul(const int* a, const int* b, int* c, int N) {
-    //printf("%d\n",N);
-    int row = blockIdx.y * blockDim.y + threadIdx.y;
-    int col = blockIdx.x * blockDim.x + threadIdx.x;
-    if (row < N && col < N) {
-        int temp = 0;
-        for (int k = 0; k < N; ++k) {
-            temp += a[row * N + k] * b[k * N + col];
-        }
-        c[row * N + col] = temp;
-    }
-}
-)";
-
-
-
-
 #include <chrono>
 #include <iostream>
 
@@ -152,7 +103,6 @@ void serial_matrix_multiply(const std::vector<float>& a,
 //itself to verify the result 
 caf::behavior mmul_async_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
   return {
-    // 1st handler: Just int N, and who to send the matrices to
 // 1st handler: Just int N, send the matrix to itself 
     [=](int N) {
 
