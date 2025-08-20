@@ -14,5 +14,9 @@ echo "Generated mmul.cubin"
 nvcc -arch=$SM_ARCH --fatbin genMatrix.cu -o generate_random_matrix.fatbin -lcudadevrt -lcurand
 echo "Generated generate_random_matrix.fatbin"
 
+# Compile shared_mmul.cu to cubin in current directory
+nvcc -arch=$SM_ARCH -cubin shared_mmul.cu -o shared_mmul.cubin
+echo "Generated shared_mmul.cubin"
+
 echo "All kernels compiled successfully!"
 
