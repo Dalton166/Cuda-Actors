@@ -82,20 +82,11 @@ struct mmul_actor_state {
 
 
 //commands classes used to launch kernels 
-using mmulCommand = caf::cuda::command_runner<in<int>,in<int>,out<int>,in<int>>;
-using matrixGenCommand = caf::cuda::command_runner<out<int>,in<int>,in<int>,in<int>>;
-
-using mmulAsyncCommand = caf::cuda::command_runner<caf::cuda::mem_ptr<int>,caf::cuda::mem_ptr<int>,out<int>,in<int>>;
 using mmulFloatCommand = caf::cuda::command_runner<in<float>,in<float>,out<float>,in<int>>;
 using matrixGenFloatCommand = caf::cuda::command_runner<out<float>,in<int>,in<int>,in<int>>;
 
 using mmulAsyncFloatCommand = caf::cuda::command_runner<caf::cuda::mem_ptr<float>,caf::cuda::mem_ptr<float>,out<float>,in<int>>;
 
-
-//integer commands
-mmulCommand mmul;
-matrixGenCommand randomMatrix;
-mmulAsyncCommand mmulAsync;
 
 //floating point type commands 
 mmulFloatCommand mmulFloat;
@@ -140,7 +131,9 @@ void serial_matrix_multiply(const std::vector<float>& a,
 
 
 
-// Stateful actor behavior
+//A Custom GPU Actor that generates 2 random matrices and then sends it to itself 
+//and will do shared memory matrix multiplication on it and send it to 
+//itself to verify the result 
 caf::behavior mmul_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
   return {
     // 1st handler: Just int N, and who to send the matrices to
@@ -239,27 +232,7 @@ caf::behavior mmul_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
 
 
 
-void run_mmul_test(caf::actor_system& sys, int matrix_size, int num_actors) {
-  if (num_actors < 1) {
-    std::cerr << "[ERROR] Number of actors must be >= 1\n";
-    return;
-  }
 
-  // Spawn num_actors actors running the mmul behavior
-  std::vector<caf::actor> actors;
-  actors.reserve(num_actors);
-  for (int i = 0; i < num_actors; ++i) {
-    actors.push_back(sys.spawn(mmul_actor_fun));
-  }
-
-  // Actor 0 generates matrices and broadcasts to others 
-  caf::anon_mail(matrix_size, actors).send(actors[0]);
-
-   sys.await_all_actors_done();
-}
-
-
-// Stateful actor behavior
 // Stateful actor behavior
 caf::behavior mmul_async_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
   return {
@@ -304,37 +277,10 @@ caf::behavior mmul_async_actor_fun(caf::stateful_actor<mmul_actor_state>* self) 
         }
     },
 
-    // 2nd handler: run float mmul on device buffers, send result to self for verification
+    
+
+    // 2nd handler: shared-mem float mmul and verify
     [=](const caf::cuda::mem_ptr<float> matrixA,
-        const caf::cuda::mem_ptr<float> matrixB, int N, int device_number) {
-
-      caf::cuda::manager& mgr = caf::cuda::manager::get();
-
-      auto program = mgr.create_program_from_cubin("../mmul.cubin", "matrixMulFloat");
-      const int THREADS = 32;
-      const int BLOCKS  = (N + THREADS - 1) / THREADS;
-      caf::cuda::nd_range dims(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
-
-      // args: mem_ptr<float>, mem_ptr<float>, out<float>, in<int>
-      auto arg1 = matrixA;
-      auto arg2 = matrixB;
-      out<float> arg3 = caf::cuda::create_out_arg_with_size<float>(N*N);
-      auto arg4 = caf::cuda::create_in_arg(N);
-
-      auto tempC = mmulFloatAsync.run(program, dims, self -> state().id,
-                                      0, device_number,
-                                      arg1, arg2, arg3, arg4);
-
-      std::vector<float> matrix1 = matrixA -> copy_to_host();
-      std::vector<float> matrix2 = matrixB -> copy_to_host();
-      std::vector<float> matrixC = caf::cuda::extract_vector<float>(tempC, 2);
-
-      // verify on CPU
-      self -> mail(matrix1, matrix2, matrixC, N).send(self);
-    },
-
-    // 3rd handler: shared-mem float mmul and verify
-    [=](int x, const caf::cuda::mem_ptr<float> matrixA,
         const caf::cuda::mem_ptr<float> matrixB, int N, int device_number) {
 
       caf::cuda::manager& mgr = caf::cuda::manager::get();
@@ -344,7 +290,7 @@ caf::behavior mmul_async_actor_fun(caf::stateful_actor<mmul_actor_state>* self) 
       const int BLOCKS  = (N + THREADS - 1) / THREADS;
       caf::cuda::nd_range dims(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
 
-      int shared_mem = 8192;
+      int shared_mem = 8192; //2 arrays of 32*32 elements = 8192 bytes 
 
       auto arg1 = matrixA;
       auto arg2 = matrixB;
@@ -545,8 +491,7 @@ void benchmark_async_perf_all(caf::actor_system& sys) {
 void caf_main(caf::actor_system& sys) {
   caf::cuda::manager::init(sys);
 
-  run_mmul_test(sys,100,50);
-  //run_async_mmul_test(sys,100,30);
+  run_async_mmul_test(sys,100,30);
    //run_async_mmul_perf_test(sys,1024,1);
 
   // run the async (no-shared) suite:
