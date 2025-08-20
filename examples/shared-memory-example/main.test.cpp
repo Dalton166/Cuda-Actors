@@ -1,3 +1,16 @@
+/* An example file where we demonstrate how to use cuda actors using
+ * the entry point command runner, enabling the user to create their own custom gpu
+ * actor and use shared memory on the gpu's
+ * Be sure to run compile_kernels.sh
+ * We will show how to create an actor that generates 2 random matrices 
+ * then sends it to itself for matrix multiplication and then sends its result 
+ * to itself for verification
+ * Note that we will be using create_program_from_cubin and create_program_from_fatbin
+ * methods these are the recommends and supported methods, as while you can
+ * use create_program method, you are likely to run into unsupported toolchain 
+ * errors
+ */
+
 #include <caf/all.hpp>
 #include <caf/cuda/all.hpp>
 #include <iostream>
@@ -68,12 +81,14 @@ void matrixMul(const int* a, const int* b, int* c, int N) {
 #include <chrono>
 #include <iostream>
 
-// Extend your actor state to keep the start time
 struct mmul_actor_state {
   static inline const char* name = "my_actor";
-  int last_N = 0; // example state variable
-  int id = rand(); // an actor id
-  // per-actor timing start
+  int id = rand(); // an actor id, each actor uses an id to request gpu resources
+                   // if you want actors to share the same gpu resources (such as custreams)
+                   // then they must share the same id
+
+  //mostly here for benchmarking if needed 
+  // per-actor timing start 
   std::chrono::high_resolution_clock::time_point start_time;
   int times = 0;
 };
@@ -82,10 +97,27 @@ struct mmul_actor_state {
 
 
 //commands classes used to launch kernels 
-using mmulFloatCommand = caf::cuda::command_runner<in<float>,in<float>,out<float>,in<int>>;
-using matrixGenFloatCommand = caf::cuda::command_runner<out<float>,in<int>,in<int>,in<int>>;
+using mmulFloatCommand = caf::cuda::command_runner<
+      in<float>, //matrixA a readonly float buffer
+      in<float>, //matrixB a readonly float buffer
+      out<float>, //matrixC a writeonly float buffer, you can just pass in integer for size and it will automatically allocate a buffer for you on the gpu 
+      in<int> //int N, the size of the matrices, you can just pass in a single integer and it will recognize this 
+      >;
 
-using mmulAsyncFloatCommand = caf::cuda::command_runner<caf::cuda::mem_ptr<float>,caf::cuda::mem_ptr<float>,out<float>,in<int>>;
+
+using matrixGenFloatCommand = caf::cuda::command_runner<
+      out<float>, //writeonly matrix buffer 
+      in<int>, //total elements 
+      in<int>, //seed
+      in<int> //max value
+      >;
+
+using mmulAsyncFloatCommand = caf::cuda::command_runner<
+      caf::cuda::mem_ptr<float>, //handle on the gpu that points to a float matrix
+      caf::cuda::mem_ptr<float>, //handle on the gpu that points to a float matrix
+      out<float>, // MatrixC a Writeonly float buffer
+      in<int> //Size of the matrices
+      >;
 
 
 //floating point type commands 
@@ -95,24 +127,8 @@ mmulAsyncFloatCommand mmulFloatAsync;
 
 
 
-void serial_matrix_multiply(const std::vector<int>& a,
-                            const std::vector<int>& b,
-                            std::vector<int>& c,
-                            int N) {
-  
 
- for (int i = 0; i < N; ++i) {
-    for (int j = 0; j < N; ++j) {
-      int sum = 0;
-      for (int k = 0; k < N; ++k) {
-        sum += a[i * N + k] * b[k * N + j];
-      }
-      c[i * N + j] = sum;
-    }
-  }
-}
-
-
+//used to verify the results
 void serial_matrix_multiply(const std::vector<float>& a,
                             const std::vector<float>& b,
                             std::vector<float>& c,
@@ -134,150 +150,61 @@ void serial_matrix_multiply(const std::vector<float>& a,
 //A Custom GPU Actor that generates 2 random matrices and then sends it to itself 
 //and will do shared memory matrix multiplication on it and send it to 
 //itself to verify the result 
-caf::behavior mmul_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
-  return {
-    // 1st handler: Just int N, and who to send the matrices to
-    [=](int N, std::vector<caf::actor> receivers) {
-
-       caf::cuda::manager& mgr = caf::cuda::manager::get();
-        //create the program and configure the dimesnions of the kernel
-	
-         auto program = mgr.create_program_from_fatbin("../generate_random_matrix.fatbin","generate_random_matrix_float");
-        int THREADS = 256;
-	int BLOCKS = (N*N + THREADS - 1) / THREADS;
-  	caf::cuda::nd_range dim(BLOCKS,1, 1, THREADS,1, 1);
-
-	//tag the arguments so that caf::cuda knows what to do with them	
-         out<float> arg1 = caf::cuda::create_out_arg_with_size<float>(N*N); //output buffer indicate its size, caf::cuda will handle the rest
-          in<int> arg2 = caf::cuda::create_in_arg(N*N); //matrix size
-          in<int> arg3 = caf::cuda::create_in_arg(1234); //seed
-	  in<int> arg4 = caf::cuda::create_in_arg(9999); //max valux
-	  
-
-
-	  //launch kernels and collect their outputs
-	  auto tempA = randomFloatMatrix.run(program,dim, self -> state().id,arg1,arg2,arg3,arg4);
-	  auto tempB = randomFloatMatrix.run(program,dim, self -> state().id,arg1,arg2,arg3,arg4);
-	  std::vector<float> matrixA =  caf::cuda::extract_vector<float>(tempA);
-	  std::vector<float> matrixB = caf::cuda::extract_vector<float>(tempB);
-
-
-
-	  //cpu code
-	  //std::vector<int> matrixA(N*N);
-	  //std::vector<int> matrixB(N*N);
-
-	  // std::generate(matrixA.begin(), matrixA.end(), []() { return rand() % 10; });
-	   //std::generate(matrixB.begin(), matrixB.end(), []() { return rand() % 10; });
-
-
-	  //broadcast the result out to receviers.
-	  for (auto actor: receivers) {
-	  
-		  self->mail(matrixA,matrixB,N).send(actor);
-	  }
-
-    },
-
-    // 2nd handler: GPU atom + matrices + N, launches a kenrel and sends its result to itself for verification
-    [=](const std::vector<float> matrixA,
-        const std::vector<float> matrixB, int N) {
- 
-
-  caf::cuda::manager& mgr = caf::cuda::manager::get();
-
-  //create program and dims   
-  auto program = mgr.create_program_from_cubin("../mmul.cubin","matrixMulFloat");
-  const int THREADS = 32;
-  const int BLOCKS = (N + THREADS - 1) / THREADS;
-  caf::cuda::nd_range dims(BLOCKS, BLOCKS, 1, THREADS, THREADS, 1);
-
-    //create args
-    auto arg1 = caf::cuda::create_in_arg(matrixA);
-    auto arg2 = caf::cuda::create_in_arg(matrixB);
-    out<float> arg3 = caf::cuda::create_out_arg_with_size<float>(N*N);
-    auto arg4 = caf::cuda::create_in_arg(N);
-
-    auto tempC = mmulFloat.run(program,dims,self -> state().id,arg1,arg2,arg3,arg4);
-    std::vector<float> matrixC = caf::cuda::extract_vector<float>(tempC);
-
-    //verify its own result 
-    self -> mail(matrixA,matrixB,matrixC,N).send(self);
-
-    },
-
-    // 3rd handler: CPU atom + matrices + N
-    [=](const std::vector<float>& matrixA,
-        const std::vector<float>& matrixB, const std::vector<float> matrixC, int N) {
-       
-	 std::vector<float> result(N*N);
-
-	 serial_matrix_multiply(matrixA,matrixB,result,N);
-
-	 if (result == matrixC) {
-	 
-		 std::cout << "actor with id " <<  self->state().id << " references match\n";
-	 
-	 }
-
-	 else {
-	    std::cout << "actor with id " <<  self->state().id << " references did not match\n";
-	 }
-
-	 self-> quit();
-
-    }
-  };
-}
-
-
-
-
-// Stateful actor behavior
 caf::behavior mmul_async_actor_fun(caf::stateful_actor<mmul_actor_state>* self) {
   return {
     // 1st handler: Just int N, and who to send the matrices to
-    [=](int N, std::vector<caf::actor> receivers) {
+// 1st handler: Just int N, send the matrix to itself 
+    [=](int N) {
 
         caf::cuda::manager& mgr = caf::cuda::manager::get();
-        // float generator
-        auto program = mgr.create_program_from_fatbin("../generate_random_matrix.fatbin",
-                                                      "generate_random_matrix_float");
+        //create the program and configure the dimesnions of the kernel
+        auto program = mgr.create_program_from_fatbin("../generate_random_matrix.fatbin","generate_random_matrix");
         int THREADS = 256;
-        int BLOCKS  = (N*N + THREADS - 1) / THREADS;
-        caf::cuda::nd_range dim(BLOCKS, 1, 1, THREADS, 1, 1);
+        int BLOCKS = (N*N + THREADS - 1) / THREADS;
+        caf::cuda::nd_range dim(BLOCKS,1, 1, THREADS,1, 1);
 
-        // args (float out, int scalars)
-        out<float> arg1 = caf::cuda::create_out_arg_with_size<float>(N*N);
-        auto arg2 = caf::cuda::create_in_arg(N*N);
-        auto arg3 = caf::cuda::create_in_arg(rand());
-        auto arg4 = caf::cuda::create_in_arg(9999);
+        //tag the arguments so that caf::cuda knows what to do with them
+         auto arg1 = caf::cuda::create_out_arg_with_size<float>(N*N); //output buffer indicate its size, caf::cuda will handle the rest
+          auto arg2 = caf::cuda::create_in_arg(N*N); //matrix size
+          auto arg3 = caf::cuda::create_in_arg(rand()); //seed
+          auto arg4 = caf::cuda::create_in_arg(9999); //max valux
+          auto arg3B = caf::cuda::create_in_arg(rand()); //seed
+          
+          int device_number= std::rand(); //any commmand that uses this number will 
+                                          //guarantee that it stays on the same device 
+                                          //as other commands and other gpu actors 
+                                          //other device numbers may or may not run on the same gpu
+                                          //depending on how many they are as it will just do device_number % num_devices
+                                          //to pick the device
 
-        auto arg3B = caf::cuda::create_in_arg(rand());
-        int device_number = 74;
 
-        // launch float generators (async)
-        auto tempA = randomFloatMatrix.run_async(program, dim, self -> state().id,
-                                                 0, device_number,
-                                                 arg1, arg2, arg3, arg4);
-        auto tempB = randomFloatMatrix.run_async(program, dim, self -> state().id,
-                                                 0, device_number,
-                                                 arg1, arg2, arg3B, arg4);
 
-        caf::cuda::mem_ptr<float> matrixA = std::get<0>(tempA);
-        caf::cuda::mem_ptr<float> matrixB = std::get<0>(tempB);
+          //launch kernels and collect their outputs
+          auto tempA = randomMatrix.run_async(
+                          program, //kernel to launch
+                          dim, //kernel dimensions
+                          self -> state().id, //actor id 
+                          0, //shared memory size in bytes
+                          device_number, //device number 
+                          arg1,arg2,arg3,arg4 //kernel arguments
+                          );
+          auto tempB = randomMatrix.run_async(program,dim, self -> state().id,0,device_number,arg1,arg2,arg3B,arg4);
+          caf::cuda::mem_ptr<int> matrixA =  std::get<0>(tempA);
+          caf::cuda::mem_ptr<int> matrixB = std::get<0>(tempB);
 
-        // ensure completion (optional)
-        matrixA -> synchronize();
-        matrixB -> synchronize();
+          /*
+           * Optional synchronize, as there is no guarantee that the data is 
+           * actually done being worked on
+           * but since each actor will use its own stream and device number
+           * we dont need to 
+          matrixA -> synchronize();
+          matrixB -> synchronize();
+          */
+          
+          //send to itself for matrix multiplication
+          self->mail(matrixA,matrixB,N,device_number).send(self);
 
-        // broadcast device buffers to receivers
-        for (auto actor: receivers) {
-          self->mail( matrixA, matrixB, N, device_number).send(actor);
-        }
-    },
-
-    
+    },    
 
     // 2nd handler: shared-mem float mmul and verify
     [=](const caf::cuda::mem_ptr<float> matrixA,
@@ -308,7 +235,7 @@ caf::behavior mmul_async_actor_fun(caf::stateful_actor<mmul_actor_state>* self) 
       self -> mail(matrix1, matrix2, matrixC, N).send(self);
     },
 
-    // 4th handler: CPU verify (float)
+    // 3th handler: CPU verify (float)
     [=](const std::vector<float>& matrixA,
         const std::vector<float>& matrixB,
         const std::vector<float>& matrixC, int N) {
